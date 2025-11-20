@@ -1,0 +1,22 @@
+<RCC>
+    <qresource prefix="/">
+        <file>bolt.png</file>
+        <file>bolt1.png</file>
+        <file>emblem_little.gif</file>
+        <file>emblem_little.png</file>
+        <file>emblem_little_plus.png</file>
+        <file>Gemini_logo.ico</file>
+        <file>Gemini_logo.png</file>
+        <file>lise_small_new.ico</file>
+        <file>lisepp_small.bmp</file>
+        <file>printer70.png</file>
+        <file>save29.png</file>
+        <file>sq_br_next.png</file>
+        <file>sq_br_prev.png</file>
+        <file>pace.png</file>
+        <file>cursor/finger.cur</file>
+        <file>Gemini_logo16.ico</file>
+        <file>open.png</file>
+        <file>save.png</file>
+    </qresource>
+</RCC>

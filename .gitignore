@@ -1,0 +1,10 @@
+*.bak
+*.pdb
+*.exe
+*.user
+*.user*
+/build/
+/t/
+LibraryDebugConsole.*
+*.a
+*.lib
