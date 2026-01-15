@@ -11,7 +11,7 @@
 #include <QUrl>
 #include <QSqlDatabase>
 
-
+extern QString basePATH;
 #include "g_Gemini/source/CNucleus.h"
 #include "g_Gemini/source/CFus.h"
 #include "gm_results.h"
@@ -83,7 +83,7 @@ MainWindow::MainWindow(QWidget *parent) :
   //------------------------------------------------------- gemini_db begin
 
   QString Gemini_DbName = "GEMINI.sqlite";
-  QString GeminiDbPath = LISErootPATH + "/lisecfg" + "/" + Gemini_DbName;
+  QString GeminiDbPath = basePATH  + "/" + Gemini_DbName;
 
   QString connectionName = "GeminiConnection";
 
@@ -96,7 +96,7 @@ MainWindow::MainWindow(QWidget *parent) :
   //------------------------------------------------------- ame_db begin
 
   QString AME_DbName = "AME_DB.sqlite"; // Name of the AME Database File
-  QString AMEDbPath = LISErootPATH + "/lisecfg" + "/" + AME_DbName; // File Path of the AME Database file
+  QString AMEDbPath = basePATH + "/" + AME_DbName; // File Path of the AME Database file
 
   QString connectionName2 = "AMEConnection";
 

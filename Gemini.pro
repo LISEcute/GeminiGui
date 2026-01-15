@@ -196,6 +196,7 @@ RC_ICONS += \
        g_Gemini/icons/Gemini_logo.ico \
 	g_Gemini/icons/Gemini_logo16.ico
 
-#DEFINES += __APPLE_
-#ICON = ../Icons_macos/gemini.icns
-#QMAKE_INFO_PLIST = ../Info.plist
+DEFINES += __APPLE_
+ICON = ../Icons_macos/gemini.icns
+QMAKE_INFO_PLIST = ../Info.plist
+QT += core concurrent

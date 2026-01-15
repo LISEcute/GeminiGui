@@ -1,4 +1,4 @@
-// -*- mode: c++ -*- 
+// -*- mode: c++ -*-
 //
 #ifndef nucleus_
 #define nucleus_
@@ -91,6 +91,9 @@ public:
     CNucleus(int iZ,int iA);
     CNucleus(int iZ,int iA, float fEx, float fJ);
     ~CNucleus();
+    static CNucleus* acquire(int iZ,int iA);
+    static CNucleus* acquire(int iZ,int iA, float fEx, float fJ);
+    static void release(CNucleus* nucleus);
 
     static CYrast *yrast; //!< gives fission barriers and rotational energies
     static CLevelDensity *levelDensity; //!< gives level densities
@@ -146,6 +149,10 @@ public:
   static float const r0; //!< radius const (fm)
   static float const sep; //!< separation between fragments
   static float threshold; //!< used to turn off unlikey evaporations
+  void initializeDefaults();
+  void initialize(int iZ0, int iA0);
+  void initialize(int iZ0, int iA0, float fEx0, float fJ0);
+  static vector<CNucleus*> recycled;
 
   CAngle spin; //!< orientation of the spin axis
   float velocity[3]; //!< velocity vector of nucleus in cm/ns 

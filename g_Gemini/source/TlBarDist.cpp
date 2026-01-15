@@ -106,15 +106,15 @@ float CTlBarDist::getTl(int iL, float fEk, float temp)
   
 
   float c1 = (ee[2]-ee[0])/2./width0;
-  float c2 = (ee[2]+ee[0]-2.*ee[1])/pow(width0,2)/2.;
+    float c2 = (ee[2]+ee[0]-2.*ee[1])/(width0*width0)/2.;
 
 
   float Tl = 1./(1.+exp(ee[1]));
   //float eee = ee[1] + deltaR*(c1 + c2*deltaR);
-  float eee = ee[1] + deltaR*c1 + c2*pow(deltaR,2);
+  float eee = ee[1] + deltaR*c1 + c2*(deltaR*deltaR);
   Tl += 1./(1.+exp(eee));
   //eee = ee[1] - deltaR*(c1 - c2*deltaR);
-  eee = ee[1] - deltaR*c1 + c2*pow(deltaR,2);
+  eee = ee[1] - deltaR*c1 + c2*(deltaR*deltaR);
   Tl += 1./(1.+exp(eee));
   Tl /=3.;
   return Tl;
@@ -179,10 +179,10 @@ float CTlBarDist::getTlLow(int iL, float fEk, float temp)
   
 
   float c1 = (ee[2]-ee[0])/2./width0;
-  float c2 = (ee[2]+ee[0]-2.*ee[1])/pow(width0,2)/2.;
+  float c2 = (ee[2]+ee[0]-2.*ee[1])/(width0*width0)/2.;
 
 
-  float eee = ee[1] + deltaR*c1 + c2*pow(deltaR,2);
+  float eee = ee[1] + deltaR*c1 + c2*(deltaR*deltaR);
   float Tl = 1./(1.+exp(eee));
   return Tl;
 
@@ -246,10 +246,10 @@ float CTlBarDist::getTlHigh(int iL, float fEk, float temp)
   
 
   float c1 = (ee[2]-ee[0])/2./width0;
-  float c2 = (ee[2]+ee[0]-2.*ee[1])/pow(width0,2)/2.;
+  float c2 = (ee[2]+ee[0]-2.*ee[1])/(width0*width0)/2.;
 
 
-  float eee = ee[1] - deltaR*c1 + c2*pow(deltaR,2);
+  float eee = ee[1] - deltaR*c1 + c2*(deltaR*deltaR);
   float Tl = 1./(1.+exp(eee));
   return Tl;
 

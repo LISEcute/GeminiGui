@@ -53,7 +53,7 @@ void CSigCharged::prepare(float Z, float A)
 
   float rI = rc0/A13 + rI1 + rI2*A13;
   float mu = A*Ap/(A+Ap);
-  InvInertia = 2.*mu*pow(rI,2)/41.563;
+  InvInertia = 2.*mu*(rI*rI)/41.563;
   omega = omega0 + omega1*A + omega2*exp(-A/omega3);
 
   a = a0;
@@ -66,7 +66,7 @@ float CSigCharged::getInverseXsec(float energy)
 {
 
   if (neutron) return  (n0+ n1*energy)*(1.-exp(-energy/n2));
-  float ddelta = sqrt(pow(offset,2)+pow(energy-barrier,2)) - offset;
+  float ddelta = sqrt((offset*offset)+(energy-barrier*energy-barrier)) - offset;
   float delta;
 
   if (energy > barrier) delta = energy - barrier - a*ddelta;   // ???  error??

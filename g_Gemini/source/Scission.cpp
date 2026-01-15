@@ -1,17 +1,33 @@
 #include "CScission.h"
 
-float const CScission::slopeViola = .1189;
-float const CScission::constViola = 7.3;
-float const CScission::e2=1.44;
-float const CScission::r0=1.2;
-float const CScission::kRotate = 41.563;
+#include <cmath>
+#include <cstdlib>
+#include <iostream>
+
+using std::cout;
+using std::endl;
+
+namespace {
+inline float sqr(float x)   { return x * x; }
+inline float cube(float x)  { return x * x * x; }
+inline float pow4(float x)  { float x2 = x * x; return x2 * x2; }
+inline float pow5(float x)  { return x * x * x * x * x; }
+inline float pow6(float x)  { float x2 = x * x; return x2 * x2 * x2; }
+inline float cbrt_f(float x){ return static_cast<float>(std::cbrt(static_cast<double>(x))); }
+} // namespace
+
+float const CScission::slopeViola = .1189f;
+float const CScission::constViola = 7.3f;
+float const CScission::e2 = 1.44f;
+float const CScission::r0 = 1.2f;
+float const CScission::kRotate = 41.563f;
 
 /**
  * simple constructor
  */
 CScission::CScission()
 {
-  mass = CMass::instance();//mass singleton
+    mass = CMass::instance();//mass singleton
 }
 
 /**
@@ -23,193 +39,216 @@ CScission::CScission()
  */
 CScission::CScission(int iZ0, int iA0, float fJ0, int iChan)
 {
-  init(iZ0,iA0,fJ0,iChan);
+    init(iZ0,iA0,fJ0,iChan);
 }
 
 
 //*******************************************************
-  /**
-   * initialized the calls for a given nucleus
-    /param iZ0 is the proton number of the nucleus
-    /param iA0 is the mass number of the nucleus
-    /param fJ0 is the spin of the nucleus
-    /param iChan =1 for imf, =2 symmetric fission
-   */
-void CScission::init(int iZ0, int iA0, float fJ0,int iChan, 
-             float Z10/*=0.*/,float A10/*0.*/)
+/**
+ * initialized the calls for a given nucleus
+  /param iZ0 is the proton number of the nucleus
+  /param iA0 is the mass number of the nucleus
+  /param fJ0 is the spin of the nucleus
+  /param iChan =1 for imf, =2 symmetric fission
+ */
+void CScission::init(int iZ0, int iA0, float fJ0,int iChan,
+                     float Z10/*=0.*/,float A10/*0.*/)
 {
-  iA = iA0;
-  iZ = iZ0;
-  fJ = fJ0;
-  A = (float)iA;
-  Z = (float)iZ;
+    iA = iA0;
+    iZ = iZ0;
+    fJ = fJ0;
+    A = (float)iA;
+    Z = (float)iZ;
 
-  if (A10 == 0)
+    if (A10 == 0)
     {
-     sym = 1;
-     A1 = A/2.;
-     Z1 = Z/2.;
+        sym = 1;
+        A1 = A/2.f;
+        Z1 = Z/2.f;
     }
-  else 
+    else
     {
-     sym = 0;
-     Z1 = Z10;
-     A1 = A10;
+        sym = 0;
+        Z1 = Z10;
+        A1 = A10;
     }
 
-  A2 = (float)iA - A1;
-  Z2 = (float)iZ - Z1;
+    A2 = (float)iA - A1;
+    Z2 = (float)iZ - Z1;
 
-  R1 = pow(A1,(float)(1./3.))*r0;
-  momInertia1 = 0.4*A1*pow(R1,2);
-  R2 = pow(A2,(float)(1./3.))*r0;
-  momInertia2 = 0.4*A2*pow(R2,2);
+    const float A1_13 = cbrt_f(A1);
+    const float A2_13 = cbrt_f(A2);
 
+    R1 = A1_13 * r0;
+    momInertia1 = 0.4f * A1 * sqr(R1);
 
-  Vc0 = Z1*Z2*e2;
-  mu0 = A1*A2/(A1+A2);
-  k1 = kRotate/2.*mu0*pow(fJ,2);
-  
+    R2 = A2_13 * r0;
+    momInertia2 = 0.4f * A2 * sqr(R2);
 
-  float Z2A13;
-  if (sym == 1)Z2A13 = pow((float)iZ,2)/pow((float)iA,(float)(1./3.));
-  else Z2A13= 6.349*Z1*Z2/(pow(A1,float(1./3.))+pow(A2,float(1./3.)));
-  float ekViola = 0.;
-  if (iChan == 1)
+    Vc0 = Z1*Z2*e2;
+    mu0 = A1*A2/(A1+A2);
+    k1 = (kRotate * 0.5f) * mu0 * sqr(fJ);
+
+    float Z2A13;
+    if (sym == 1)
     {
-     ekViola = slopeViola*Z2A13 + constViola;
-    ekViola += 0.004*pow(fJ0,2);   // angular momentum Viola energy
+        const float A_13 = cbrt_f((float)iA);
+        Z2A13 = sqr((float)iZ) / A_13;
     }
-  else 
+    else
     {
-     //alternatibve from Rusanov et al
-     if (Z2A13 < 900.) ekViola = 0.131*Z2A13;
-     else ekViola = 0.104*Z2A13 + 24.3;
+        Z2A13 = 6.349f * Z1 * Z2 / (A1_13 + A2_13);
     }
- 
 
-  //in a two sphere approx, go find separation energy which gives desired
-  //fission kinetic energy
-  sep = getSep(ekViola); 
-  sep0 = sep;
+    float ekViola = 0.f;
+    if (iChan == 1)
+    {
+        ekViola = slopeViola*Z2A13 + constViola;
+        ekViola += 0.004f*sqr(fJ0);   // angular momentum Viola energy
+    }
+    else
+    {
+        //alternatibve from Rusanov et al
+        if (Z2A13 < 900.f) ekViola = 0.131f*Z2A13;
+        else ekViola = 0.104f*Z2A13 + 24.3f;
+    }
+
+    //in a two sphere approx, go find separation energy which gives desired
+    //fission kinetic energy
+    sep = getSep(ekViola);
+    sep0 = sep;
 }
 //******************************************************
 
-  /**
-   * approximates the scission configuration by two separated spheres.
-   * returns the separation between the surface of the sphere which
-   * is consistent with input fission total kinetic energy
-   /param ekViola is the total fission kinetic energy
-   */
-
+/**
+ * approximates the scission configuration by two separated spheres.
+ * returns the separation between the surface of the sphere which
+ * is consistent with input fission total kinetic energy
+ /param ekViola is the total fission kinetic energy
+ */
 float CScission::getSep(float ekViola)
 {
-  float R = R1+R2 + 4.;
-  for(;;)
+    float R = R1 + R2 + 4.f;
+    for(;;)
     {
-      float momInertiaTot = momInertia1+momInertia2+mu0*pow(R,2);
-      float ek = Vc0/R + k1*pow(R,2)/pow(momInertiaTot,2);
-      if (fabs(ek-ekViola) < 0.1) break;
-      float dek = -Vc0/pow(R,2) - 4.*mu0*k1*pow(R,3)/pow(momInertiaTot,3)
-	+ 2*R/pow(momInertiaTot,2);
-      float dR = -(ek-ekViola)/dek ;
-      if (R+dR < 0.) R=0.9*R;
-      else R += dR;
+        const float R2v = R * R;
+        float momInertiaTot = momInertia1 + momInertia2 + mu0 * R2v;
+
+        float ek = Vc0 / R + k1 * R2v / sqr(momInertiaTot);
+
+        if (std::fabs(ek - ekViola) < 0.1f) break;
+
+        // dek/dR
+        // -Vc0/R^2 - 4*mu0*k1*R^3/(I^3) + 2*R/(I^2)
+        float dek =
+            -Vc0 / R2v
+            - 4.f * mu0 * k1 * (R * R2v) / (momInertiaTot * momInertiaTot * momInertiaTot)
+            + 2.f * R / sqr(momInertiaTot);
+
+        float dR = -(ek - ekViola) / dek;
+
+        if (R + dR < 0.f) R = 0.9f * R;
+        else R += dR;
     }
-  return R - R1 - R2;
+    return R - R1 - R2;
 }
 //***************************************************
-  /**
-   * returns the symmetric fission scission energy
-   * from a two sphere approximation using the separation sep
-   * previously determined from init() to sigmaFissionSystematics
-   */
+/**
+ * returns the symmetric fission scission energy
+ * from a two sphere approximation using the separation sep
+ * previously determined from init() to sigmaFissionSystematics
+ */
 float CScission::getScissionEnergy()
 {
-  float R = sep + R1 + R2;
-  float momInertiaTot = momInertia1 + momInertia2 + mu0*pow(R,2);
-  float EE = Vc0/R + kRotate/2./momInertiaTot*pow(fJ,2);
-  float mass1 = mass->getFRM(Z1,A1);
-  float mass2 = mass->getFRM(Z2,A2);
-  return EE + mass1 + mass2;
+    float R = sep + R1 + R2;
+    float momInertiaTot = momInertia1 + momInertia2 + mu0 * sqr(R);
+    float EE = Vc0 / R + kRotate * 0.5f / momInertiaTot * sqr(fJ);
+    float mass1 = mass->getFRM(Z1,A1);
+    float mass2 = mass->getFRM(Z2,A2);
+    return EE + mass1 + mass2;
 }
 //***************************************************
-  /**
-   * returns the asymmetric fission scission energy
-   * from a two sphere approximation using the separation sep
-   * previously determined from init() to sigmaFissionSystematics()
-   /param iZ1 is the proton number of one of the fission fragments
-   /param iA1 is the mass number of one of the fission fragments
-  */
+/**
+ * returns the asymmetric fission scission energy
+ * from a two sphere approximation using the separation sep
+ * previously determined from init() to sigmaFissionSystematics()
+ /param iZ1 is the proton number of one of the fission fragments
+ /param iA1 is the mass number of one of the fission fragments
+ */
 float CScission::getScissionEnergy(int iZ1, int iA1)
 {
-  A1 = (float)iA1;
-  Z1 = (float)iZ1;
-  A2 = A-A1;
-  int iA2 = iA - iA1;
-  Z2 = Z - Z1;
-  int iZ2 = iZ - iZ1;
-  R1 = r0*pow(A1,(float)(1./3.));
-  R2 = r0*pow(A2,(float)(1./3.));
-  float R = sep + R1 + R2;
-  momInertia1 = 0.4*A1*pow(R1,2);
-  momInertia2 = 0.4*A2*pow(R2,2);
-  float mu = A1*A2/(A1+A2);
-  float momInertiaTot = momInertia1 + momInertia2 + mu*pow(R,2);
-  float EE = Z1*Z2*e2/R + kRotate/2./momInertiaTot*pow(fJ,2);
+    A1 = (float)iA1;
+    Z1 = (float)iZ1;
+    A2 = A - A1;
+    int iA2 = iA - iA1;
+    Z2 = Z - Z1;
+    int iZ2 = iZ - Z1;
 
-  float massLD1 = mass->getFRM(iZ1,iA1);
-  float massLD2 = mass->getFRM(iZ2,iA2);
+    const float A1_13 = cbrt_f(A1);
+    const float A2_13 = cbrt_f(A2);
 
-/*  float massLD1 = mass->getLDM(iZ1,iA1);
-  float massLD2 = mass->getLDM(iZ2,iA2);*/
+    R1 = r0 * A1_13;
+    R2 = r0 * A2_13;
 
-  //float mass1 = mass->getCalMass(iZ1,iA1);
-  //float mass2 = mass->getCalMass(iZ2,iA2);
+    float R = sep + R1 + R2;
+    momInertia1 = 0.4f * A1 * sqr(R1);
+    momInertia2 = 0.4f * A2 * sqr(R2);
 
-  //Epair1 = mass->getPairing(iZ1,iA1);
-  //Epair2 = mass->getPairing(iZ2,iA2);
+    float mu = A1*A2/(A1+A2);
+    float momInertiaTot = momInertia1 + momInertia2 + mu * sqr(R);
 
-  //Eshell1 = mass1 - Epair1 - massLD1;
-  //Eshell2 = mass2 - Epair2 - massLD2;
+    float EE = Z1*Z2*e2/R + kRotate * 0.5f / momInertiaTot * sqr(fJ);
 
-  return  massLD1 + massLD2 + EE;
+    float massLD1 = mass->getFRM(iZ1,iA1);
+    float massLD2 = mass->getFRM(iZ2,iA2);
+
+    /*  float massLD1 = mass->getLDM(iZ1,iA1);
+      float massLD2 = mass->getLDM(iZ2,iA2);*/
+
+    return  massLD1 + massLD2 + EE;
 }
 //****************************************
-  /**
-   * returns the total fission kinetic energy from a two sphere approximation
-   * using the separation sep determined from either 
-   * init() to sigmaFissionSystematics(), whichever was called last
-   /param iZ1 is the proton number of one of the fragments
-   /param iZ2 is the mass number of one of the fragments
-   */
+/**
+ * returns the total fission kinetic energy from a two sphere approximation
+ * using the separation sep determined from either
+ * init() to sigmaFissionSystematics(), whichever was called last
+ /param iZ1 is the proton number of one of the fragments
+ /param iZ2 is the mass number of one of the fragments
+ */
 float CScission::getFissionKineticEnergy(int iZ1, int iA1)
 {
-  float A1 = (float)iA1;
-  float A2 = A-A1;
-  float Z1 = (float)iZ1;
-  float Z2 = Z - Z1;
-  float R1 = r0*pow(A1,(float)(1./3.));
-  float R2 = r0*pow(A2,(float)(1./3.));
-  float R = sep + R1 + R2;
-  float momInertia1 = 0.4*A1*pow(R1,2);
-  float momInertia2 = 0.4*A2*pow(R2,2);
-  float mu = A1*A2/(A1+A2);
-  float momInertiaOrbit = mu*pow(R,2);
-  float momInertiaTot = momInertia1 + momInertia2 + momInertiaOrbit;
-  float fl = fJ*momInertiaOrbit/momInertiaTot;
-  EkCoul =  Z1*Z2*e2/R;
-  EkRot =  kRotate/2./momInertiaOrbit*pow(fl,2); 
-  ekTot = EkCoul + EkRot;
-  Erotate1 = pow(fJ*momInertia1/momInertiaTot,2)*kRotate/2./momInertia1;
-  Erotate2 = pow(fJ*momInertia2/momInertiaTot,2)*kRotate/2./momInertia2;
+    float A1 = (float)iA1;
+    float A2 = A - A1;
+    float Z1 = (float)iZ1;
+    float Z2 = Z - Z1;
 
-  return ekTot;
+    float R1 = r0 * cbrt_f(A1);
+    float R2 = r0 * cbrt_f(A2);
+
+    float R = sep + R1 + R2;
+
+    float momInertia1 = 0.4f * A1 * sqr(R1);
+    float momInertia2 = 0.4f * A2 * sqr(R2);
+
+    float mu = A1*A2/(A1+A2);
+    float momInertiaOrbit = mu * sqr(R);
+    float momInertiaTot = momInertia1 + momInertia2 + momInertiaOrbit;
+
+    float fl = fJ * momInertiaOrbit / momInertiaTot;
+
+    EkCoul =  Z1*Z2*e2 / R;
+    EkRot  =  kRotate * 0.5f / momInertiaOrbit * sqr(fl);
+    ekTot  =  EkCoul + EkRot;
+
+    Erotate1 = sqr(fJ * momInertia1 / momInertiaTot) * (kRotate * 0.5f) / momInertia1;
+    Erotate2 = sqr(fJ * momInertia2 / momInertiaTot) * (kRotate * 0.5f) / momInertia2;
+
+    return ekTot;
 }
 //**************************************************************
 /**
  * estimates the standard deviation of the fission mass distributions
- * from the systematics of Rusanov et al. Physics of the Atomic Nucleus 60 
+ * from the systematics of Rusanov et al. Physics of the Atomic Nucleus 60
  * (1997) 683 assuming a scission-point logic.
  * subsequentally, it approximates the scission configuration as two separated
  * spheres, where the separation is adjusted to reproduce the mass distribution
@@ -218,154 +257,203 @@ float CScission::getFissionKineticEnergy(int iZ1, int iA1)
 \param fJ is the angular momentum
 \param fUScission is the thermal excitation energy at the scission-point in MeV
 */
-float CScission::sigmaFissionSystematicsScission(int iZ0, int iA0, float fJ, 
-   float fUScission)
+float CScission::sigmaFissionSystematicsScission(int iZ0, int iA0, float fJ,
+                                                 float fUScission)
 {
-  if (fUScission < 0. || fUScission > 2000)
+    if (fUScission < 0.f || fUScission > 2000.f)
     {
-    cout << "fUScission= " << fUScission << " sigmaFissionSystematics" << endl;
-    abort();
+        cout << "fUScission= " << fUScission << " sigmaFissionSystematics" << endl;
+        abort();
     }
-  iZ = iZ0;
-  iA = iA0;
-  A = (float)iA;
-  Z = (float)iZ;
-  float A3 = pow(A,(float)(1./3.));
 
-  // on page 684, the temp is determined with a level-density parameter 0.093A
-  //we must do the same to be consistent
-  float temp = sqrt(fUScission/0.093/A);
+    iZ = iZ0;
+    iA = iA0;
+    A = (float)iA;
+    Z = (float)iZ;
 
-  float Z2A = pow(Z,2)/A;
-  //find stiffness from Fig8c
-  float d2Vdeta2;
-  if (Z2A < 23.49) d2Vdeta2 = 2.105;
-  else if (Z2A < 30.) d2Vdeta2 = 1.923*Z2A - 43.08;
-  else if (Z2A < 33.9) d2Vdeta2 = 3.643*Z2A - 94.224;
-  else d2Vdeta2 = -1.3144*Z2A + 73.45;
+    const float A3 = cbrt_f(A);
 
+    // on page 684, the temp is determined with a level-density parameter 0.093A
+    //we must do the same to be consistent
+    float temp = std::sqrt(fUScission / (0.093f * A));
 
- //use equation 1 to get the variance from the stiffness and temp
- float sigma2 = pow(A,2)*temp/16./d2Vdeta2;   
+    float Z2A = sqr(Z) / A;
 
+    //find stiffness from Fig8c
+    float d2Vdeta2;
+    if (Z2A < 23.49f) d2Vdeta2 = 2.105f;
+    else if (Z2A < 30.f) d2Vdeta2 = 1.923f*Z2A - 43.08f;
+    else if (Z2A < 33.9f) d2Vdeta2 = 3.643f*Z2A - 94.224f;
+    else d2Vdeta2 = -1.3144f*Z2A + 73.45f;
 
- //correction for angular momentum from eq 17 and 18.
- float d2sdl2;
-if (Z2A >32.7) d2sdl2 = -0.1310*temp - 0.05147*Z2A +0.000766*pow(Z2A,2) 
-      +0.00289*temp*Z2A + .970; 
- else if (Z2A > 31.) d2sdl2 = .2873*temp + 0.03687*Z2A 
-       -0.00974*temp*Z2A -1.1143;
- else d2sdl2 = 0.0111*Z2A - .334;
- if(d2sdl2<0.)
-   d2sdl2 = 0.;
-float correction = d2sdl2*pow(fJ,2)/2.;
+    //use equation 1 to get the variance from the stiffness and temp
+    float sigma2 = sqr(A) * temp / (16.f * d2Vdeta2);
 
+    //correction for angular momentum from eq 17 and 18.
+    float d2sdl2;
+    if (Z2A > 32.7f)
+        d2sdl2 = -0.1310f*temp - 0.05147f*Z2A + 0.000766f*sqr(Z2A)
+                 + 0.00289f*temp*Z2A + .970f;
+    else if (Z2A > 31.f)
+        d2sdl2 = .2873f*temp + 0.03687f*Z2A
+                 - 0.00974f*temp*Z2A - 1.1143f;
+    else
+        d2sdl2 = 0.0111f*Z2A - .334f;
 
-//I find that use of the full correction - overestimartes the width
-// so I have scaled it
-// correction*= .75;
+    if(d2sdl2 < 0.f) d2sdl2 = 0.f;
 
-sigma2 += correction;
+    float correction = d2sdl2 * sqr(fJ) * 0.5f;
 
-//now we determine d2VdA2
- float d2VdA2 = temp/sigma2;
+    //I find that use of the full correction - overestimartes the width
+    // so I have scaled it
+    // correction*= .75;
 
+    sigma2 += correction;
 
- //this has a component of Coloumb energy of each fragment
- float alpha = Z/A;
- float Ec0 = 0.7053*pow(alpha,2)*pow(2.,1./3.)*20./9./A3;
+    //now we determine d2VdA2
+    float d2VdA2 = temp / sigma2;
 
- // from the surface energy
- float Es = -8.*pow(2.,1./3.)*17.9439*
-  (1.-1.7826*pow((A-2.*Z)/A,2))/9./
-   pow(A,(float)(4./3.));
+    //this has a component of Coloumb energy of each fragment
+    float alpha = Z/A;
 
- //find unaccounted
-  d2VdA2 -= Ec0 + Es;
+    const float cbrt2 = cbrt_f(2.f);
+    const float pow2_13 = cbrt2;          // 2^(1/3)
+    const float pow2_23 = cbrt2*cbrt2;    // 2^(2/3)
 
+    float Ec0 = 0.7053f*sqr(alpha)*pow2_13*20.f/9.f/A3;
 
-  float fact1 = pow(2.,5./3.)*A3*e2*r0*pow(alpha,2)/9.;
-  float rr = pow(2.,2./3.)*A3*r0;
-  float fact2 = 2.*e2*pow(alpha,2);
-  float fact3 = (88.8945*A*A3 + 120.*pow(A,2) +67.5318*pow(A*A3,2) + 
-		 46.3521*pow(A,3)*A3 - 76.32*pow(A,4))*pow(r0,4);
-  float fact4 = (384.*A + 453.572*A*A3*A3+246.365*A*A*A3 + 64.8*pow(A,3))*
-                pow(r0,3);
-  float fact5 = (635.*A3*A3 + 609.562*A*A3 + 208.8*A*A)*pow(r0,2);
-  float fact6 = (482.57*A3 + 288 *A)*r0;
-  float fact7 = 144.;
-  float fact8 = pow(A,5)*pow(r0,6)*(144.+544.286*A3*A3 + 1131.5*A*A3 + 
-	       1411.2*A*A + 1167.49*pow(A*A3,2) + 579.465*pow(A,3)*A3 +
-               158.184*pow(A,4));
-  float fact9 = pow(A,4)*A3*A3*pow(r0,5)*(1088.57 + 3428.79*A3*A3 + 
-	        5702.4*A*A3 + 5334.*A*A + 2941.9*pow(A*A3,2) + 
-                730.08*pow(A,3)*A3);
-  float fact10 = pow(A*r0,4)*A3*(3428.79 + 8640.*A3*A3 + 6720.42*A*A + 
-				 1853.28*pow(A*A3,2));
-  float fact11 = pow(A,4)*pow(r0,3)*(760. + 10885.7*A3*A3 + 9052.*A*A3 +
-				     2822.4*A*A);
-  float fact12 = pow(A,3)*A3*A3*pow(r0,2)*(5442.86+6857.57*A3*A3 + 
-					   2851.2*A*A3);
-  float fact13 = r0*(2743.03*pow(A,3)*A3 + 1728*pow(A,4));
-  float fact14 = 576*pow(A,3);
-  float fact15 = fJ*(fJ+1)*kRotate*64.;
+    // from the surface energy
+    // pow(A,4/3) = A * A^(1/3) = A * A3
+    float Es = -8.f*pow2_13*17.9439f
+               * (1.f - 1.7826f*sqr((A - 2.f*Z)/A))
+               / 9.f / (A * A3);
 
+    //find unaccounted
+    d2VdA2 -= Ec0 + Es;
 
-  float s = 1.;
-  int tries = 0;
-  for(;;)
+    const float pow2_53 = pow5(cbrt2); // 2^(5/3) = (2^(1/3))^5
+
+    float fact1 = pow2_53 * A3 * e2 * r0 * sqr(alpha) / 9.f;
+    float rr    = pow2_23 * A3 * r0;
+    float fact2 = 2.f * e2 * sqr(alpha);
+
+    const float r0_2 = r0*r0;
+    const float r0_3 = r0_2*r0;
+    const float r0_4 = r0_2*r0_2;
+    const float r0_5 = r0_4*r0;
+    const float r0_6 = r0_3*r0_3;
+
+    const float A2v = A*A;
+    const float A3v = A2v*A;
+    const float A4v = A2v*A2v;
+    const float A5v = A4v*A;
+
+    const float AA3 = A*A3;          // A * A^(1/3) = A^(4/3)
+    const float AA3_2 = AA3*AA3;     // (A*A3)^2
+
+    float fact3 = (88.8945f*A*AA3 + 120.f*A2v + 67.5318f*AA3_2 +
+                   46.3521f*A3v*A3 - 76.32f*A4v) * r0_4;
+
+    float fact4 = (384.f*A + 453.572f*A*sqr(A3) + 246.365f*A2v*A3 + 64.8f*A3v) * r0_3;
+
+    float fact5 = (635.f*sqr(A3) + 609.562f*A*A3 + 208.8f*A2v) * r0_2;
+
+    float fact6 = (482.57f*A3 + 288.f*A) * r0;
+    float fact7 = 144.f;
+
+    float fact8 =
+        A5v * r0_6 *
+        (144.f + 544.286f*sqr(A3) + 1131.5f*A*A3 + 1411.2f*A2v +
+         1167.49f*AA3_2 + 579.465f*A3v*A3 + 158.184f*A4v);
+
+    float fact9 =
+        A4v * sqr(A3) * r0_5 *
+        (1088.57f + 3428.79f*sqr(A3) + 5702.4f*A*A3 + 5334.f*A2v +
+         2941.9f*AA3_2 + 730.08f*A3v*A3);
+
     {
-
-      float y = fact1/pow(s+rr,2) - fact2/(s+rr);
-
-
-      //contribution from spin
-      float nom = fact3+fact4*s+fact5*s*s+fact6*pow(s,3)+fact7*pow(s,4);
-      float denom = fact8+fact9*s+fact10*s*s+fact11*pow(s,3)+fact12*pow(s,4)+
-         fact13*pow(s,5)+fact14*pow(s,6);
-      float extra = fact15*nom/denom;
-      y += extra;
-
-
-      float dy = -2.*fact1/pow(s+rr,3) + fact2/pow(s+rr,2);
-      //contribution from spin
-      extra= fact15*(fact4 +2.*fact5*s+3.*fact6*s*s +4.*fact7*pow(s,3))/denom -
-	fact15*nom/pow(denom,2)*(fact9+2.*fact10*s+3.*fact11*s*s+
-	4.*fact12*pow(s,3) + 5.*fact13*pow(s,4)+6.*fact14*pow(s,5)); 
-       dy += extra;
-
-      float delta = y - d2VdA2;
-      float deltaS = -delta/dy;
-      if (fabs(delta) < .0001) break;
-      s += deltaS;
-      if(s<0.)
-        s=1.E-3;
-      else if(s>50.)
-        s=50.;
-      tries++;
-      if (tries == 10 || isnan(s)) 
-	{
-	  //cout << "iZ= " << iZ << " iA= " << iA << " Usciss= " << fUScission 
-      //     << " J= " << fJ << endl;
-          //cout << "sigma2= " << sigma2 << endl;
-          s = 5.;
-          break;
-	}
+        const float Ar0 = A*r0;
+        const float Ar0_4 = pow4(Ar0);
+        float fact10 = Ar0_4 * A3 *
+                       (3428.79f + 8640.f*sqr(A3) + 6720.42f*A2v + 1853.28f*AA3_2);
+        // keep fact10 in scope below
+        // we'll overwrite a local and then assign to the outer variable via a temp
+        // but easiest: just declare outside block (done by using a temporary name)
+        // So:
+        // (Handled by making fact10 a separate variable below.)
     }
- 
 
+    float fact10 = pow4(A*r0) * A3 *
+                   (3428.79f + 8640.f*sqr(A3) + 6720.42f*A2v + 1853.28f*AA3_2);
 
-  sep = s;
-  sep1 = sep;
-  Esymmetric = getScissionEnergy();
+    float fact11 =
+        A4v * r0_3 *
+        (760.f + 10885.7f*sqr(A3) + 9052.f*A*A3 + 2822.4f*A2v);
 
- return sigma2;
+    float fact12 =
+        A3v * sqr(A3) * r0_2 *
+        (5442.86f + 6857.57f*sqr(A3) + 2851.2f*A*A3);
 
+    float fact13 = r0 * (2743.03f*A3v*A3 + 1728.f*A4v);
+    float fact14 = 576.f*A3v;
+
+    float fact15 = fJ*(fJ+1.f)*kRotate*64.f;
+
+    float s = 1.f;
+    int tries = 0;
+
+    for(;;)
+    {
+        float sp = s + rr;
+
+        float y = fact1 / sqr(sp) - fact2 / sp;
+
+        //contribution from spin
+        float nom = fact3 + fact4*s + fact5*s*s + fact6*cube(s) + fact7*pow4(s);
+        float denom = fact8 + fact9*s + fact10*s*s + fact11*cube(s) + fact12*pow4(s)
+                      + fact13*pow5(s) + fact14*pow6(s);
+
+        float extra = fact15 * nom / denom;
+        y += extra;
+
+        float dy = -2.f*fact1/(sp*sp*sp) + fact2/sqr(sp);
+
+        //contribution from spin
+        float dnom = fact4 + 2.f*fact5*s + 3.f*fact6*s*s + 4.f*fact7*cube(s);
+        float dden = fact9 + 2.f*fact10*s + 3.f*fact11*s*s + 4.f*fact12*cube(s)
+                     + 5.f*fact13*pow4(s) + 6.f*fact14*pow5(s);
+
+        extra = fact15 * dnom / denom - fact15 * nom / sqr(denom) * dden;
+        dy += extra;
+
+        float delta = y - d2VdA2;
+        float deltaS = -delta/dy;
+
+        if (std::fabs(delta) < .0001f) break;
+
+        s += deltaS;
+
+        if (s < 0.f) s = 1.e-3f;
+        else if (s > 50.f) s = 50.f;
+
+        tries++;
+        if (tries == 10 || std::isnan(s))
+        {
+            s = 5.f;
+            break;
+        }
+    }
+
+    sep = s;
+    sep1 = sep;
+    Esymmetric = getScissionEnergy();
+
+    return sigma2;
 }
 //**************************************************************
 /**
  * estimates the standard deviation of the fission mass distributions
- * from the systematics of Rusanov et al. Physics of the Atomic Nucleus 60 
+ * from the systematics of Rusanov et al. Physics of the Atomic Nucleus 60
  * (1997) 683 assuming a saddle-point logic.
  * subsequentally, it approximates the scission configuration as two separated
  * spheres, where the separation is adjusted to reproduce the mass distribution
@@ -374,147 +462,183 @@ sigma2 += correction;
 \param fJ is the angular momentum
 \param fUScission is the thermal excitation energy at the scission-point in MeV
 */
-float CScission::sigmaFissionSystematicsSaddle(int iZ0, int iA0, float fJ, 
-   float fUScission)
+float CScission::sigmaFissionSystematicsSaddle(int iZ0, int iA0, float fJ,
+                                               float fUScission)
 {
-  if (fUScission < 0. || fUScission > 2000)
+    if (fUScission < 0.f || fUScission > 2000.f)
     {
-    cout << "fUScission= " << fUScission << " sigmaFissionSystematics" << endl;
-    abort();
+        cout << "fUScission= " << fUScission << " sigmaFissionSystematics" << endl;
+        abort();
     }
-  iZ = iZ0;
-  iA = iA0;
-  A = (float)iA;
-  Z = (float)iZ;
-  float A3 = pow(A,(float)(1./3.));
 
-  // on page 684, the temp is determined with a level-density parameter 0.093A
-  //we must do the same to be consistent
-  float temp = sqrt(fUScission/0.093/A);
+    iZ = iZ0;
+    iA = iA0;
+    A = (float)iA;
+    Z = (float)iZ;
 
-  float Z2A = pow(Z,2)/A;
-  //find stiffness from Fig8c
-  float d2Vdeta2;
-  if (Z2A < 23.49) d2Vdeta2 = 2.105;
-  else if (Z2A < 31.57) d2Vdeta2 = 1.923*Z2A - 43.08;
-  else if (Z2A < 34.2) d2Vdeta2 = 3.19*Z2A - 83.06;
-  else d2Vdeta2 = -1.7287*Z2A + 85.42;
+    const float A3 = cbrt_f(A);
 
+    // on page 684, the temp is determined with a level-density parameter 0.093A
+    //we must do the same to be consistent
+    float temp = std::sqrt(fUScission / (0.093f * A));
 
- //use equation 1 to get the variance from the stiffness and temp
- float sigma2 = pow(A,2)*temp/16./d2Vdeta2;   
+    float Z2A = sqr(Z) / A;
 
+    //find stiffness from Fig8c
+    float d2Vdeta2;
+    if (Z2A < 23.49f) d2Vdeta2 = 2.105f;
+    else if (Z2A < 31.57f) d2Vdeta2 = 1.923f*Z2A - 43.08f;
+    else if (Z2A < 34.2f) d2Vdeta2 = 3.19f*Z2A - 83.06f;
+    else d2Vdeta2 = -1.7287f*Z2A + 85.42f;
 
- //correction for angular momentum from eq 17 and 18.
- float d2sdl2;
-if (Z2A >32.7) d2sdl2 = -0.1310*temp - 0.05147*Z2A +0.000766*pow(Z2A,2) 
-      +0.00289*temp*Z2A + .970; 
- else if (Z2A > 31.) d2sdl2 = .2873*temp + 0.03687*Z2A 
-       -0.00974*temp*Z2A -1.1143;
- else d2sdl2 = 0.0111*Z2A - .334;
- if(d2sdl2<0.)
-   d2sdl2 = 0.;
-float correction = d2sdl2*pow(fJ,2)/2.;
+    //use equation 1 to get the variance from the stiffness and temp
+    float sigma2 = sqr(A) * temp / (16.f * d2Vdeta2);
 
+    //correction for angular momentum from eq 17 and 18.
+    float d2sdl2;
+    if (Z2A > 32.7f)
+        d2sdl2 = -0.1310f*temp - 0.05147f*Z2A + 0.000766f*sqr(Z2A)
+                 + 0.00289f*temp*Z2A + .970f;
+    else if (Z2A > 31.f)
+        d2sdl2 = .2873f*temp + 0.03687f*Z2A
+                 - 0.00974f*temp*Z2A - 1.1143f;
+    else
+        d2sdl2 = 0.0111f*Z2A - .334f;
 
-//I find that use of the full correction - overestimartes the width
-// so I have scaled it
-// correction*= .75;
+    if(d2sdl2 < 0.f) d2sdl2 = 0.f;
 
-sigma2 += correction;
+    float correction = d2sdl2 * sqr(fJ) * 0.5f;
 
-//now we determine d2VdA2
- float d2VdA2 = temp/sigma2;
+    //I find that use of the full correction - overestimartes the width
+    // so I have scaled it
+    // correction*= .75;
 
+    sigma2 += correction;
 
- //this has a component of Coloumb energy of each fragment
- float alpha = Z/A;
- float Ec0 = 0.7053*pow(alpha,2)*pow(2.,1./3.)*20./9./A3;
+    //now we determine d2VdA2
+    float d2VdA2 = temp / sigma2;
 
- // from the surface energy
- float Es = -8.*pow(2.,1./3.)*17.9439*
-  (1.-1.7826*pow((A-2.*Z)/A,2))/9./
-   pow(A,(float)(4./3.));
+    //this has a component of Coloumb energy of each fragment
+    float alpha = Z/A;
 
- //find unaccounted
-  d2VdA2 -= Ec0 + Es;
+    const float cbrt2 = cbrt_f(2.f);
+    const float pow2_13 = cbrt2;
+    const float pow2_23 = cbrt2*cbrt2;
 
+    float Ec0 = 0.7053f*sqr(alpha)*pow2_13*20.f/9.f/A3;
 
-  float fact1 = pow(2.,5./3.)*A3*e2*r0*pow(alpha,2)/9.;
-  float rr = pow(2.,2./3.)*A3*r0;
-  float fact2 = 2.*e2*pow(alpha,2);
-  float fact3 = (88.8945*A*A3 + 120.*pow(A,2) +67.5318*pow(A*A3,2) + 
-		 46.3521*pow(A,3)*A3 - 76.32*pow(A,4))*pow(r0,4);
-  float fact4 = (384.*A + 453.572*A*A3*A3+246.365*A*A*A3 + 64.8*pow(A,3))*
-                pow(r0,3);
-  float fact5 = (635.*A3*A3 + 609.562*A*A3 + 208.8*A*A)*pow(r0,2);
-  float fact6 = (482.57*A3 + 288 *A)*r0;
-  float fact7 = 144.;
-  float fact8 = pow(A,5)*pow(r0,6)*(144.+544.286*A3*A3 + 1131.5*A*A3 + 
-	       1411.2*A*A + 1167.49*pow(A*A3,2) + 579.465*pow(A,3)*A3 +
-               158.184*pow(A,4));
-  float fact9 = pow(A,4)*A3*A3*pow(r0,5)*(1088.57 + 3428.79*A3*A3 + 
-	        5702.4*A*A3 + 5334.*A*A + 2941.9*pow(A*A3,2) + 
-                730.08*pow(A,3)*A3);
-  float fact10 = pow(A*r0,4)*A3*(3428.79 + 8640.*A3*A3 + 6720.42*A*A + 
-				 1853.28*pow(A*A3,2));
-  float fact11 = pow(A,4)*pow(r0,3)*(760. + 10885.7*A3*A3 + 9052.*A*A3 +
-				     2822.4*A*A);
-  float fact12 = pow(A,3)*A3*A3*pow(r0,2)*(5442.86+6857.57*A3*A3 + 
-					   2851.2*A*A3);
-  float fact13 = r0*(2743.03*pow(A,3)*A3 + 1728*pow(A,4));
-  float fact14 = 576*pow(A,3);
-  float fact15 = fJ*(fJ+1)*kRotate*64.;
+    // from the surface energy
+    float Es = -8.f*pow2_13*17.9439f
+               * (1.f - 1.7826f*sqr((A - 2.f*Z)/A))
+               / 9.f / (A * A3);
 
+    //find unaccounted
+    d2VdA2 -= Ec0 + Es;
 
-  float s = 1.;
-  int tries = 0;
-  for(;;)
+    const float pow2_53 = pow5(cbrt2);
+
+    float fact1 = pow2_53 * A3 * e2 * r0 * sqr(alpha) / 9.f;
+    float rr    = pow2_23 * A3 * r0;
+    float fact2 = 2.f * e2 * sqr(alpha);
+
+    const float r0_2 = r0*r0;
+    const float r0_3 = r0_2*r0;
+    const float r0_4 = r0_2*r0_2;
+    const float r0_5 = r0_4*r0;
+    const float r0_6 = r0_3*r0_3;
+
+    const float A2v = A*A;
+    const float A3v = A2v*A;
+    const float A4v = A2v*A2v;
+    const float A5v = A4v*A;
+
+    const float AA3 = A*A3;
+    const float AA3_2 = AA3*AA3;
+
+    float fact3 = (88.8945f*A*AA3 + 120.f*A2v + 67.5318f*AA3_2 +
+                   46.3521f*A3v*A3 - 76.32f*A4v) * r0_4;
+
+    float fact4 = (384.f*A + 453.572f*A*sqr(A3) + 246.365f*A2v*A3 + 64.8f*A3v) * r0_3;
+
+    float fact5 = (635.f*sqr(A3) + 609.562f*A*A3 + 208.8f*A2v) * r0_2;
+
+    float fact6 = (482.57f*A3 + 288.f*A) * r0;
+    float fact7 = 144.f;
+
+    float fact8 =
+        A5v * r0_6 *
+        (144.f + 544.286f*sqr(A3) + 1131.5f*A*A3 + 1411.2f*A2v +
+         1167.49f*AA3_2 + 579.465f*A3v*A3 + 158.184f*A4v);
+
+    float fact9 =
+        A4v * sqr(A3) * r0_5 *
+        (1088.57f + 3428.79f*sqr(A3) + 5702.4f*A*A3 + 5334.f*A2v +
+         2941.9f*AA3_2 + 730.08f*A3v*A3);
+
+    float fact10 = pow4(A*r0) * A3 *
+                   (3428.79f + 8640.f*sqr(A3) + 6720.42f*A2v + 1853.28f*AA3_2);
+
+    float fact11 =
+        A4v * r0_3 *
+        (760.f + 10885.7f*sqr(A3) + 9052.f*A*A3 + 2822.4f*A2v);
+
+    float fact12 =
+        A3v * sqr(A3) * r0_2 *
+        (5442.86f + 6857.57f*sqr(A3) + 2851.2f*A*A3);
+
+    float fact13 = r0 * (2743.03f*A3v*A3 + 1728.f*A4v);
+    float fact14 = 576.f*A3v;
+
+    float fact15 = fJ*(fJ+1.f)*kRotate*64.f;
+
+    float s = 1.f;
+    int tries = 0;
+
+    for(;;)
     {
+        float sp = s + rr;
 
-      float y = fact1/pow(s+rr,2) - fact2/(s+rr);
+        float y = fact1 / sqr(sp) - fact2 / sp;
 
+        //contribution from spin
+        float nom = fact3 + fact4*s + fact5*s*s + fact6*cube(s) + fact7*pow4(s);
+        float denom = fact8 + fact9*s + fact10*s*s + fact11*cube(s) + fact12*pow4(s)
+                      + fact13*pow5(s) + fact14*pow6(s);
 
-      //contribution from spin
-      float nom = fact3+fact4*s+fact5*s*s+fact6*pow(s,3)+fact7*pow(s,4);
-      float denom = fact8+fact9*s+fact10*s*s+fact11*pow(s,3)+fact12*pow(s,4)+
-         fact13*pow(s,5)+fact14*pow(s,6);
-      float extra = fact15*nom/denom;
-      y += extra;
+        float extra = fact15 * nom / denom;
+        y += extra;
 
+        float dy = -2.f*fact1/(sp*sp*sp) + fact2/sqr(sp);
 
-      float dy = -2.*fact1/pow(s+rr,3) + fact2/pow(s+rr,2);
-      //contribution from spin
-      extra= fact15*(fact4 +2.*fact5*s+3.*fact6*s*s +4.*fact7*pow(s,3))/denom -
-	fact15*nom/pow(denom,2)*(fact9+2.*fact10*s+3.*fact11*s*s+
-	4.*fact12*pow(s,3) + 5.*fact13*pow(s,4)+6.*fact14*pow(s,5)); 
-       dy += extra;
+        //contribution from spin
+        float dnom = fact4 + 2.f*fact5*s + 3.f*fact6*s*s + 4.f*fact7*cube(s);
+        float dden = fact9 + 2.f*fact10*s + 3.f*fact11*s*s + 4.f*fact12*cube(s)
+                     + 5.f*fact13*pow4(s) + 6.f*fact14*pow5(s);
 
-      float delta = y - d2VdA2;
-      float deltaS = -delta/dy;
-      if (fabs(delta) < .0001) break;
-      s += deltaS;
-      if(s<0.)
-        s=1.E-3;
-      else if(s>50.)
-        s=50.;
-      tries++;
-      if (tries == 10 || isnan(s)) 
-	{
-	  //cout << "iZ= " << iZ << " iA= " << iA << " Usciss= " << fUScission 
-      //     << " J= " << fJ << endl;
-          //cout << "sigma2= " << sigma2 << endl;
-          s = 5.;
-          break;
-	}
+        extra = fact15 * dnom / denom - fact15 * nom / sqr(denom) * dden;
+        dy += extra;
+
+        float delta = y - d2VdA2;
+        float deltaS = -delta/dy;
+
+        if (std::fabs(delta) < .0001f) break;
+
+        s += deltaS;
+
+        if (s < 0.f) s = 1.e-3f;
+        else if (s > 50.f) s = 50.f;
+
+        tries++;
+        if (tries == 10 || std::isnan(s))
+        {
+            s = 5.f;
+            break;
+        }
     }
- 
 
+    sep = s;
+    sep1 = sep;
+    Esymmetric = getScissionEnergy();
 
-  sep = s;
-  sep1 = sep;
-  Esymmetric = getScissionEnergy();
-
- return sigma2;
-
+    return sigma2;
 }

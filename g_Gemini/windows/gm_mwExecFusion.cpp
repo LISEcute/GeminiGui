@@ -130,8 +130,10 @@ void MainWindow::execute_fusion()
     for (int i=0;i<num_events;i++)
         {
         if(progress.wasCanceled()){break;}
-        progress.setValue(i);
-        qApp->processEvents();
+        if (i % 10 == 0 || i == num_events - 1) {
+            progress.setValue(i);
+            qApp->processEvents();
+        }
 
         //--------------------------------------------------------------
         //choose the spin of the CN from the determed spin distribution

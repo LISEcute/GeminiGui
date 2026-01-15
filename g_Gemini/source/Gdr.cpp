@@ -57,8 +57,11 @@ float CGdr::getLineShape(float e)
   float out = 0.;
   for (int i=0;i<N;i++)
     {
-      out += lineShape[i].gamma*lineShape[i].strength*pow(e,4)/
-          (pow(pow(e,2)-pow(lineShape[i].energy,2),2)+pow(lineShape[i].gamma*e,2));
+      out += lineShape[i].gamma * lineShape[i].strength * (e*e)*(e*e) /
+             ( ((e*e) - (lineShape[i].energy*lineShape[i].energy)) *
+                  ((e*e) - (lineShape[i].energy*lineShape[i].energy))
+              + (lineShape[i].gamma*e)*(lineShape[i].gamma*e) );
+
     }
   return out;
 }

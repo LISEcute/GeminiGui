@@ -103,7 +103,7 @@ float CTlArray::getTermInExp(int iL, float fEk)
       if  (emax > 0.0) //real stationary points
         {
           emax = sqrt(emax);
-          d2e = 2.0*fC3/pow(emax,3);
+          d2e = 2.0*fC3/(emax*emax*emax);
         }
       else
         {

@@ -91,8 +91,10 @@ void MainWindow::execute_compound()
    for (int i=0;i<num_casc;i++)
             {
             if(progress.wasCanceled()){break;}
-            progress.setValue(i);
-            qApp->processEvents();
+            if (i % 10 == 0 || i == num_casc - 1) {
+                progress.setValue(i);
+                qApp->processEvents();
+            }
 
             // ---------------------  here place of probability random to get L begin
             // ---------------------  here place of probability random to get L end

@@ -3,14 +3,16 @@
 #include <QFile>
 #include <QTextStream>
 //#include <QDebug>
+#include <cmath>
+#include <iostream>
 
 CLevelDensity* CLevelDensity::fInstance = 0;
 
 bool  CLevelDensity::normal = true;
 
-float const CLevelDensity::pi=acos(-1.);
-float CLevelDensity::k0=7.3;
-float CLevelDensity::kInfinity=12.;
+float const CLevelDensity::pi = acos(-1.);
+float CLevelDensity::k0 = 7.3;
+float CLevelDensity::kInfinity = 12.;
 float CLevelDensity::aKappa = 0.00517;
 float CLevelDensity::cKappa = .0345;
 float CLevelDensity::af_an = 1.036;
@@ -28,41 +30,41 @@ float CLevelDensity::Jcrit = 14;
  */
 CLevelDensity::CLevelDensity()
 {
-  //constructor read in in level density parameter
+    //constructor read in in level density parameter
 
-  QString fName(":tbl/gemini.inp");
-  QFile iff(fName);
-  if(!iff.open(QIODevice::ReadOnly | QIODevice::Text))
+    QString fName(":tbl/gemini.inp");
+    QFile iff(fName);
+    if(!iff.open(QIODevice::ReadOnly | QIODevice::Text))
     {
-      cout << "Gemini++: unable to open gemini.inp" << endl;
-      return;
+        std::cout << "Gemini++: unable to open gemini.inp" << std::endl;
+        return;
     }
 
-  QTextStream ifFile(&iff);
+    QTextStream ifFile(&iff);
 
-  QString line;
-  QString text1;
-  QString text2;
-  QString text3;
-  QString text4;
-  //getline(ifFile,line);
-  line = ifFile.readLine();
+    QString line;
+    QString text1;
+    QString text2;
+    QString text3;
+    QString text4;
+    //getline(ifFile,line);
+    line = ifFile.readLine();
 
-  ifFile >> text1 >> k0 >> text2 >> aKappa >> text3 >> cKappa >> text4 >> kInfinity;
+    ifFile >> text1 >> k0 >> text2 >> aKappa >> text3 >> cKappa >> text4 >> kInfinity;
 
-  ifFile >> text1 >> eFade >> text2 >> jFade >> text3;
-  ifFile >> text1 >> Ucrit0 >> text2 >> Jcrit >> text3;
+    ifFile >> text1 >> eFade >> text2 >> jFade >> text3;
+    ifFile >> text1 >> Ucrit0 >> text2 >> Jcrit >> text3;
 
-  iff.close();
-  ifFile.flush();
+    iff.close();
+    ifFile.flush();
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 CLevelDensity* CLevelDensity::instance() // mod-TU
 {
-  if (fInstance == 0) {
-      fInstance = new CLevelDensity;
+    if (fInstance == 0) {
+        fInstance = new CLevelDensity;
     }
-  return fInstance;
+    return fInstance;
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //*********************************************************************
@@ -77,35 +79,34 @@ CLevelDensity* CLevelDensity::instance() // mod-TU
 float CLevelDensity::getU(float fU0, float fPairing, float fShell, float fJ)
 {
 
-  fU = fU0;
-  if (fU <= 0.)
+    fU = fU0;
+    if (fU <= 0.)
     {
-      fU = 0.;
-      return fU;
+        fU = 0.;
+        return fU;
     }
-  //simple fade out of pairing
-  float shiftP;
-  float Ucrit = 0.;
-  if (fJ < Jcrit) Ucrit = Ucrit0*pow(1.-fJ/Jcrit,2);
-  if (fU > Ucrit) shiftP = fPairing;
-  else shiftP = fPairing*(1.-pow(1.-fU/Ucrit,2));
+    //simple fade out of pairing
+    float shiftP;
+    float Ucrit = 0.;
+    if (fJ < Jcrit) Ucrit = Ucrit0 * (1.-fJ/Jcrit) * (1.-fJ/Jcrit);
+    if (fU > Ucrit) shiftP = fPairing;
+    else shiftP = fPairing * (1. - (1.-fU/Ucrit) * (1.-fU/Ucrit));
 
-  fU += shiftP;
-  if (fU <= 0.)
+    fU += shiftP;
+    if (fU <= 0.)
     {
-      fU = 0.;
-      return fU;
+        fU = 0.;
+        return fU;
     }
-  //fU += fShell*(1.0-exp(-fU/eFade-fJ/jFade));
-  float shiftS = fShell*tanh(fU/eFade+fJ/jFade);
+    //fU += fShell*(1.0-exp(-fU/eFade-fJ/jFade));
+    float shiftS = fShell * tanh(fU/eFade + fJ/jFade);
 
+    fU += shiftS;
 
-  fU += shiftS;
+    if (fU < 0.) fU = 0.;
 
-  if (fU < 0.) fU = 0.;
-
-  J = fJ;
-  return fU;
+    J = fJ;
+    return fU;
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //*********************************************
@@ -119,60 +120,61 @@ float CLevelDensity::getU(float fU0, float fPairing, float fShell, float fJ)
 
 float CLevelDensity::getLittleA(int iA, short iFission/*=0*/)
 {
-  //calculates the level density parameter
-  //iA is nucleus mass number
-  //fU is thermal excitation energy
-  //fPairing is the pairing energy
-  //fShell is the shell correction to the mass
+    //calculates the level density parameter
+    //iA is nucleus mass number
+    //fU is thermal excitation energy
+    //fPairing is the pairing energy
+    //fShell is the shell correction to the mass
 
-  float fA = (float)iA;
-  float kappa = 0.;
-  float daden_dU;
-  if ((normal && fU/fA < 3.) || aKappa == 0.)
+    float fA = (float)iA;
+    float kappa = 0.;
+    float daden_dU;
+
+    if ((normal && fU/fA < 3.) || aKappa == 0.)
     {
-      if (k0 == kInfinity)
+        if (k0 == kInfinity)
         {
-          aden = fA/k0;
-          daden_dU = 0.;
+            aden = fA/k0;
+            daden_dU = 0.;
         }
-      else
+        else
         {
-          if (aKappa > 0.) kappa = aKappa*exp(cKappa*fA);
-          //kappa = 1.5+.1143*J;
-          float expTerm = exp(-kappa*fU/fA/(kInfinity-k0));
-          aden = fA/(kInfinity - (kInfinity-k0)*expTerm);
-          daden_dU = -pow(aden/fA,2)*kappa*expTerm;
+            if (aKappa > 0.) kappa = aKappa*exp(cKappa*fA);
+            //kappa = 1.5+.1143*J;
+            float expTerm = exp(-kappa*fU/fA/(kInfinity-k0));
+            aden = fA/(kInfinity - (kInfinity-k0)*expTerm);
+            daden_dU = -((aden/fA)*(aden/fA)) * kappa * expTerm;
         }
-      switch(iFission)
+        switch(iFission)
         {
         case 1:
-          aden *= af_an;
-          daden_dU *= af_an;
-          break;
+            aden *= af_an;
+            daden_dU *= af_an;
+            break;
         case 2:
-          aden *= aimf_an;
-          daden_dU *= aimf_an;
-          break;
+            aden *= aimf_an;
+            daden_dU *= aimf_an;
+            break;
         }
     }
-  else
+    else
     {
-      float r;
-      if (iFission == 1) r = 1.0696;
-      else if (iFission == 2) r = 1.05;
-      else                    r = 1.0;
+        float r;
+        if (iFission == 1) r = 1.0696;
+        else if (iFission == 2) r = 1.05;
+        else                    r = 1.0;
 
-      if (aKappa > 0.) kappa = aKappa*exp(cKappa*fA);
-      float fofr = ( kInfinity - ( kInfinity - k0 ) * r ) / (k0*r);
-      float expTerm = exp(-fofr*kappa*fU/fA/(kInfinity-k0));
-      aden = fA/(kInfinity - (kInfinity-k0)*r*expTerm);
-      daden_dU = -pow(aden/fA,2)*kappa*expTerm*fofr;
+        if (aKappa > 0.) kappa = aKappa*exp(cKappa*fA);
+        float fofr = ( kInfinity - ( kInfinity - k0 ) * r ) / (k0*r);
+        float expTerm = exp(-fofr*kappa*fU/fA/(kInfinity-k0));
+        aden = fA/(kInfinity - (kInfinity-k0)*r*expTerm);
+        daden_dU = -((aden/fA)*(aden/fA)) * kappa * expTerm * fofr;
     }
 
-  entropy = 2.*sqrt(aden*fU);
-  temp = sqrt(fU/aden)/(1.+fU/aden*daden_dU);
+    entropy = 2.*sqrt(aden*fU);
+    temp = sqrt(fU/aden)/(1.+fU/aden*daden_dU);
 
-  return aden;
+    return aden;
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //*********************************************
@@ -189,16 +191,15 @@ float CLevelDensity::getLittleA(int iA, short iFission/*=0*/)
 float CLevelDensity::getLittleA(int iA, float fU0, float fPairing/*=0.*/,
                                 float fShell/*=0.*/, float fJ/*=0.*/, short iFission/*=0*/)
 {
-  //calculates the level density parameter
-  //iA is nucleus mass number
-  //fU is thermal excitation energy
-  //fPairing is the pairing energy
-  //fShell is the shell correction to the mass
+    //calculates the level density parameter
+    //iA is nucleus mass number
+    //fU is thermal excitation energy
+    //fPairing is the pairing energy
+    //fShell is the shell correction to the mass
 
-
-  //if (getU(fU0, fPairing,fShell,fJ) <= 0.) return 0.;
-  getU(fU0, fPairing,fShell,fJ);
-  return getLittleA(iA,iFission);
+    //if (getU(fU0, fPairing,fShell,fJ) <= 0.) return 0.;
+    getU(fU0, fPairing,fShell,fJ);
+    return getLittleA(iA,iFission);
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //************************************************
@@ -218,22 +219,24 @@ float CLevelDensity::getLittleA(int iA, float fU0, float fPairing/*=0.*/,
 
 //spin dependent Fermi_gas level density
 float CLevelDensity::getLogLevelDensitySpherical
-(int iA, float fU0, float fPairing,
- float fShell, float fJ, float fMinertia, short iFission/*=0*/)
+    (int iA, float fU0, float fPairing,
+     float fShell, float fJ, float fMinertia, short iFission/*=0*/)
 {
-  //calculates the level density
-  //iA is nucleus mass number
-  //fU is thermal excitation energy
-  //fPairing is the pairing energy
-  //fShell is the shell correction to the mass
+    //calculates the level density
+    //iA is nucleus mass number
+    //fU is thermal excitation energy
+    //fPairing is the pairing energy
+    //fShell is the shell correction to the mass
 
-  if (getLittleA(iA,fU0,fPairing,fShell,fabs(fJ),iFission) == 0.) return 0.;
-  if (fU <=0.) return 0.;
-  if (fJ < 0.) fJ = 0.;
-  float sigma =  fMinertia*temp/40.848;
-  float preExp = (2.*fJ+1.)/(1.+pow(fU,(float)(1.25))*pow(sigma,(float)1.5))
-      /pow(aden,(float)0.25)/24./sqrt(2.);
-  return entropy + log(preExp);
+    if (getLittleA(iA,fU0,fPairing,fShell,fabs(fJ),iFission) == 0.) return 0.;
+    if (fU <=0.) return 0.;
+    if (fJ < 0.) fJ = 0.;
+    float sigma =  fMinertia*temp/40.848;
+
+    // pow(fU,1.25), pow(sigma,1.5), pow(aden,0.25) cannot be expanded safely
+    float preExp = (2.*fJ+1.)/(1.+pow(fU,(float)(1.25))*pow(sigma,(float)1.5))
+                   /pow(aden,(float)0.25)/24./sqrt(2.);
+    return entropy + log(preExp);
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //******************************************
@@ -243,7 +246,7 @@ float CLevelDensity::getLogLevelDensitySpherical
  */
 float CLevelDensity::getTemp()
 {
-  return temp;
+    return temp;
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //*************************************
@@ -253,7 +256,7 @@ float CLevelDensity::getTemp()
    */
 float CLevelDensity::getEntropy()
 {
-  return entropy;
+    return entropy;
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //*************************************
@@ -262,7 +265,7 @@ float CLevelDensity::getEntropy()
  */
 float CLevelDensity::getAden()
 {
-  return aden;
+    return aden;
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //************************************************
@@ -274,20 +277,21 @@ float CLevelDensity::getAden()
    \param fShell is the shell correction in MeV
    */
 float CLevelDensity::getLogLevelDensitySpherical
-(int iA, float fU0, float fPairing, float fShell)
+    (int iA, float fU0, float fPairing, float fShell)
 {
-  //calculates the level density
-  //iA is nucleus mass number
-  //fU is thermal excitation energy
-  //fPairing is the pairing energy
-  //fShell is the shell correction to the mass
+    //calculates the level density
+    //iA is nucleus mass number
+    //fU is thermal excitation energy
+    //fPairing is the pairing energy
+    //fShell is the shell correction to the mass
 
-  if (getLittleA(iA,fU0,fPairing,fShell)== 0.) return 0.;
-  if (fU <=0.) return 0.;
+    if (getLittleA(iA,fU0,fPairing,fShell)== 0.) return 0.;
+    if (fU <=0.) return 0.;
 
-  float preExp = sqrt(pi)/12./pow(aden,(float)0.25)/
-      (1.+pow(fU+temp,(float)1.25));
-  return entropy + log(preExp);
+    // pow(aden,0.25), pow(fU+temp,1.25) cannot be expanded safely
+    float preExp = sqrt(pi)/12./pow(aden,(float)0.25)/
+                   (1.+pow(fU+temp,(float)1.25));
+    return entropy + log(preExp);
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //***************************************************
@@ -304,11 +308,11 @@ float CLevelDensity::getLogLevelDensitySpherical
 void CLevelDensity::setLittleA(float k00, float aKappa0/*=0.*/,
                                float cKappa0 /*=0.*/, float kInfinity0 /*=12.*/)
 {
-  k0 = k00;
-  aKappa = aKappa0;
-  cKappa = cKappa0;
-  kInfinity = kInfinity0;
-  if (aKappa == 0.) kInfinity = k0;
+    k0 = k00;
+    aKappa = aKappa0;
+    cKappa = cKappa0;
+    kInfinity = kInfinity0;
+    if (aKappa == 0.) kInfinity = k0;
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //****************************************************
@@ -317,7 +321,7 @@ void CLevelDensity::setLittleA(float k00, float aKappa0/*=0.*/,
  */
 float CLevelDensity::getK0()
 {
-  return k0;
+    return k0;
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //************************************************************
@@ -327,7 +331,7 @@ float CLevelDensity::getK0()
  */
 float CLevelDensity::getKInfinity()
 {
-  return kInfinity;
+    return kInfinity;
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //****************************************************
@@ -337,7 +341,7 @@ float CLevelDensity::getKInfinity()
  */
 float CLevelDensity::getAKappa()
 {
-  return aKappa;
+    return aKappa;
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //****************************************************
@@ -348,7 +352,7 @@ float CLevelDensity::getAKappa()
  */
 float CLevelDensity::getCKappa()
 {
-  return cKappa;
+    return cKappa;
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //*****************************************************
@@ -358,7 +362,7 @@ float CLevelDensity::getCKappa()
  */
 float CLevelDensity::getAfAn()
 {
-  return af_an;
+    return af_an;
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //*****************************************************
@@ -368,7 +372,7 @@ float CLevelDensity::getAfAn()
  */
 float CLevelDensity::getAimfAn()
 {
-  return aimf_an;
+    return aimf_an;
 }
 //*****************************************************
 /**
@@ -378,7 +382,7 @@ float CLevelDensity::getAimfAn()
   */
 void CLevelDensity::setAfAn(float af_an0)
 {
-  af_an = af_an0;
+    af_an = af_an0;
 }
 //*****************************************************
 /**
@@ -388,7 +392,7 @@ void CLevelDensity::setAfAn(float af_an0)
   */
 void CLevelDensity::setAimfAn(float aimf_an0)
 {
-  aimf_an = aimf_an0;
+    aimf_an = aimf_an0;
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //***************************************************
@@ -397,12 +401,12 @@ void CLevelDensity::setAimfAn(float aimf_an0)
    */
 void CLevelDensity::printParameters()
 {
-  cout << "k0 = " << k0 << " kInfinity= " << kInfinity << endl;
-  cout << "aKappa= " << aKappa << " cKappa= " << cKappa << endl;
-  cout << "af/an= " << af_an << " for symmetric fission" <<endl;
-  cout << "aimf/an= " << aimf_an << " for asymmetric fission" <<endl;
-  cout << "eFade= " << eFade << " jFade= " << jFade << endl;
-  cout << "Ucrit0= " << Ucrit0 << " Jcrit= " << Jcrit << endl;
+    std::cout << "k0 = " << k0 << " kInfinity= " << kInfinity << std::endl;
+    std::cout << "aKappa= " << aKappa << " cKappa= " << cKappa << std::endl;
+    std::cout << "af/an= " << af_an << " for symmetric fission" << std::endl;
+    std::cout << "aimf/an= " << aimf_an << " for asymmetric fission" << std::endl;
+    std::cout << "eFade= " << eFade << " jFade= " << jFade << std::endl;
+    std::cout << "Ucrit0= " << Ucrit0 << " Jcrit= " << Jcrit << std::endl;
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //***************************************************
@@ -417,13 +421,14 @@ void CLevelDensity::printParameters()
 float CLevelDensity::getLogLevelDensityScission(int iA, float fU,
                                                 float adenInv/*=8.*/ )
 {
-  aden = (float)iA/adenInv;
-  temp = sqrt(fU/aden);
-  entropy = 2.*sqrt(aden*fU);
+    aden = (float)iA/adenInv;
+    temp = sqrt(fU/aden);
+    entropy = 2.*sqrt(aden*fU);
 
-  float preExp = sqrt(pi)/12./pow(aden,(float)0.25)/
-      (1.+pow(fU+temp,(float)1.25));
-  return entropy + log(preExp);
+    // pow(aden,0.25), pow(fU+temp,1.25) cannot be expanded safely
+    float preExp = sqrt(pi)/12./pow(aden,(float)0.25)/
+                   (1.+pow(fU+temp,(float)1.25));
+    return entropy + log(preExp);
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //*****************************************************
@@ -434,8 +439,7 @@ float CLevelDensity::getLogLevelDensityScission(int iA, float fU,
   */
 void CLevelDensity::setUcrit(float Ucrit00, float Jcrit0)
 {
-  Ucrit0 = Ucrit00;
-  Jcrit = Jcrit0;
-
+    Ucrit0 = Ucrit00;
+    Jcrit = Jcrit0;
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW

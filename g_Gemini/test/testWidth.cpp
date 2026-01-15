@@ -30,7 +30,7 @@ _useAME = false;
 
   float fPairing = CN.mass->getPairing(iZ,iA);
   float fShell = CN.mass->getShellCorrection(iZ,iA);
-  float fMInertia =  0.4*pow(r0,2)*pow((float)iA,(float)(5./3.));
+  float fMInertia =  0.4*(r0*r0)*pow((float)iA,(float)(5./3.));
   float ld = CN.levelDensity->getLogLevelDensitySpherical(
             iA,fU0,fPairing,fShell,fJL,fMInertia);
 

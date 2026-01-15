@@ -82,8 +82,9 @@ float CSigBarDist::getInverseXsec(float fEk, float temp)
   float s2 = ee[1] - deltaR*c1 + c2*pow(deltaR,2);
   return (s0+s1+s2)/3.;
   */
-  float c2 = (ee[2]+ee[0]-2.*ee[1])/pow(width0,2)/2.;
-  float  out =  ee[1] + 2./3.*c2*pow(deltaR,2);
+  float c2 = (ee[2] + ee[0] - 2.f*ee[1]) / (width0*width0) / 2.f;
+  float out = ee[1] + 2.f/3.f * c2 * (deltaR*deltaR);
+
   if (out < 0.) out = 0.;
   return out;
 }
