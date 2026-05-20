@@ -65,6 +65,7 @@ SOURCES += \
     g_Gemini/source/Weight.cpp \
     g_Gemini/source/Yrast.cpp \
     g_Gemini/windows/gm_about.cpp \
+    g_Gemini/windows/gm_angular_distribution.cpp \
     g_Gemini/windows/gm_cs_file.cpp \
     g_Gemini/windows/gm_fileReadWrite.cpp \
     g_Gemini/windows/gm_main.cpp \
@@ -99,6 +100,7 @@ HEADERS  += \
     g_Gemini/source/CYrast.h \
     g_Gemini/source/SStoreEvap.h \
     g_Gemini/windows/gm_about.h \
+    g_Gemini/windows/gm_angular_distribution.h \
     g_Gemini/windows/gm_ftype.h \
     g_Gemini/windows/gm_mainwindow.h \
     g_Gemini/windows/gm_results.h \
@@ -200,3 +202,4 @@ DEFINES += __APPLE_
 ICON = ../Icons_macos/gemini.icns
 QMAKE_INFO_PLIST = ../Info.plist
 QT += core concurrent
+

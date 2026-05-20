@@ -285,6 +285,7 @@ void MainWindow::readPage()
   _useAME    = ui->ame_mass_button->isChecked();
   _useIMF    = ui->cb_IMF->isChecked();
   _useIMFenh = ui->cb_IMFenh->isChecked();
+  _showangdist = ui->DistAng->isChecked();
 
   if(ui->rb_EM0->isChecked()) _optEvap=0;
   else if(ui->rb_EM1->isChecked()) _optEvap=1;
@@ -339,6 +340,7 @@ void MainWindow::writePage()
   tab_mode = tabWidget->currentIndex();
   ui->cb_IMF   ->setChecked(_useIMF);
   ui->cb_IMFenh->setChecked(_useIMFenh);
+  ui->DistAng->setChecked(_showangdist);
   ui->rb_EM0->setChecked(_optEvap==0);
   ui->rb_EM1->setChecked(_optEvap==1);
   ui->rb_EM2->setChecked(_optEvap==2);

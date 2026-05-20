@@ -33,7 +33,7 @@
    <string>GEMINI</string>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <layout class="QGridLayout" name="gridLayout_15" rowstretch="5,2" columnstretch="1,2,1">
+   <layout class="QGridLayout" name="gridLayout_15" rowstretch="5,0,0" columnstretch="1,0,0">
     <property name="horizontalSpacing">
      <number>15</number>
     </property>
@@ -49,7 +49,7 @@
        </sizepolicy>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tabCompound">
        <attribute name="title">
@@ -1540,6 +1540,37 @@ fusion events</string>
       </widget>
      </widget>
     </item>
+    <item row="1" column="1">
+     <widget class="QGroupBox" name="groupBox_9">
+      <property name="title">
+       <string>Evaporation mode</string>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_14">
+       <item row="0" column="0">
+        <widget class="QRadioButton" name="rb_EM0">
+         <property name="text">
+          <string>0 = widths (&amp;&amp; KE) calculated from Weisskopf,  S &amp;&amp; L from H.F.</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QRadioButton" name="rb_EM1">
+         <property name="text">
+          <string>1 = Hauser-Feshbach formalism (H.F.)</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QRadioButton" name="rb_EM2">
+         <property name="text">
+          <string>2 = Switches bewteen options 0 and 1 depending
+      of the ratio of  rotational to thermal energy</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
     <item row="1" column="0">
      <widget class="QGroupBox" name="gb_Masses">
       <property name="maximumSize">
@@ -1575,37 +1606,6 @@ fusion events</string>
       </layout>
      </widget>
     </item>
-    <item row="1" column="1">
-     <widget class="QGroupBox" name="groupBox_9">
-      <property name="title">
-       <string>Evaporation mode</string>
-      </property>
-      <layout class="QGridLayout" name="gridLayout_14">
-       <item row="0" column="0">
-        <widget class="QRadioButton" name="rb_EM0">
-         <property name="text">
-          <string>0 = widths (&amp;&amp; KE) calculated from Weisskopf,  S &amp;&amp; L from H.F.</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QRadioButton" name="rb_EM1">
-         <property name="text">
-          <string>1 = Hauser-Feshbach formalism (H.F.)</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QRadioButton" name="rb_EM2">
-         <property name="text">
-          <string>2 = Switches bewteen options 0 and 1 depending
-      of the ratio of  rotational to thermal energy</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
     <item row="1" column="2">
      <widget class="QGroupBox" name="groupBox_10">
       <property name="title">
@@ -1622,7 +1622,7 @@ fusion events</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
+       <item row="2" column="0">
         <widget class="QCheckBox" name="cb_IMFenh">
          <property name="text">
           <string>enhanced IMF emission</string>
@@ -1630,6 +1630,13 @@ fusion events</string>
         </widget>
        </item>
       </layout>
+     </widget>
+    </item>
+    <item row="2" column="2">
+     <widget class="QCheckBox" name="DistAng">
+      <property name="text">
+       <string>Angular Distribution</string>
+      </property>
      </widget>
     </item>
    </layout>
@@ -1640,7 +1647,7 @@ fusion events</string>
      <x>0</x>
      <y>0</y>
      <width>883</width>
-     <height>23</height>
+     <height>37</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
