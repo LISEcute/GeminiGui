@@ -181,6 +181,7 @@ std::vector<PaceSelectedResidue> buildSelectedResiduesPACE(
         allResidues.push_back(r);
     }
 
+    // PACE-like yield-table order: descending A, then descending Z
     std::sort(allResidues.begin(), allResidues.end(),
               [](const PaceSelectedResidue &lhs, const PaceSelectedResidue &rhs)
               {
@@ -689,6 +690,10 @@ protected:
         if (rawMaxTheta > 36.0) maxTheta = std::ceil(rawMaxTheta);
 
         const double minTheta = 0.0;
+
+        // Match the PACE table binning:
+        // theta uses the same angular width, and energy uses the same
+        // Below ELOW + regular DELE rows + Above last-row structure.
         const int thetaBins = int(std::ceil(maxTheta / m_acc.DELANG));
         const int energyBins = 31;
 
@@ -793,6 +798,7 @@ protected:
                        QString::number(i));
         }
 
+        // Y-axis energy labels: same boundaries as the table.
         for (int e = 0; e <= energyBins; ++e)
         {
             const double frac = double(e) / double(energyBins);
@@ -882,21 +888,68 @@ private:
 
 struct GaussianOverlayStats
 {
-    double amplitude = 0.0;
-    double mean = 0.0;
-    double stddev = 0.0;
+    double amplitude = 0.0;        // A in y = A exp(-0.5 ((x - mean) / sigma)^2)
+    double mean = 0.0;             // Gaussian center
+    double sigma = 0.0;            // Gaussian width
+    double chiSquare = 0.0;        // Chi-square
+    double reducedChiSquare = 0.0; // Chi-square / degrees of freedom
+    double area = 0.0;             // A * sigma * sqrt(2pi)
     bool valid = false;
 };
+
+double gaussianValue(double amplitude, double mean, double sigma, double x)
+{
+    if (sigma <= 1.0e-12) return 0.0;
+
+    const double z = (x - mean) / sigma;
+    return amplitude * std::exp(-0.5 * z * z);
+}
+
+void computeGaussianQualityAndArea(GaussianOverlayStats &stats,
+                                   const std::vector<double> &xCenters,
+                                   const std::vector<double> &yValues)
+{
+    stats.chiSquare = 0.0;
+    stats.reducedChiSquare = 0.0;
+    stats.area = 0.0;
+
+    if (!stats.valid || stats.sigma <= 1.0e-12) return;
+
+    int usedPoints = 0;
+
+    for (int i = 0; i < int(yValues.size()); ++i)
+    {
+        const double observed = std::max(0.0, yValues[i]);
+        const double expected = gaussianValue(stats.amplitude,
+                                              stats.mean,
+                                              stats.sigma,
+                                              xCenters[i]);
+
+        const double denom = std::max(1.0, expected);
+        const double diff = observed - expected;
+
+        stats.chiSquare += (diff * diff) / denom;
+        usedPoints++;
+    }
+
+    const int dof = std::max(1, usedPoints - 3);
+    stats.reducedChiSquare = stats.chiSquare / double(dof);
+
+    const double sqrtTwoPi = std::sqrt(2.0 * 3.14159265358979323846);
+    stats.area = stats.amplitude * stats.sigma * sqrtTwoPi;
+}
 
 GaussianOverlayStats computeGaussianOverlayStats(const std::vector<double> &xCenters,
                                                  const std::vector<double> &yValues)
 {
     GaussianOverlayStats stats;
-    if (xCenters.size() != yValues.size() || xCenters.empty()) return stats;
+
+    if (xCenters.size() != yValues.size() || xCenters.size() < 3)
+        return stats;
 
     double sumW = 0.0;
     double sumX = 0.0;
-    stats.amplitude = 0.0;
+    double maxY = 0.0;
 
     for (int i = 0; i < int(yValues.size()); ++i)
     {
@@ -905,12 +958,18 @@ GaussianOverlayStats computeGaussianOverlayStats(const std::vector<double> &xCen
 
         sumW += w;
         sumX += w * xCenters[i];
-        stats.amplitude = std::max(stats.amplitude, w);
+        maxY = std::max(maxY, w);
     }
 
-    if (sumW <= 0.0) return stats;
+    if (sumW <= 0.0 || maxY <= 0.0)
+        return stats;
 
-    stats.mean = sumX / sumW;
+    const double xMin = xCenters.front();
+    const double xMax = xCenters.back();
+    const double xRange = std::max(1.0e-9, xMax - xMin);
+
+    double A = maxY;
+    double mu = sumX / sumW;
 
     double variance = 0.0;
     for (int i = 0; i < int(yValues.size()); ++i)
@@ -918,19 +977,174 @@ GaussianOverlayStats computeGaussianOverlayStats(const std::vector<double> &xCen
         const double w = std::max(0.0, yValues[i]);
         if (w <= 0.0) continue;
 
-        const double dx = xCenters[i] - stats.mean;
+        const double dx = xCenters[i] - mu;
         variance += w * dx * dx;
     }
 
-    stats.stddev = std::sqrt(variance / sumW);
-    stats.valid = (stats.amplitude > 0.0 && stats.stddev > 1.0e-12);
+    double sigma = std::sqrt(std::max(variance / sumW, 1.0e-12));
+    sigma = std::max(sigma, xRange / 1000.0);
+
+    auto sseFor = [&](double testA, double testMu, double testSigma)
+    {
+        if (testA <= 0.0 || testSigma <= 1.0e-12)
+            return 1.0e300;
+
+        double sse = 0.0;
+
+        for (int i = 0; i < int(yValues.size()); ++i)
+        {
+            const double yFit = gaussianValue(testA, testMu, testSigma, xCenters[i]);
+            const double r = yValues[i] - yFit;
+            sse += r * r;
+        }
+
+        return sse;
+    };
+
+    double lambda = 1.0e-3;
+    double bestSse = sseFor(A, mu, sigma);
+
+    for (int iter = 0; iter < 100; ++iter)
+    {
+        double jtj[3][3] = {};
+        double jtr[3] = {};
+
+        for (int i = 0; i < int(yValues.size()); ++i)
+        {
+            const double x = xCenters[i];
+            const double y = yValues[i];
+
+            const double z = (x - mu) / sigma;
+            const double e = std::exp(-0.5 * z * z);
+            const double yFit = A * e;
+            const double r = y - yFit;
+
+            const double dA = e;
+            const double dMu = A * e * (z / sigma);
+            const double dSigma = A * e * ((z * z) / sigma);
+
+            const double J[3] = {dA, dMu, dSigma};
+
+            for (int a = 0; a < 3; ++a)
+            {
+                jtr[a] += J[a] * r;
+                for (int b = 0; b < 3; ++b)
+                    jtj[a][b] += J[a] * J[b];
+            }
+        }
+
+        for (int d = 0; d < 3; ++d)
+            jtj[d][d] += lambda;
+
+        double M[3][4] =
+            {
+                {jtj[0][0], jtj[0][1], jtj[0][2], jtr[0]},
+                {jtj[1][0], jtj[1][1], jtj[1][2], jtr[1]},
+                {jtj[2][0], jtj[2][1], jtj[2][2], jtr[2]}
+            };
+
+        bool singular = false;
+
+        for (int col = 0; col < 3; ++col)
+        {
+            int pivot = col;
+            for (int row = col + 1; row < 3; ++row)
+            {
+                if (std::fabs(M[row][col]) > std::fabs(M[pivot][col]))
+                    pivot = row;
+            }
+
+            if (std::fabs(M[pivot][col]) < 1.0e-18)
+            {
+                singular = true;
+                break;
+            }
+
+            if (pivot != col)
+            {
+                for (int k = col; k < 4; ++k)
+                    std::swap(M[col][k], M[pivot][k]);
+            }
+
+            const double div = M[col][col];
+            for (int k = col; k < 4; ++k)
+                M[col][k] /= div;
+
+            for (int row = 0; row < 3; ++row)
+            {
+                if (row == col) continue;
+
+                const double factor = M[row][col];
+                for (int k = col; k < 4; ++k)
+                    M[row][k] -= factor * M[col][k];
+            }
+        }
+
+        if (singular)
+            break;
+
+        const double dA = M[0][3];
+        const double dMu = M[1][3];
+        const double dSigma = M[2][3];
+
+        double newA = A + dA;
+        double newMu = mu + dMu;
+        double newSigma = sigma + dSigma;
+
+        newA = std::max(0.0, newA);
+        newMu = std::max(xMin - xRange, std::min(xMax + xRange, newMu));
+        newSigma = std::max(xRange / 1000.0, std::min(xRange * 10.0, newSigma));
+
+        const double newSse = sseFor(newA, newMu, newSigma);
+
+        if (newSse < bestSse)
+        {
+            A = newA;
+            mu = newMu;
+            sigma = newSigma;
+            bestSse = newSse;
+            lambda *= 0.3;
+
+            if (std::fabs(dA) < 1.0e-9 &&
+                std::fabs(dMu) < 1.0e-9 &&
+                std::fabs(dSigma) < 1.0e-9)
+            {
+                break;
+            }
+        }
+        else
+        {
+            lambda *= 10.0;
+        }
+
+        if (lambda > 1.0e12)
+            break;
+    }
+
+    stats.amplitude = A;
+    stats.mean = mu;
+    stats.sigma = sigma;
+    stats.valid = std::isfinite(stats.amplitude) &&
+                  std::isfinite(stats.mean) &&
+                  std::isfinite(stats.sigma) &&
+                  stats.amplitude > 0.0 &&
+                  stats.sigma > 1.0e-12;
+
+    computeGaussianQualityAndArea(stats, xCenters, yValues);
+
     return stats;
 }
 
 QString formatGaussianNumber(double value)
 {
-    if (std::fabs(value) >= 1000.0 || (std::fabs(value) > 0.0 && std::fabs(value) < 0.01))
+    if (!std::isfinite(value))
+        return "nan";
+
+    if (std::fabs(value) >= 1000.0 ||
+        (std::fabs(value) > 0.0 && std::fabs(value) < 0.01))
+    {
         return QString::number(value, 'e', 2);
+    }
 
     return QString::number(value, 'g', 4);
 }
@@ -963,15 +1177,17 @@ protected:
         p.fillRect(rect(), Qt::white);
 
         const int left = 90;
-        const int right = 45;
+        const int right = 60;
         const int top = 45;
         const int bottom = 85;
+
         QRect plotRect(left, top, width() - left - right, height() - top - bottom);
 
         p.setPen(QPen(Qt::black, 1));
         p.drawRect(plotRect);
 
         const int n = int(std::min(m_entry.thetaDeg.size(), m_entry.kineticEnergy.size()));
+
         if (n <= 0)
         {
             p.drawText(plotRect, Qt::AlignCenter, "No data");
@@ -980,9 +1196,11 @@ protected:
 
         std::vector<double> values;
         std::vector<double> xCenters;
+
         QString title;
         QString xTitle;
         QString yTitle;
+
         double minX = 0.0;
         double maxX = 1.0;
         int bins = 1;
@@ -990,6 +1208,7 @@ protected:
         if (m_plotKind == PlotCountsVsTheta || m_plotKind == PlotCrossSectionVsTheta)
         {
             double rawMaxTheta = 0.0;
+
             for (int i = 0; i < n; ++i)
                 rawMaxTheta = std::max(rawMaxTheta, double(m_entry.thetaDeg[i]));
 
@@ -998,22 +1217,28 @@ protected:
             if (rawMaxTheta > 36.0) maxX = std::ceil(rawMaxTheta);
 
             minX = 0.0;
-            bins = std::max(1, int(maxX));       // 1-degree histogram bins
+            bins = std::max(1, int(maxX));
+
             const double binWidth = (maxX - minX) / double(bins);
 
             std::vector<int> counts(bins, 0);
+
             for (int i = 0; i < n; ++i)
             {
                 const double theta = m_entry.thetaDeg[i];
-                if (theta < minX || theta > maxX) continue;
+
+                if (theta < minX || theta > maxX)
+                    continue;
 
                 int bin = int((theta - minX) / (maxX - minX) * bins);
+
                 if (bin >= bins) bin = bins - 1;
                 if (bin >= 0) counts[bin]++;
             }
 
             values.resize(bins, 0.0);
             xCenters.resize(bins, 0.0);
+
             for (int i = 0; i < bins; ++i)
                 xCenters[i] = minX + (double(i) + 0.5) * binWidth;
 
@@ -1025,14 +1250,13 @@ protected:
                 }
                 else
                 {
-                    // Histogram version of d cross section / d theta.
-                    // Units are mb/degree because the bin width is in degrees.
                     values[i] = m_sigmaTotal * double(counts[i]) /
                                 (double(m_nEvents) * binWidth);
                 }
             }
 
             xTitle = "Theta (deg)";
+
             if (m_plotKind == PlotCountsVsTheta)
             {
                 title = "N = f(theta)";
@@ -1040,8 +1264,8 @@ protected:
             }
             else
             {
-                title = "d\u03c3/d\u03b8 = f(theta)";
-                yTitle = "d\u03c3/d\u03b8 (mb/deg)";
+                title = "dσ/dθ = f(theta)";
+                yTitle = "dσ/dθ (mb/deg)";
             }
         }
         else if (m_plotKind == PlotCountsVsEnergy)
@@ -1049,8 +1273,10 @@ protected:
             minX = 0.0;
             maxX = m_acc.ELOW + 29.0 * m_acc.DELE;
             bins = 31;
+
             values.assign(bins, 0.0);
             xCenters.assign(bins, 0.0);
+
             for (int i = 0; i < bins; ++i)
             {
                 if (i == 0)
@@ -1066,10 +1292,12 @@ protected:
                 const double energy = m_entry.kineticEnergy[i];
 
                 int bin = 0;
+
                 if (energy >= m_acc.ELOW)
                     bin = std::min(30, int((energy - m_acc.ELOW) / m_acc.DELE) + 1);
 
-                if (bin >= 0 && bin < bins) values[bin] += 1.0;
+                if (bin >= 0 && bin < bins)
+                    values[bin] += 1.0;
             }
 
             title = "N = f(E)";
@@ -1077,46 +1305,118 @@ protected:
             yTitle = "Counts N";
         }
 
-        if (values.empty())
+        double maxY = 0.0;
+
+        for (double v : values)
+            maxY = std::max(maxY, v);
+
+        const bool showGaussian =
+            (m_plotKind == PlotCountsVsTheta || m_plotKind == PlotCountsVsEnergy);
+
+        GaussianOverlayStats gaussianStats;
+
+        if (showGaussian)
+            gaussianStats = computeGaussianOverlayStats(xCenters, values);
+
+        if (gaussianStats.valid)
+            maxY = std::max(maxY, gaussianStats.amplitude * 1.15);
+
+        if (maxY <= 0.0)
         {
             p.drawText(plotRect, Qt::AlignCenter, "No histogram data");
             return;
         }
 
-        double maxY = *std::max_element(values.begin(), values.end());
-        if (maxY <= 0.0) maxY = 1.0;
-        const bool countPlot = (m_plotKind == PlotCountsVsTheta || m_plotKind == PlotCountsVsEnergy);
-        if (countPlot)
-            maxY = std::ceil(maxY * 1.10);
-        else
-            maxY *= 1.10;
+        maxY *= 1.10;
 
-        auto mapY = [&](double value)
+        auto mapY = [&](double yValue)
         {
-            return plotRect.bottom() - int(value / maxY * plotRect.height());
+            return plotRect.bottom() - int((yValue / maxY) * plotRect.height());
         };
 
-        // grid + y labels
-        p.setPen(QPen(QColor(220, 220, 220), 1));
-        for (int i = 0; i <= 5; ++i)
+        QFont titleFont = p.font();
+        titleFont.setPointSize(12);
+        titleFont.setBold(true);
+        p.setFont(titleFont);
+        p.setPen(Qt::black);
+
+        p.drawText(0,
+                   8,
+                   width(),
+                   24,
+                   Qt::AlignCenter,
+                   title);
+
+        QFont axisFont = p.font();
+        axisFont.setPointSize(9);
+        axisFont.setBold(false);
+        p.setFont(axisFont);
+
+        p.setPen(QPen(Qt::black, 2));
+        p.drawLine(plotRect.bottomLeft(), plotRect.bottomRight());
+        p.drawLine(plotRect.bottomLeft(), plotRect.topLeft());
+
+        const int yTicks = 5;
+
+        for (int i = 0; i <= yTicks; ++i)
         {
-            const double frac = double(i) / 5.0;
-            const int yPix = plotRect.bottom() - int(frac * plotRect.height());
-            p.drawLine(plotRect.left(), yPix, plotRect.right(), yPix);
-            p.setPen(Qt::black);
-            const QString yLabel = countPlot
-                                       ? QString::number(int(std::round(frac * maxY)))
-                                       : QString::number(frac * maxY, 'g', 3);
-            p.drawText(5, yPix - 10, left - 15, 20, Qt::AlignRight | Qt::AlignVCenter, yLabel);
+            const double frac = double(i) / double(yTicks);
+            const double yValue = frac * maxY;
+            const int y = plotRect.bottom() - int(frac * plotRect.height());
+
             p.setPen(QPen(QColor(220, 220, 220), 1));
+            p.drawLine(plotRect.left(), y, plotRect.right(), y);
+
+            p.setPen(Qt::black);
+            p.drawLine(plotRect.left() - 6, y, plotRect.left(), y);
+
+            QString yText;
+
+            if (m_plotKind == PlotCountsVsTheta || m_plotKind == PlotCountsVsEnergy)
+                yText = QString::number(int(std::round(yValue)));
+            else
+                yText = QString::number(yValue, 'g', 3);
+
+            p.drawText(5,
+                       y - 10,
+                       left - 15,
+                       20,
+                       Qt::AlignRight | Qt::AlignVCenter,
+                       yText);
+        }
+
+        int xTickCount = 6;
+
+        if (m_plotKind == PlotCountsVsTheta || m_plotKind == PlotCrossSectionVsTheta)
+            xTickCount = int(maxX / 3.0);
+
+        xTickCount = std::max(3, xTickCount);
+
+        for (int i = 0; i <= xTickCount; ++i)
+        {
+            const double frac = double(i) / double(xTickCount);
+            const double xValue = minX + frac * (maxX - minX);
+            const int x = plotRect.left() + int(frac * plotRect.width());
+
+            p.setPen(Qt::black);
+            p.drawLine(x, plotRect.bottom(), x, plotRect.bottom() + 6);
+
+            p.drawText(x - 30,
+                       plotRect.bottom() + 10,
+                       60,
+                       20,
+                       Qt::AlignCenter,
+                       QString::number(xValue, 'g', 3));
         }
 
         const double barW = double(plotRect.width()) / double(bins);
+
         for (int i = 0; i < bins; ++i)
         {
             const int x = plotRect.left() + int(i * barW);
             const int y = mapY(values[i]);
             const int h = plotRect.bottom() - y;
+
             QRect bar(x + 1,
                       y,
                       std::max(1, int(barW) - 2),
@@ -1131,128 +1431,118 @@ protected:
             p.drawRect(bar);
         }
 
-        const bool showGaussianOverlay = (m_plotKind == PlotCountsVsTheta ||
-                                          m_plotKind == PlotCountsVsEnergy);
-        const GaussianOverlayStats gaussianStats = showGaussianOverlay
-                                                       ? computeGaussianOverlayStats(xCenters, values)
-                                                       : GaussianOverlayStats();
-        if (showGaussianOverlay && gaussianStats.valid)
+        if (showGaussian && gaussianStats.valid)
         {
-            maxY = std::max(maxY, gaussianStats.amplitude * 1.10);
-
-            auto mapYForGaussian = [&](double value)
+            auto mapX = [&](double xValue)
             {
-                return plotRect.bottom() - int(value / maxY * plotRect.height());
+                const double frac = (xValue - minX) / (maxX - minX);
+                return plotRect.left() + int(frac * plotRect.width());
             };
 
             QPolygonF gaussianCurve;
-            gaussianCurve.reserve(std::max(80, bins * 8));
 
-            const int curvePoints = std::max(120, bins * 8);
-            const double xMinCurve = xCenters.front();
-            const double xMaxCurve = xCenters.back();
-            const double xSpanCurve = std::max(1.0e-12, xMaxCurve - xMinCurve);
+            const int samples = 500;
 
-            for (int i = 0; i < curvePoints; ++i)
+            for (int i = 0; i <= samples; ++i)
             {
-                const double frac = double(i) / double(curvePoints - 1);
-                const double xValue = xMinCurve + frac * xSpanCurve;
-                const double z = (xValue - gaussianStats.mean) / gaussianStats.stddev;
-                const double yValue = gaussianStats.amplitude * std::exp(-0.5 * z * z);
+                const double frac = double(i) / double(samples);
+                const double xValue = minX + frac * (maxX - minX);
 
-                const int xPix = plotRect.left() + int(frac * plotRect.width());
-                const int yPix = mapYForGaussian(yValue);
-                gaussianCurve << QPointF(xPix, yPix);
+                const double yValue = gaussianValue(gaussianStats.amplitude,
+                                                    gaussianStats.mean,
+                                                    gaussianStats.sigma,
+                                                    xValue);
+
+                gaussianCurve << QPointF(mapX(xValue), mapY(yValue));
             }
 
-            QPen gaussianPen(QColor(220, 40, 40, 145), 2, Qt::DotLine);
+            QPen gaussianPen(QColor(220, 40, 40, 155), 2, Qt::DotLine);
             gaussianPen.setCapStyle(Qt::RoundCap);
+
             p.setPen(gaussianPen);
             p.drawPolyline(gaussianCurve);
 
-            const int legendW = 150;
-            const int legendH = 66;
-            const int legendX = plotRect.right() - legendW - 10;
-            const int legendY = plotRect.top() + 10;
+            const int legendW = 210;
+            const int legendH = 125;
+            const int legendX = plotRect.right() - legendW - 12;
+            const int legendY = plotRect.top() + 12;
+
             QRect legendRect(legendX, legendY, legendW, legendH);
 
-            p.fillRect(legendRect, QColor(255, 255, 255, 210));
+            p.fillRect(legendRect, QColor(255, 255, 255, 225));
             p.setPen(QPen(QColor(120, 120, 120), 1));
             p.drawRect(legendRect);
 
             p.setPen(gaussianPen);
-            p.drawLine(legendX + 8, legendY + 14, legendX + 32, legendY + 14);
+            p.drawLine(legendX + 10, legendY + 15, legendX + 42, legendY + 15);
 
             QFont legendFont = p.font();
             legendFont.setPointSize(8);
             legendFont.setBold(false);
             p.setFont(legendFont);
             p.setPen(Qt::black);
-            p.drawText(legendX + 38, legendY + 5, legendW - 44, 16, Qt::AlignLeft, "Gaussian");
-            p.drawText(legendX + 8, legendY + 22, legendW - 16, 14, Qt::AlignLeft,
+
+            p.drawText(legendX + 50,
+                       legendY + 6,
+                       legendW - 58,
+                       16,
+                       Qt::AlignLeft,
+                       "Gaussian fit");
+
+            p.drawText(legendX + 10,
+                       legendY + 27,
+                       legendW - 20,
+                       14,
+                       Qt::AlignLeft,
                        "Amp = " + formatGaussianNumber(gaussianStats.amplitude));
-            p.drawText(legendX + 8, legendY + 36, legendW - 16, 14, Qt::AlignLeft,
+
+            p.drawText(legendX + 10,
+                       legendY + 42,
+                       legendW - 20,
+                       14,
+                       Qt::AlignLeft,
                        "Mean = " + formatGaussianNumber(gaussianStats.mean));
-            p.drawText(legendX + 8, legendY + 50, legendW - 16, 14, Qt::AlignLeft,
-                       "Std = " + formatGaussianNumber(gaussianStats.stddev));
+
+            p.drawText(legendX + 10,
+                       legendY + 57,
+                       legendW - 20,
+                       14,
+                       Qt::AlignLeft,
+                       "Sigma = " + formatGaussianNumber(gaussianStats.sigma));
+
+            p.drawText(legendX + 10,
+                       legendY + 72,
+                       legendW - 20,
+                       14,
+                       Qt::AlignLeft,
+                       "Chi^2 = " + formatGaussianNumber(gaussianStats.chiSquare));
+
+            p.drawText(legendX + 10,
+                       legendY + 87,
+                       legendW - 20,
+                       14,
+                       Qt::AlignLeft,
+                       "Area = " + formatGaussianNumber(gaussianStats.area));
         }
 
         p.setPen(Qt::black);
-        if (m_plotKind == PlotCountsVsEnergy)
-        {
-            for (int i = 0; i <= bins; ++i)
-            {
-                if (i != 0 && i != 1 && i != bins && (i - 1) % 5 != 0) continue;
 
-                const double frac = double(i) / double(bins);
-                double value = 0.0;
-                if (i == 0) value = 0.0;
-                else if (i == 1) value = m_acc.ELOW;
-                else value = m_acc.ELOW + double(i - 1) * m_acc.DELE;
-
-                const int xPix = plotRect.left() + int(frac * plotRect.width());
-                p.drawLine(xPix, plotRect.bottom(), xPix, plotRect.bottom() + 6);
-                p.drawText(xPix - 30, plotRect.bottom() + 24, 60, 18, Qt::AlignCenter,
-                           QString::number(value, 'g', 3));
-            }
-        }
-        else
-        {
-            for (int i = 0; i <= 6; ++i)
-            {
-                const double frac = double(i) / 6.0;
-                const double value = minX + frac * (maxX - minX);
-                const int xPix = plotRect.left() + int(frac * plotRect.width());
-                p.drawLine(xPix, plotRect.bottom(), xPix, plotRect.bottom() + 6);
-                p.drawText(xPix - 30, plotRect.bottom() + 24, 60, 18, Qt::AlignCenter,
-                           QString::number(value, 'g', 3));
-            }
-        }
-
-        // axes
-        p.setPen(QPen(Qt::black, 2));
-        p.drawLine(plotRect.bottomLeft(), plotRect.bottomRight());
-        p.drawLine(plotRect.bottomLeft(), plotRect.topLeft());
-
-        // titles
-        QFont titleFont = p.font();
-        titleFont.setPointSize(12);
-        titleFont.setBold(true);
-        p.setFont(titleFont);
-        p.setPen(Qt::black);
-        p.drawText(0, 8, width(), 24, Qt::AlignCenter, title);
-
-        QFont axisFont = p.font();
-        axisFont.setPointSize(10);
-        axisFont.setBold(false);
-        p.setFont(axisFont);
-        p.drawText(plotRect.left(), height() - 35, plotRect.width(), 24, Qt::AlignCenter, xTitle);
+        p.drawText(plotRect.left(),
+                   height() - 35,
+                   plotRect.width(),
+                   24,
+                   Qt::AlignCenter,
+                   xTitle);
 
         p.save();
-        p.translate(30, plotRect.top() + plotRect.height() / 2);
+        p.translate(28, plotRect.top() + plotRect.height() / 2);
         p.rotate(-90);
-        p.drawText(QRect(-plotRect.height() / 2, -20, plotRect.height(), 20),
-                   Qt::AlignCenter, yTitle);
+        p.drawText(QRect(-plotRect.height() / 2,
+                         -20,
+                         plotRect.height(),
+                         20),
+                   Qt::AlignCenter,
+                   yTitle);
         p.restore();
     }
 
@@ -1260,7 +1550,7 @@ private:
     AngularDistEntry m_entry;
     PaceAngularAccum m_acc;
     int m_plotKind = PlotCountsVsTheta;
-    double m_sigmaTotal = 0.0;
+    double m_sigmaTotal = 1.0;
     int m_nEvents = 1;
 };
 }
@@ -1432,6 +1722,8 @@ QString buildAngularDistributionHtmlPACEStyle(
     html += "</body></html>";
     return html;
 }
+
+// ----------------------- Widget -----------------------
 
 AngularDistributionWidget::AngularDistributionWidget(const QString &htmlContent,
                                                      const std::map<std::pair<int, int>, AngularDistEntry> &entries,
