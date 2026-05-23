@@ -188,6 +188,7 @@ OTHER_FILES += \
 RESOURCES += \
     g_Gemini/gm_resources.qrc \
     g_Gemini/icons/gm_icons.qrc \
+    g_Gemini/icons/icons.qrc \
     lise.qrc
 
 

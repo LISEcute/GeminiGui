@@ -1,8 +1,8 @@
 #ifndef FTYPE_H
 #define FTYPE_H
 
-#define Gemini_version "Version 3.1.3"
-#define Gemini_date    "16-AUG-2023"
+#define Gemini_version "Version 3.2.0"
+#define Gemini_date    "23-MAY-2026"
 
 
 #endif // FTYPE_H
@@ -66,3 +66,14 @@
 // 3.1.01 07/04/23  middle version has been changed
 // 3.1.02 07/12/23  SQLite compatibaly established
 // 3.1.08 08/16/23  Corrections with database path
+
+//--------------------------------
+// Arjun please inser your modifications
+
+
+//--------------------------------
+// 3.2.0   05/23/23  Oleg
+// updated About dialog and this file
+
+
+

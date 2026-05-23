@@ -58,7 +58,7 @@
         <string/>
        </property>
        <property name="pixmap">
-        <pixmap resource="../icons/icons.qrc">:/Gemini_logo.png</pixmap>
+        <pixmap resource="../icons/gm_icons.qrc">:/Gemini_logo.png</pixmap>
        </property>
        <property name="scaledContents">
         <bool>true</bool>
@@ -77,7 +77,6 @@
         <font>
          <family>Bookman Old Style</family>
          <pointsize>26</pointsize>
-         <weight>75</weight>
          <italic>false</italic>
          <bold>true</bold>
         </font>
@@ -90,7 +89,7 @@ margin-bottom:0;</string>
         <string>GEMINI++</string>
        </property>
        <property name="alignment">
-        <set>Qt::AlignCenter</set>
+        <set>Qt::AlignmentFlag::AlignCenter</set>
        </property>
       </widget>
      </item>
@@ -118,7 +117,7 @@ margin-bottom:0;</string>
         <string/>
        </property>
        <property name="pixmap">
-        <pixmap resource="../icons/icons.qrc">:/Gemini_logo.png</pixmap>
+        <pixmap resource="../icons/gm_icons.qrc">:/Gemini_logo.png</pixmap>
        </property>
        <property name="scaledContents">
         <bool>true</bool>
@@ -145,7 +144,6 @@ margin-bottom:0;</string>
       <font>
        <family>Bookman Old Style</family>
        <pointsize>15</pointsize>
-       <weight>75</weight>
        <italic>false</italic>
        <bold>true</bold>
       </font>
@@ -159,7 +157,7 @@ margin: 0px;</string>
       <string>statistical decay code</string>
      </property>
      <property name="alignment">
-      <set>Qt::AlignCenter</set>
+      <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
     </widget>
    </item>
@@ -180,13 +178,13 @@ margin: 0px;</string>
       <string notr="true">color: rgb(222, 226, 197); background-color: rgb(0, 90, 255);</string>
      </property>
      <property name="frameShape">
-      <enum>QFrame::StyledPanel</enum>
+      <enum>QFrame::Shape::StyledPanel</enum>
      </property>
      <property name="text">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;&lt;br/&gt;&lt;/span&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;R. J. Charity&lt;/span&gt;&lt;/p&gt;&lt;hr/&gt;&lt;p&gt;R.J. Charity, Phys. Rev. C 82 (2010) 014610&lt;/p&gt;&lt;p&gt;D. Mancusi, R. J. Charity, J. Cugnon,&lt;br/&gt;Physics Review C 82 (2010) 044610&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="alignment">
-      <set>Qt::AlignCenter</set>
+      <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
      <property name="indent">
       <number>5</number>
@@ -198,7 +196,6 @@ margin: 0px;</string>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
-       <weight>75</weight>
        <italic>false</italic>
        <bold>true</bold>
       </font>
@@ -210,7 +207,7 @@ margin: 0px;</string>
       <string>Version 1.5</string>
      </property>
      <property name="alignment">
-      <set>Qt::AlignCenter</set>
+      <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
     </widget>
    </item>
@@ -219,7 +216,6 @@ margin: 0px;</string>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
-       <weight>75</weight>
        <italic>false</italic>
        <bold>true</bold>
       </font>
@@ -231,7 +227,7 @@ margin: 0px;</string>
       <string>28-April-2015</string>
      </property>
      <property name="alignment">
-      <set>Qt::AlignCenter</set>
+      <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
     </widget>
    </item>
@@ -248,10 +244,10 @@ margin: 0px;</string>
 color: rgb(210, 210, 210);</string>
      </property>
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;GEMINI++ has been ported to a GUI application &lt;br/&gt;using Qt within the LISE&lt;/span&gt;&lt;span style=&quot; font-size:9pt; vertical-align:super;&quot;&gt;++&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt; framework by M.P. Kuchera,&lt;br/&gt;and updated by O.B. Tarasov&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;The GUI-version is currently maintained by O.B. Tarasov&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;GEMINI++ has been ported to a GUI application using Qt &lt;br/&gt;within the LISE&lt;span style=&quot; vertical-align:super;&quot;&gt;++&lt;/span&gt; framework by M.P. Kuchera, and updated &lt;br/&gt;by O.B. Tarasov. A.Ray implemented angular distribution plots.&lt;/p&gt;&lt;p&gt;The GUI-version is currently maintained by O.B. Tarasov&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="alignment">
-      <set>Qt::AlignCenter</set>
+      <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
      <property name="wordWrap">
       <bool>true</bool>
@@ -264,7 +260,7 @@ color: rgb(210, 210, 210);</string>
       <string notr="true">background-color: rgb(0, 90, 255);</string>
      </property>
      <property name="frameShape">
-      <enum>QFrame::StyledPanel</enum>
+      <enum>QFrame::Shape::StyledPanel</enum>
      </property>
      <layout class="QGridLayout" name="gridLayout">
       <property name="leftMargin">
@@ -290,7 +286,6 @@ color: rgb(210, 210, 210);</string>
         <property name="font">
          <font>
           <pointsize>9</pointsize>
-          <weight>75</weight>
           <bold>true</bold>
          </font>
         </property>
@@ -323,7 +318,7 @@ color: rgb(210, 210, 210);</string>
          <string>http://lise.nscl.msu.edu/gemini.html</string>
         </property>
         <property name="textFormat">
-         <enum>Qt::AutoText</enum>
+         <enum>Qt::TextFormat::AutoText</enum>
         </property>
         <property name="openExternalLinks">
          <bool>true</bool>
@@ -335,7 +330,6 @@ color: rgb(210, 210, 210);</string>
         <property name="font">
          <font>
           <pointsize>9</pointsize>
-          <weight>75</weight>
           <bold>true</bold>
          </font>
         </property>
@@ -368,7 +362,7 @@ color: rgb(210, 210, 210);</string>
          <string>http://lise.nscl.msu.edu</string>
         </property>
         <property name="textFormat">
-         <enum>Qt::AutoText</enum>
+         <enum>Qt::TextFormat::AutoText</enum>
         </property>
         <property name="openExternalLinks">
          <bool>true</bool>
@@ -387,13 +381,13 @@ color: rgb(210, 210, 210);</string>
          <string/>
         </property>
         <property name="pixmap">
-         <pixmap resource="../icons/icons.qrc">:/emblem_little_plus.png</pixmap>
+         <pixmap resource="../icons/gm_icons.qrc">:/emblem_little_plus.png</pixmap>
         </property>
         <property name="scaledContents">
          <bool>false</bool>
         </property>
         <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
         </property>
        </widget>
       </item>
@@ -410,7 +404,7 @@ color: rgb(210, 210, 210);</string>
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="../icons/icons.qrc"/>
+  <include location="../icons/gm_icons.qrc"/>
  </resources>
  <connections/>
 </ui>
