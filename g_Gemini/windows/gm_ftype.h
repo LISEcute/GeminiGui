@@ -73,6 +73,7 @@
 // 3.1.10 04/30/26  Created Angular Distribution tables for Residual nuclei
 // 3.1.11 05/21/26  Window to plot Angular distribution tables; Gaussian fit on 1D plots
 //--------------------------------
+
 // 3.2.0   05/23/23  Oleg
 // updated About dialog and this file
 
