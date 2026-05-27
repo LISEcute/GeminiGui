@@ -68,9 +68,10 @@
 // 3.1.08 08/16/23  Corrections with database path
 
 //--------------------------------
-// Arjun please inser your modifications
-
-
+// A.Ray Updates
+// 3.1.09 01/15/26  Optimized code project-wide for faster execution
+// 3.1.10 04/30/26  Created Angular Distribution tables for Residual nuclei
+// 3.1.11 05/21/26  Window to plot Angular distribution tables; Gaussian fit on 1D plots
 //--------------------------------
 // 3.2.0   05/23/23  Oleg
 // updated About dialog and this file
