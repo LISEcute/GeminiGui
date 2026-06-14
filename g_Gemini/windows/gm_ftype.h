@@ -74,8 +74,9 @@
 // 3.1.11 05/21/26  Window to plot Angular distribution tables; Gaussian fit on 1D plots
 //--------------------------------
 
-// 3.2.0   05/23/23  Oleg
+// 3.2.0   05/23/26  Oleg
 // updated About dialog and this file
+// 3.2.1   06/14/26  Added Gamma angular Distribution Table; UI changes
 
 
 

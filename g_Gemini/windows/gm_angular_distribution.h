@@ -47,7 +47,8 @@ QString buildAngularDistributionHtmlPACEStyle(
     int inputMode = 1,
     const AngularDistEntry &neutronEntry = AngularDistEntry(),
     const AngularDistEntry &protonEntry = AngularDistEntry(),
-    const AngularDistEntry &alphaEntry = AngularDistEntry());
+    const AngularDistEntry &alphaEntry = AngularDistEntry(),
+    const AngularDistEntry &gammaEntry = AngularDistEntry());
 
 class AngularDistributionWidget : public QDialog
 {
@@ -65,6 +66,7 @@ public:
         const AngularDistEntry &neutronEntry = AngularDistEntry(),
         const AngularDistEntry &protonEntry = AngularDistEntry(),
         const AngularDistEntry &alphaEntry = AngularDistEntry(),
+        const AngularDistEntry &gammaEntry = AngularDistEntry(),
         double compoundExcitationMeV = 0.0,
         int compoundA = 1,
         double recoilBetaCN = 0.0,
@@ -81,14 +83,19 @@ private:
 
     QString html;
     std::map<std::pair<int, int>, AngularDistEntry> entriesForPlots;
+
     double sigmaTotalForPlots = 0.0;
     int nEventsForPlots = 0;
     double lowLimitForPlots = 0.0;
     double highLimitForPlots = 100.0;
+
     QString plotTitle;
+
     AngularDistEntry neutronEntryForPlots;
     AngularDistEntry protonEntryForPlots;
     AngularDistEntry alphaEntryForPlots;
+    AngularDistEntry gammaEntryForPlots;
+
     double compoundExcitationForPlots = 0.0;
     int compoundAForPlots = 1;
     double recoilBetaForPlots = 0.0;

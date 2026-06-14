@@ -7,6 +7,8 @@
 #include <QMessageBox>
 #include <QProgressDialog>
 #include <QFileDialog>
+#include <QGuiApplication>
+#include <QScreen>
 #include <array>
 #include <map>
 
@@ -422,12 +424,31 @@ void MainWindow::execute_compound()
                 neutronAngular,
                 protonAngular,
                 alphaAngular,
+                AngularDistEntry(),
                 fEx,
                 iACN,
                 0.0,
                 0,
                 this
                 );
+        QScreen *screen = QGuiApplication::screenAt(ress->geometry().center());
+        if (!screen) screen = QGuiApplication::primaryScreen();
+        if (screen)
+        {
+            const QRect available = screen->availableGeometry();
+            const int gap = 12;
+            const int pairWidth = available.width() - gap;
+            const int resultWidth = pairWidth / 2;
+            const int angularWidth = pairWidth - resultWidth;
+            const int pairHeight = qMin(760, available.height());
+            const int top = available.top() + (available.height() - pairHeight) / 2;
+
+            ress->setMinimumSize(qMin(640, resultWidth), qMin(560, pairHeight));
+            angularWindow->setMinimumSize(qMin(640, angularWidth), qMin(560, pairHeight));
+            ress->setGeometry(available.left(), top, resultWidth, pairHeight);
+            angularWindow->setGeometry(available.left() + resultWidth + gap, top, angularWidth, pairHeight);
+        }
+
         angularWindow->show();
     }
 

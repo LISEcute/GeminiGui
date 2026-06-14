@@ -136,6 +136,9 @@ void MainWindow::execute_fusion()
     AngularDistEntry alphaAngular;
     alphaAngular.z = 2;
     alphaAngular.n = 2;
+    AngularDistEntry gammaAngular;
+    gammaAngular.z = 0;
+    gammaAngular.n = 0;
 
     const float betaCN = std::sqrt(
         2.0f * (Elab * Ap / (Ap + At)) / (931.49432f * (Ap + At))
@@ -266,11 +269,14 @@ void MainWindow::execute_fusion()
             Ares += products->iA;
             Zres += products->iZ;
             resTotal += weight;
-            gammaEnergy += weight * products->getSumGammaEnergy();
+            const float eventGammaEnergy = products->getSumGammaEnergy();
+            gammaEnergy += weight * eventGammaEnergy;
+
             float keLab = 0.f;
             float thetaLabDeg = 0.f;
             float vzLab = 0.f;
             float vxy = 0.f;
+
             computeLabKinematics(products, keLab, thetaLabDeg, vzLab, vxy);
 
             addAngularSample(angularDistByZN,
@@ -280,6 +286,19 @@ void MainWindow::execute_fusion()
                              thetaLabDeg,
                              vzLab,
                              vxy);
+
+            // Gamma angular-distribution sample.
+            // Gemini gives total gamma energy from the residue.
+            // It does not give individual gamma-ray direction here,
+            // so we attach the gamma energy to the residue lab angle.
+            if (eventGammaEnergy > 0.f)
+            {
+                addAngularSample(gammaAngular,
+                                 eventGammaEnergy,
+                                 thetaLabDeg,
+                                 0.0f,
+                                 0.0f);
+            }
         }
         //============================================================= analysis BEGIN
         products = CN.getProducts(0);  // go to first evaporated particle
@@ -503,7 +522,8 @@ void MainWindow::execute_fusion()
             1,
             neutronAngular,
             protonAngular,
-            alphaAngular
+            alphaAngular,
+            gammaAngular
             );
 
         AngularDistributionWidget *angularWindow =
@@ -518,6 +538,7 @@ void MainWindow::execute_fusion()
                 neutronAngular,
                 protonAngular,
                 alphaAngular,
+                gammaAngular,
                 fus.Ex,
                 fus.iAcn,
                 recoilBetaCN,

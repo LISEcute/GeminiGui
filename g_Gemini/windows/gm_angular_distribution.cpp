@@ -75,6 +75,11 @@ QString fmt1(double x)
     return QString::number(x, 'f', 1);
 }
 
+void setParticleEnergyInterval(PaceAngularAccum &acc)
+{
+    acc.DELE = 2.0;
+}
+
 QString nucleusLabelFromZNPlain(int z, int n)
 {
     CNucleus nuc(z, z + n);
@@ -274,11 +279,11 @@ QString buildVelocityLinePACE(const PaceAngularAccum &acc,
     const double dvxy = std::sqrt(s_vxy / globSum);
 
     QString line;
-    line += "<p><em>" + velocityLabel.toHtmlEscaped() + "</em> Vz = ";
+    line += "<p><em>" + velocityLabel.toHtmlEscaped() + "</em> V<sub>z</sub> = ";
     line += QString::number(vzm, 'e', 2);
-    line += " (sig = ";
+    line += " (Rms = ";
     line += QString::number(dvz, 'e', 2);
-    line += ") rms Vxy = ";
+    line += ") V<sub>xy</sub> = ";
     line += QString::number(dvxy, 'e', 2);
     line += "</p><p>&nbsp;</p>";
     return line;
@@ -363,7 +368,7 @@ void appendMainPaceTable(QString &html,
         html += (acc.NR[32][k] > 0) ? "<td align=\"center\">" + QString::number(acc.NR[32][k]) + "</td>" : "<td></td>";
     html += "</tr>";
 
-    html += "<tr><td>dSig/dOmeg</td>";
+    html += "<tr><td>d&sigma;/d&Omega;</td>";
     for (int k = 1; k <= 18; ++k)
         html += (DSIG[k] > 0.0) ? "<td>" + QString::number(DSIG[k], 'g', 2) + "</td>" : "<td>0.00</td>";
     html += "</tr>";
@@ -381,10 +386,10 @@ void appendMainPaceTable(QString &html,
 
     html += "</table>";
     html += "<p>";
-    html += "<a href=\"gemini://plot_table/" + QString::number(plotIndex) + "\">Plot E vs Theta</a> &nbsp; ";
-    html += "<a href=\"gemini://plot_ntheta/" + QString::number(plotIndex) + "\">Plot N vs Theta</a> &nbsp; ";
-    html += "<a href=\"gemini://plot_ne/" + QString::number(plotIndex) + "\">Plot N vs E</a> &nbsp; ";
-    html += "<a href=\"gemini://plot_dcsdtheta/" + QString::number(plotIndex) + "\">Plot dCS/dTheta vs Theta</a>";
+    html += "<a href=\"gemini://plot_table/" + QString::number(plotIndex) + "\">Plot E vs &theta;</a> &nbsp; ";
+    html += "<a href=\"gemini://plot_ntheta/" + QString::number(plotIndex) + "\">Plot N vs &theta;</a> &nbsp; ";
+    html += "<a href=\"gemini://plot_ne/" + QString::number(plotIndex) + "\">Plot N vs Energy</a> &nbsp; ";
+    html += "<a href=\"gemini://plot_dcsdtheta/" + QString::number(plotIndex) + "\">Plot d&sigma;/d&theta; vs &theta;</a>";
     html += "</p>";
     html += "<p>&nbsp;</p>";
 }
@@ -436,7 +441,7 @@ void appendSecondPaceTableIfNeeded(QString &html,
         html += (acc.NR[32][k] > 0) ? "<th>" + QString::number(acc.NR[32][k]) + "</th>" : "<th></th>";
     html += "<th></th></tr>";
 
-    html += "<tr><td>dSig/dOmeg</td>";
+    html += "<tr><td>d&sigma;/d&Omega;</td>";
     for (int k = 19; k <= 36; ++k)
     {
         const double TET = (double(k) - 0.5) * kDegToRad;
@@ -458,10 +463,10 @@ void appendSecondPaceTableIfNeeded(QString &html,
         html += (acc.NRW[4][k] > 0) ? "<td>" + QString::number(acc.NRW[4][k]) + "</td>" : "<td></td>";
     html += "<td></td></tr></table>";
     html += "<p>";
-    html += "<a href=\"gemini://plot_table/" + QString::number(plotIndex) + "\">Plot E vs Theta</a> &nbsp; ";
-    html += "<a href=\"gemini://plot_ntheta/" + QString::number(plotIndex) + "\">Plot N vs Theta</a> &nbsp; ";
+    html += "<a href=\"gemini://plot_table/" + QString::number(plotIndex) + "\">Plot E vs &theta;</a> &nbsp; ";
+    html += "<a href=\"gemini://plot_ntheta/" + QString::number(plotIndex) + "\">Plot N vs &theta;</a> &nbsp; ";
     html += "<a href=\"gemini://plot_ne/" + QString::number(plotIndex) + "\">Plot N vs E</a> &nbsp; ";
-    html += "<a href=\"gemini://plot_dcsdtheta/" + QString::number(plotIndex) + "\">Plot dCS/dTheta vs Theta</a>";
+    html += "<a href=\"gemini://plot_dcsdtheta/" + QString::number(plotIndex) + "\">Plot d&sigma;/d&theta; vs &theta;</a>";
     html += "</p>";
     html += "<p>&nbsp;</p>";
 }
@@ -524,6 +529,7 @@ std::vector<PlotTableEntry> buildPlotTableListPACE(
     const AngularDistEntry &neutronEntry,
     const AngularDistEntry &protonEntry,
     const AngularDistEntry &alphaEntry,
+    const AngularDistEntry &gammaEntry,
     int nEvents,
     double lowLimitPercent,
     double highLimitPercent,
@@ -571,7 +577,7 @@ std::vector<PlotTableEntry> buildPlotTableListPACE(
     }
 
     std::vector<PlotTableEntry> tables;
-    tables.reserve(selected.size() + 4);
+    tables.reserve(selected.size() + 5);
 
     int idx = 1;
     for (const auto &item : selectedAcc)
@@ -621,6 +627,7 @@ std::vector<PlotTableEntry> buildPlotTableListPACE(
                           .arg(particleLabel);
         table.entry = entry;
         initPaceAccum(table.acc, compoundA, compoundExcitationMeV, recoilBetaCN, mdir);
+        setParticleEnergyInterval(table.acc);
         appendEntryToAccum(table.acc, entry);
         tables.push_back(table);
         idx++;
@@ -629,6 +636,7 @@ std::vector<PlotTableEntry> buildPlotTableListPACE(
     appendParticlePlot("neutrons", neutronEntry);
     appendParticlePlot("protons", protonEntry);
     appendParticlePlot("alpha particles", alphaEntry);
+    appendParticlePlot("gamma particles", gammaEntry);
 
     return tables;
 }
@@ -678,9 +686,6 @@ protected:
 
         const int n = int(std::min(m_entry.thetaDeg.size(), m_entry.kineticEnergy.size()));
 
-        const double minE = 0.0;
-        const double maxE = m_acc.ELOW + 29.0 * m_acc.DELE;
-
         double rawMaxTheta = 0.0;
         for (int i = 0; i < n; ++i)
             rawMaxTheta = std::max(rawMaxTheta, double(m_entry.thetaDeg[i]));
@@ -703,6 +708,7 @@ protected:
             );
 
         int maxCount = 0;
+        int highestPopulatedEnergyBin = 0;
 
         for (int i = 0; i < n; ++i)
         {
@@ -723,6 +729,7 @@ protected:
 
             counts[energyBin][thetaBin]++;
             maxCount = std::max(maxCount, counts[energyBin][thetaBin]);
+            highestPopulatedEnergyBin = std::max(highestPopulatedEnergyBin, energyBin);
         }
 
         if (maxCount <= 0)
@@ -732,10 +739,11 @@ protected:
         }
 
         const double cellW = double(plotRect.width()) / thetaBins;
-        const double cellH = double(plotRect.height()) / energyBins;
+        const int visibleEnergyBins = std::max(1, highestPopulatedEnergyBin + 1);
+        const double cellH = double(plotRect.height()) / visibleEnergyBins;
 
         // Draw 2D histogram cells
-        for (int e = 0; e < energyBins; ++e)
+        for (int e = 0; e < visibleEnergyBins; ++e)
         {
             for (int t = 0; t < thetaBins; ++t)
             {
@@ -798,10 +806,10 @@ protected:
                        QString::number(i));
         }
 
-        // Y-axis energy labels: same boundaries as the table.
-        for (int e = 0; e <= energyBins; ++e)
+        // Y-axis energy labels: same boundaries as the table, clipped at the highest populated bin.
+        for (int e = 0; e <= visibleEnergyBins; ++e)
         {
-            const double frac = double(e) / double(energyBins);
+            const double frac = double(e) / double(visibleEnergyBins);
             double energyValue = 0.0;
             if (e == 0) energyValue = 0.0;
             else if (e == 1) energyValue = m_acc.ELOW;
@@ -809,7 +817,7 @@ protected:
 
             const int y = plotRect.bottom() - int(frac * plotRect.height());
 
-            if (e == 0 || e == 1 || e == energyBins || (e - 1) % 5 == 0)
+            if (e == 0 || e == 1 || e == visibleEnergyBins || (e - 1) % 5 == 0)
             {
                 p.drawLine(plotRect.left() - 6, y, plotRect.left(), y);
                 p.drawText(5,
@@ -827,7 +835,7 @@ protected:
                    plotRect.width(),
                    24,
                    Qt::AlignCenter,
-                   "Theta range (deg)");
+                   "θ range (deg)");
 
         p.save();
         p.translate(30, plotRect.top() + plotRect.height() / 2);
@@ -1255,16 +1263,16 @@ protected:
                 }
             }
 
-            xTitle = "Theta (deg)";
+            xTitle = "θ (deg)";
 
             if (m_plotKind == PlotCountsVsTheta)
             {
-                title = "N = f(theta)";
+                title = "N = f(θ)";
                 yTitle = "Counts N";
             }
             else
             {
-                title = "dσ/dθ = f(theta)";
+                title = "dσ/dθ = f(θ)";
                 yTitle = "dσ/dθ (mb/deg)";
             }
         }
@@ -1431,6 +1439,92 @@ protected:
             p.drawRect(bar);
         }
 
+        auto drawOneDLegend = [&](const QPen &samplePen, bool includeGaussian)
+        {
+            p.save();
+
+            const int legendW = 210;
+            const int legendH = includeGaussian ? 140 : 36;
+            const int legendX = plotRect.right() - legendW - 12;
+            const int legendY = plotRect.top() + 12;
+
+            QRect legendRect(legendX, legendY, legendW, legendH);
+
+            p.fillRect(legendRect, QColor(255, 255, 255, 225));
+            p.setPen(QPen(QColor(120, 120, 120), 1));
+            p.drawRect(legendRect);
+
+            QFont legendFont = p.font();
+            legendFont.setPointSize(8);
+            legendFont.setBold(false);
+            p.setFont(legendFont);
+            p.setPen(Qt::black);
+
+            p.drawText(legendX + 10,
+                       legendY + 8,
+                       legendW - 20,
+                       14,
+                       Qt::AlignLeft,
+                       "N = " + QString::number(n));
+
+            if (!includeGaussian)
+            {
+                p.restore();
+                return;
+            }
+
+            p.setPen(samplePen);
+            p.drawLine(legendX + 10, legendY + 33, legendX + 42, legendY + 33);
+            p.setPen(Qt::black);
+
+            p.drawText(legendX + 50,
+                       legendY + 24,
+                       legendW - 58,
+                       16,
+                       Qt::AlignLeft,
+                       "Gaussian fit");
+
+            p.drawText(legendX + 10,
+                       legendY + 48,
+                       legendW - 20,
+                       14,
+                       Qt::AlignLeft,
+                       "Amp = " + formatGaussianNumber(gaussianStats.amplitude));
+
+            p.drawText(legendX + 10,
+                       legendY + 63,
+                       legendW - 20,
+                       14,
+                       Qt::AlignLeft,
+                       "Mean = " + formatGaussianNumber(gaussianStats.mean));
+
+            p.drawText(legendX + 10,
+                       legendY + 78,
+                       legendW - 20,
+                       14,
+                       Qt::AlignLeft,
+                       "Rms = " + formatGaussianNumber(gaussianStats.sigma));
+
+            p.drawText(legendX + 10,
+                       legendY + 93,
+                       legendW - 20,
+                       14,
+                       Qt::AlignLeft,
+                       "Chi^2 = " + formatGaussianNumber(gaussianStats.chiSquare));
+
+            p.drawText(legendX + 10,
+                       legendY + 108,
+                       legendW - 20,
+                       14,
+                       Qt::AlignLeft,
+                       "Area = " + formatGaussianNumber(gaussianStats.area));
+
+            p.restore();
+        };
+
+        QPen gaussianPen(QColor(220, 40, 40, 155), 2, Qt::DotLine);
+        gaussianPen.setCapStyle(Qt::RoundCap);
+
         if (showGaussian && gaussianStats.valid)
         {
             auto mapX = [&](double xValue)
@@ -1456,74 +1550,11 @@ protected:
                 gaussianCurve << QPointF(mapX(xValue), mapY(yValue));
             }
 
-            QPen gaussianPen(QColor(220, 40, 40, 155), 2, Qt::DotLine);
-            gaussianPen.setCapStyle(Qt::RoundCap);
-
             p.setPen(gaussianPen);
             p.drawPolyline(gaussianCurve);
-
-            const int legendW = 210;
-            const int legendH = 125;
-            const int legendX = plotRect.right() - legendW - 12;
-            const int legendY = plotRect.top() + 12;
-
-            QRect legendRect(legendX, legendY, legendW, legendH);
-
-            p.fillRect(legendRect, QColor(255, 255, 255, 225));
-            p.setPen(QPen(QColor(120, 120, 120), 1));
-            p.drawRect(legendRect);
-
-            p.setPen(gaussianPen);
-            p.drawLine(legendX + 10, legendY + 15, legendX + 42, legendY + 15);
-
-            QFont legendFont = p.font();
-            legendFont.setPointSize(8);
-            legendFont.setBold(false);
-            p.setFont(legendFont);
-            p.setPen(Qt::black);
-
-            p.drawText(legendX + 50,
-                       legendY + 6,
-                       legendW - 58,
-                       16,
-                       Qt::AlignLeft,
-                       "Gaussian fit");
-
-            p.drawText(legendX + 10,
-                       legendY + 27,
-                       legendW - 20,
-                       14,
-                       Qt::AlignLeft,
-                       "Amp = " + formatGaussianNumber(gaussianStats.amplitude));
-
-            p.drawText(legendX + 10,
-                       legendY + 42,
-                       legendW - 20,
-                       14,
-                       Qt::AlignLeft,
-                       "Mean = " + formatGaussianNumber(gaussianStats.mean));
-
-            p.drawText(legendX + 10,
-                       legendY + 57,
-                       legendW - 20,
-                       14,
-                       Qt::AlignLeft,
-                       "Sigma = " + formatGaussianNumber(gaussianStats.sigma));
-
-            p.drawText(legendX + 10,
-                       legendY + 72,
-                       legendW - 20,
-                       14,
-                       Qt::AlignLeft,
-                       "Chi^2 = " + formatGaussianNumber(gaussianStats.chiSquare));
-
-            p.drawText(legendX + 10,
-                       legendY + 87,
-                       legendW - 20,
-                       14,
-                       Qt::AlignLeft,
-                       "Area = " + formatGaussianNumber(gaussianStats.area));
         }
+
+        drawOneDLegend(gaussianPen, showGaussian && gaussianStats.valid);
 
         p.setPen(Qt::black);
 
@@ -1596,7 +1627,8 @@ QString buildAngularDistributionHtmlPACEStyle(
     int inputMode,
     const AngularDistEntry &neutronEntry,
     const AngularDistEntry &protonEntry,
-    const AngularDistEntry &alphaEntry)
+    const AngularDistEntry &alphaEntry,
+    const AngularDistEntry &gammaEntry)
 {
     QString html;
     html += "<!DOCTYPE html><html><head><meta charset=\"utf-8\">";
@@ -1615,7 +1647,8 @@ QString buildAngularDistributionHtmlPACEStyle(
     if ((!hasAngularSamples(entries)
          && !hasAngularSamples(neutronEntry)
          && !hasAngularSamples(protonEntry)
-         && !hasAngularSamples(alphaEntry))
+         && !hasAngularSamples(alphaEntry)
+         && !hasAngularSamples(gammaEntry))
         || nCascades <= 0)
     {
         html += "<p>No angular-distribution events were found for output.</p></body></html>";
@@ -1627,10 +1660,10 @@ QString buildAngularDistributionHtmlPACEStyle(
 
     html += "<p>&nbsp;</p><h2 align=\"center\">Angular distribution results</h2>";
     html += "<p>";
-    html += "<a href=\"gemini://plot_all\">Plot All: E vs Theta</a> &nbsp; ";
-    html += "<a href=\"gemini://plot_all_ntheta\">Plot All: N vs Theta</a> &nbsp; ";
-    html += "<a href=\"gemini://plot_all_ne\">Plot All: N vs E</a> &nbsp; ";
-    html += "<a href=\"gemini://plot_all_dcsdtheta\">Plot All: dCS/dTheta vs Theta</a>";
+    html += "<a href=\"gemini://plot_all\">Plot All: E vs &theta;</a> &nbsp; ";
+    html += "<a href=\"gemini://plot_all_ntheta\">Plot All: N vs &theta;</a> &nbsp; ";
+    html += "<a href=\"gemini://plot_all_ne\">Plot All: N vs Energy</a> &nbsp; ";
+    html += "<a href=\"gemini://plot_all_dcsdtheta\">Plot All: d&sigma;/d&theta; vs &theta;</a>";
     html += "</p>";
 
     if (mdir == 0)
@@ -1699,25 +1732,33 @@ QString buildAngularDistributionHtmlPACEStyle(
     auto appendParticleSection = [&](const QString &particleLabel,
                                      const QString &velocityLabel,
                                      const AngularDistEntry &entry,
-                                     int particleA)
+                                     int particleA,
+                                     bool showVelocity)
     {
         if (!hasAngularSamples(entry)) return;
 
         PaceAngularAccum acc;
         initPaceAccum(acc, compoundA, compoundExcitationMeV, recoilBetaCN, mdir);
+        setParticleEnergyInterval(acc);
         appendEntryToAccum(acc, entry);
 
         html += buildHeaderForParticlePACE(displayIndex, particleLabel);
-        appendMainPaceTable(html, acc, particleA, sigmaTotalMb, nCascades, inputMode, false, plotIndex,
-                            velocityLabel);
+
+        // Gamma particles do not use the massive-particle velocity calculation.
+        // Passing inputMode = 0 prevents the velocity line from being printed.
+        appendMainPaceTable(html, acc, particleA, sigmaTotalMb, nCascades,
+                            showVelocity ? inputMode : 0,
+                            false, plotIndex, velocityLabel);
+
         appendSecondPaceTableIfNeeded(html, acc, plotIndex);
         displayIndex++;
         plotIndex++;
     };
 
-    appendParticleSection("neutrons", "Neutron velocity/c", neutronEntry, 1);
-    appendParticleSection("protons", "Proton velocity/c", protonEntry, 1);
-    appendParticleSection("alpha particles", "Alpha velocity/c", alphaEntry, 4);
+    appendParticleSection("neutrons", "Neutron velocity/c", neutronEntry, 1, true);
+    appendParticleSection("protons", "Proton velocity/c", protonEntry, 1, true);
+    appendParticleSection("alpha particles", "Alpha velocity/c", alphaEntry, 4, true);
+    appendParticleSection("gamma particles", "", gammaEntry, 1, false);
 
     html += "</body></html>";
     return html;
@@ -1735,6 +1776,7 @@ AngularDistributionWidget::AngularDistributionWidget(const QString &htmlContent,
                                                      const AngularDistEntry &neutronEntry,
                                                      const AngularDistEntry &protonEntry,
                                                      const AngularDistEntry &alphaEntry,
+                                                     const AngularDistEntry &gammaEntry,
                                                      double compoundExcitationMeV,
                                                      int compoundA,
                                                      double recoilBetaCN,
@@ -1751,6 +1793,7 @@ AngularDistributionWidget::AngularDistributionWidget(const QString &htmlContent,
     neutronEntryForPlots(neutronEntry),
     protonEntryForPlots(protonEntry),
     alphaEntryForPlots(alphaEntry),
+    gammaEntryForPlots(gammaEntry),
     compoundExcitationForPlots(compoundExcitationMeV),
     compoundAForPlots(compoundA),
     recoilBetaForPlots(recoilBetaCN),
@@ -1842,7 +1885,8 @@ void AngularDistributionWidget::openPlotWindow(bool plotAllTables, int tableInde
     if ((!hasAngularSamples(entriesForPlots)
          && !hasAngularSamples(neutronEntryForPlots)
          && !hasAngularSamples(protonEntryForPlots)
-         && !hasAngularSamples(alphaEntryForPlots))
+         && !hasAngularSamples(alphaEntryForPlots)
+         && !hasAngularSamples(gammaEntryForPlots))
         || nEventsForPlots <= 0) return;
 
     const std::vector<PlotTableEntry> tables =
@@ -1850,6 +1894,7 @@ void AngularDistributionWidget::openPlotWindow(bool plotAllTables, int tableInde
                                neutronEntryForPlots,
                                protonEntryForPlots,
                                alphaEntryForPlots,
+                               gammaEntryForPlots,
                                nEventsForPlots,
                                lowLimitForPlots,
                                highLimitForPlots,
@@ -1861,10 +1906,10 @@ void AngularDistributionWidget::openPlotWindow(bool plotAllTables, int tableInde
     QDialog *dlg = new QDialog(this);
     dlg->setAttribute(Qt::WA_DeleteOnClose, true);
     dlg->setWindowIcon(QIcon(":/Gemini_logo.png"));
-    QString plotKindLabel = "E vs Theta";
-    if (plotKind == PlotCountsVsTheta) plotKindLabel = "N vs Theta";
-    else if (plotKind == PlotCountsVsEnergy) plotKindLabel = "N vs E";
-    else if (plotKind == PlotCrossSectionVsTheta) plotKindLabel = "dCS/dTheta vs Theta";
+    QString plotKindLabel = "E vs θ";
+    if (plotKind == PlotCountsVsTheta) plotKindLabel = "N vs θ";
+    else if (plotKind == PlotCountsVsEnergy) plotKindLabel = "N vs Energy";
+    else if (plotKind == PlotCrossSectionVsTheta) plotKindLabel = "dσ/dθ vs θ";
 
     dlg->setWindowTitle(plotAllTables
                             ? "Gemini: Angular distribution plots (all) - " + plotKindLabel
