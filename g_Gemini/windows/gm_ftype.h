@@ -76,7 +76,6 @@
 
 // 3.2.0   05/23/26  Oleg
 // updated About dialog and this file
-// 3.2.1   06/14/26  Added Gamma angular Distribution Table; UI changes
-
-
+// 3.2.1   06/12/26  Added Gamma angular Distribution Table; UI changes
+// 3.2.2   06/14/26  Added C.M Spectra for emmitted particles
 

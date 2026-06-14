@@ -33,8 +33,8 @@
 
 namespace {
 
-constexpr int kMaxResiduesToPrint = 15;   // PACE: 15 residues + ALL
-constexpr double kDegToRad = 0.01745;     // PACE-style constant
+constexpr int kMaxResiduesToPrint = 15;
+constexpr double kDegToRad = 0.01745;
 constexpr double kTwoPiPACE = 6.2832;
 constexpr double kAMUMeV = 931.49432;
 
@@ -60,7 +60,6 @@ struct PaceAngularAccum
     std::array<double, 5> EWR1{};
     std::array<double, 5> EWR2{};
 
-    // 1..32 energy bins, 1..37 angle bins
     std::array<std::array<int, 38>, 33> NR{};
     std::array<std::array<int, 38>, 5> NRW{};
 };
@@ -608,6 +607,7 @@ std::vector<PlotTableEntry> buildPlotTableListPACE(
         all.thetaDeg.insert(all.thetaDeg.end(), e.thetaDeg.begin(), e.thetaDeg.end());
         all.vz.insert(all.vz.end(), e.vz.begin(), e.vz.end());
         all.vxy.insert(all.vxy.end(), e.vxy.begin(), e.vxy.end());
+        all.cmEnergy.insert(all.cmEnergy.end(), e.cmEnergy.begin(), e.cmEnergy.end());
     }
 
     PlotTableEntry tAll;
@@ -695,10 +695,6 @@ protected:
         if (rawMaxTheta > 36.0) maxTheta = std::ceil(rawMaxTheta);
 
         const double minTheta = 0.0;
-
-        // Match the PACE table binning:
-        // theta uses the same angular width, and energy uses the same
-        // Below ELOW + regular DELE rows + Above last-row structure.
         const int thetaBins = int(std::ceil(maxTheta / m_acc.DELANG));
         const int energyBins = 31;
 
@@ -1592,10 +1588,21 @@ void addAngularSample(AngularDistEntry &entry,
                       float vz,
                       float vxy)
 {
+    addAngularSample(entry, kineticEnergy, thetaDeg, vz, vxy, kineticEnergy);
+}
+
+void addAngularSample(AngularDistEntry &entry,
+                      float kineticEnergy,
+                      float thetaDeg,
+                      float vz,
+                      float vxy,
+                      float cmEnergy)
+{
     entry.kineticEnergy.push_back(kineticEnergy);
     entry.thetaDeg.push_back(thetaDeg);
     entry.vz.push_back(vz);
     entry.vxy.push_back(vxy);
+    entry.cmEnergy.push_back(cmEnergy);
 }
 
 void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
@@ -1611,6 +1618,129 @@ void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
     e.z = z;
     e.n = n;
     addAngularSample(e, kineticEnergy, thetaDeg, vz, vxy);
+}
+
+void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
+                      int z,
+                      int n,
+                      float kineticEnergy,
+                      float thetaDeg,
+                      float vz,
+                      float vxy,
+                      float cmEnergy)
+{
+    const std::pair<int, int> key(z, n);
+    AngularDistEntry &e = entries[key];
+    e.z = z;
+    e.n = n;
+    addAngularSample(e, kineticEnergy, thetaDeg, vz, vxy, cmEnergy);
+}
+
+QString buildEmittedParticleCMSpectraHtmlGemini(
+    const AngularDistEntry &neutronEntry,
+    const AngularDistEntry &protonEntry,
+    const AngularDistEntry &alphaEntry,
+    const AngularDistEntry &gammaEntry)
+{
+    constexpr int kMaxEnergyBins = 50;
+    constexpr int kTotalIndex = 51;
+
+    std::array<std::array<int, kTotalIndex + 1>, 5> NSPC{};
+    std::array<double, 5> averageEnergy{};
+
+    auto fillParticle = [&](int mode, const AngularDistEntry &entry)
+    {
+        const std::vector<float> &energies =
+            entry.cmEnergy.empty() ? entry.kineticEnergy : entry.cmEnergy;
+
+        for (float energy : energies)
+        {
+            if (energy < 0.0f) continue;
+
+            int bin = int(energy) + 1;
+            if (bin < 1) bin = 1;
+            if (bin > kMaxEnergyBins) bin = kMaxEnergyBins;
+
+            NSPC[mode][bin]++;
+        }
+    };
+
+    fillParticle(1, neutronEntry);
+    fillParticle(2, protonEntry);
+    fillParticle(3, alphaEntry);
+    fillParticle(4, gammaEntry);
+
+    bool hasAnyCounts = false;
+    for (int mode = 1; mode <= 4; ++mode)
+    {
+        for (int bin = 1; bin <= kMaxEnergyBins; ++bin)
+        {
+            if (NSPC[mode][bin] > 0)
+            {
+                hasAnyCounts = true;
+                break;
+            }
+        }
+    }
+
+    if (!hasAnyCounts) return QString();
+
+    QString html;
+    html += "<p>&nbsp;</p>";
+    html += "<h2 align=\"center\">C.M. spectra of emitted particles</h2>";
+    html += "<table class=\"cm-spectra\" align=\"center\">";
+    html += "<tr><th>Ex(MeV)</th><th>Neut</th><th>Prot</th><th>Alpha</th><th>Gamma</th></tr>";
+
+    for (int bin = 1; bin <= kMaxEnergyBins; ++bin)
+    {
+        const bool printRow =
+            NSPC[1][bin] != 0 ||
+            NSPC[2][bin] != 0 ||
+            NSPC[3][bin] != 0 ||
+            NSPC[4][bin] != 0;
+
+        const double particleEnergy = double(bin) - 0.5;
+        for (int mode = 1; mode <= 4; ++mode)
+        {
+            NSPC[mode][kTotalIndex] += NSPC[mode][bin];
+            averageEnergy[mode] += particleEnergy * double(NSPC[mode][bin]);
+        }
+
+        if (!printRow) continue;
+
+        const int eLow = bin - 1;
+        const int eHigh = (bin == kMaxEnergyBins) ? 99 : bin;
+
+        html += "<tr><td align=\"center\">" +
+                QString::number(eLow) + " - " + QString::number(eHigh) +
+                "</td>";
+
+        for (int mode = 1; mode <= 4; ++mode)
+        {
+            if (NSPC[mode][bin] > 0)
+                html += "<td align=\"center\">" + QString::number(NSPC[mode][bin]) + "</td>";
+            else
+                html += "<td></td>";
+        }
+
+        html += "</tr>";
+    }
+
+    for (int mode = 1; mode <= 4; ++mode)
+        averageEnergy[mode] /= double(NSPC[mode][kTotalIndex]) + 1.0e-9;
+
+    html += "<tr><th>Total</th>";
+    for (int mode = 1; mode <= 4; ++mode)
+        html += "<th>" + QString::number(NSPC[mode][kTotalIndex]) + "</th>";
+    html += "</tr>";
+
+    html += "<tr><th>Average Energy</th>";
+    for (int mode = 1; mode <= 4; ++mode)
+        html += "<td align=\"center\">" + QString::number(averageEnergy[mode], 'f', 2) + "</td>";
+    html += "</tr>";
+
+    html += "</table>";
+    return html;
 }
 
 QString buildAngularDistributionHtmlPACEStyle(
@@ -1640,6 +1770,9 @@ QString buildAngularDistributionHtmlPACEStyle(
             "h2{color:#1d4f91;}"
             "h3{margin-top:25px;}"
             ".small{font-size:12px; color:#666;}"
+            ".cm-spectra{margin:24px auto; min-width:520px;}"
+            ".cm-spectra th{background:#dfeaf7; color:#1d4f91;}"
+            ".cm-spectra td,.cm-spectra th{padding:5px 10px; text-align:center;}"
             "</style></head><body>";
 
     html += "<p class=\"small\">" + title + "</p>";
@@ -1743,9 +1876,6 @@ QString buildAngularDistributionHtmlPACEStyle(
         appendEntryToAccum(acc, entry);
 
         html += buildHeaderForParticlePACE(displayIndex, particleLabel);
-
-        // Gamma particles do not use the massive-particle velocity calculation.
-        // Passing inputMode = 0 prevents the velocity line from being printed.
         appendMainPaceTable(html, acc, particleA, sigmaTotalMb, nCascades,
                             showVelocity ? inputMode : 0,
                             false, plotIndex, velocityLabel);
@@ -1759,6 +1889,11 @@ QString buildAngularDistributionHtmlPACEStyle(
     appendParticleSection("protons", "Proton velocity/c", protonEntry, 1, true);
     appendParticleSection("alpha particles", "Alpha velocity/c", alphaEntry, 4, true);
     appendParticleSection("gamma particles", "", gammaEntry, 1, false);
+
+    html += buildEmittedParticleCMSpectraHtmlGemini(neutronEntry,
+                                                    protonEntry,
+                                                    alphaEntry,
+                                                    gammaEntry);
 
     html += "</body></html>";
     return html;

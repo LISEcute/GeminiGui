@@ -172,6 +172,18 @@ void MainWindow::execute_fusion()
                 (vx * vx + vy * vy + vzLab * vzLab);
     };
 
+    auto computeCMKineticEnergy = [](CNucleus *particle)
+    {
+        float *vel = particle->getVelocityVector();
+
+        const float vx = vel[0] / 30.f;
+        const float vy = vel[1] / 30.f;
+        const float vz = vel[2] / 30.f;
+
+        return 0.5f * (particle->iA * 931.49432f) *
+               (vx * vx + vy * vy + vz * vz);
+    };
+
     //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW  cascade BEGIN
     for (int i=0;i<num_events;i++)
     {
@@ -297,7 +309,8 @@ void MainWindow::execute_fusion()
                                  eventGammaEnergy,
                                  thetaLabDeg,
                                  0.0f,
-                                 0.0f);
+                                 0.0f,
+                                 eventGammaEnergy);
             }
         }
         //============================================================= analysis BEGIN
@@ -313,7 +326,8 @@ void MainWindow::execute_fusion()
                 float vzLab = 0.f;
                 float vxy = 0.f;
                 computeLabKinematics(products, keLab, thetaLabDeg, vzLab, vxy);
-                addAngularSample(neutronAngular, keLab, thetaLabDeg, vzLab, vxy);
+                addAngularSample(neutronAngular, keLab, thetaLabDeg, vzLab, vxy,
+                                 computeCMKineticEnergy(products));
             }
             else if (products->iZ == 1 && CN.isResidue()) //protons
             {
@@ -325,7 +339,8 @@ void MainWindow::execute_fusion()
                     float vzLab = 0.f;
                     float vxy = 0.f;
                     computeLabKinematics(products, keLab, thetaLabDeg, vzLab, vxy);
-                    addAngularSample(protonAngular, keLab, thetaLabDeg, vzLab, vxy);
+                    addAngularSample(protonAngular, keLab, thetaLabDeg, vzLab, vxy,
+                                     computeCMKineticEnergy(products));
                 }
                 else if(products->iA == 2 ) H2MultEv   += weight;
                 else if(products->iA == 3 ) H3MultEv   += weight;
@@ -340,7 +355,8 @@ void MainWindow::execute_fusion()
                     float vzLab = 0.f;
                     float vxy = 0.f;
                     computeLabKinematics(products, keLab, thetaLabDeg, vzLab, vxy);
-                    addAngularSample(alphaAngular, keLab, thetaLabDeg, vzLab, vxy);
+                    addAngularSample(alphaAngular, keLab, thetaLabDeg, vzLab, vxy,
+                                     computeCMKineticEnergy(products));
                 }
                 else if( products->iA == 3)  He3MultEv += weight;
             }
