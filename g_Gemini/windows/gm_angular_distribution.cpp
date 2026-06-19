@@ -649,6 +649,85 @@ enum PlotKind
     PlotCrossSectionVsTheta = 3
 };
 
+constexpr int kCMSpectraMaxEnergyBins = 50;
+constexpr int kCMSpectraTotalIndex = 51;
+
+struct CMSpectraSeries
+{
+    QString label;
+    QColor color;
+    std::array<int, kCMSpectraTotalIndex + 1> counts{};
+    double averageEnergy = 0.0;
+};
+
+void fillCMSpectraSeries(CMSpectraSeries &series, const AngularDistEntry &entry)
+{
+    const std::vector<float> &energies =
+        entry.cmEnergy.empty() ? entry.kineticEnergy : entry.cmEnergy;
+
+    double weightedEnergy = 0.0;
+
+    for (float energy : energies)
+    {
+        if (energy < 0.0f) continue;
+
+        int bin = int(energy) + 1;
+        if (bin < 1) bin = 1;
+        if (bin > kCMSpectraMaxEnergyBins) bin = kCMSpectraMaxEnergyBins;
+
+        const double particleEnergy = double(bin) - 0.5;
+        series.counts[bin]++;
+        series.counts[kCMSpectraTotalIndex]++;
+        weightedEnergy += particleEnergy;
+    }
+
+    if (series.counts[kCMSpectraTotalIndex] > 0)
+        series.averageEnergy = weightedEnergy / double(series.counts[kCMSpectraTotalIndex]);
+}
+
+std::vector<CMSpectraSeries> buildCMSpectraSeries(
+    const AngularDistEntry &neutronEntry,
+    const AngularDistEntry &protonEntry,
+    const AngularDistEntry &alphaEntry,
+    const AngularDistEntry &gammaEntry)
+{
+    std::vector<CMSpectraSeries> series;
+    series.reserve(4);
+
+    auto append = [&](const QString &label, const QColor &color, const AngularDistEntry &entry)
+    {
+        CMSpectraSeries s;
+        s.label = label;
+        s.color = color;
+        fillCMSpectraSeries(s, entry);
+
+        series.push_back(s);
+    };
+
+    append("Neutrons", QColor(175, 205, 238), neutronEntry);
+    append("Protons", QColor(246, 190, 166), protonEntry);
+    append("Alpha", QColor(178, 224, 188), alphaEntry);
+    append("Gamma", QColor(216, 190, 235), gammaEntry);
+
+    return series;
+}
+
+bool hasCMSpectraSamples(const AngularDistEntry &entry)
+{
+    return !entry.cmEnergy.empty() || !entry.kineticEnergy.empty();
+}
+
+bool hasCMSpectraSamples(const AngularDistEntry &neutronEntry,
+                         const AngularDistEntry &protonEntry,
+                         const AngularDistEntry &alphaEntry,
+                         const AngularDistEntry &gammaEntry)
+{
+    return hasCMSpectraSamples(neutronEntry) ||
+           hasCMSpectraSamples(protonEntry) ||
+           hasCMSpectraSamples(alphaEntry) ||
+           hasCMSpectraSamples(gammaEntry);
+}
+
 class ScatterPlotWidget : public QWidget
 {
 public:
@@ -1580,6 +1659,225 @@ private:
     double m_sigmaTotal = 1.0;
     int m_nEvents = 1;
 };
+
+class CMSpectraPlotWidget : public QWidget
+{
+public:
+    explicit CMSpectraPlotWidget(const std::vector<CMSpectraSeries> &series,
+                                 QWidget *parent = nullptr)
+        : QWidget(parent), m_series(series)
+    {
+        setMinimumSize(1120, 760);
+        resize(1120, 760);
+    }
+
+protected:
+    void paintEvent(QPaintEvent *) override
+    {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing, true);
+        p.fillRect(rect(), Qt::white);
+
+        if (m_series.empty())
+        {
+            p.drawText(rect(), Qt::AlignCenter, "No C.M. spectra data");
+            return;
+        }
+
+        QFont titleFont = p.font();
+        titleFont.setPointSize(12);
+        titleFont.setBold(true);
+        p.setFont(titleFont);
+        p.setPen(Qt::black);
+        p.drawText(0, 10, width(), 26, Qt::AlignCenter,
+                   "C.M. Spectra of Emitted Particles");
+
+        const int outerMargin = 18;
+        const int titleBottom = 48;
+        const int panelGap = 20;
+        const int panelW = (width() - 2 * outerMargin - panelGap) / 2;
+        const int panelH = (height() - titleBottom - outerMargin - panelGap) / 2;
+
+        for (int i = 0; i < int(m_series.size()); ++i)
+        {
+            const int row = i / 2;
+            const int col = i % 2;
+            QRect panelRect(outerMargin + col * (panelW + panelGap),
+                            titleBottom + row * (panelH + panelGap),
+                            panelW,
+                            panelH);
+            drawHistogramPanel(p, panelRect, m_series[i]);
+        }
+    }
+
+private:
+    void drawHistogramPanel(QPainter &p,
+                            const QRect &panelRect,
+                            const CMSpectraSeries &series)
+    {
+        const int left = 58;
+        const int right = 14;
+        const int top = 34;
+        const int bottom = 58;
+        QRect plotRect(panelRect.left() + left,
+                       panelRect.top() + top,
+                       panelRect.width() - left - right,
+                       panelRect.height() - top - bottom);
+
+        int maxCount = 0;
+        for (int bin = 1; bin <= kCMSpectraMaxEnergyBins; ++bin)
+            maxCount = std::max(maxCount, series.counts[bin]);
+
+        const double maxY = std::max(1.0, std::ceil(double(maxCount) * 1.15));
+
+        auto mapY = [&](double yValue)
+        {
+            return plotRect.bottom() - int((yValue / maxY) * plotRect.height());
+        };
+
+        QFont panelTitleFont = p.font();
+        panelTitleFont.setPointSize(10);
+        panelTitleFont.setBold(true);
+        p.setFont(panelTitleFont);
+        p.setPen(Qt::black);
+        p.drawText(panelRect.left(),
+                   panelRect.top() + 4,
+                   panelRect.width(),
+                   18,
+                   Qt::AlignCenter,
+                   series.label);
+
+        QFont axisFont = p.font();
+        axisFont.setPointSize(8);
+        axisFont.setBold(false);
+        p.setFont(axisFont);
+
+        p.setPen(QPen(QColor(150, 150, 150), 1));
+        p.drawRect(plotRect);
+
+        const int yTicks = 4;
+        for (int i = 0; i <= yTicks; ++i)
+        {
+            const double frac = double(i) / double(yTicks);
+            const double yValue = frac * maxY;
+            const int y = plotRect.bottom() - int(frac * plotRect.height());
+
+            p.setPen(QPen(QColor(232, 232, 232), 1));
+            p.drawLine(plotRect.left(), y, plotRect.right(), y);
+
+            p.setPen(Qt::black);
+            p.drawLine(plotRect.left() - 4, y, plotRect.left(), y);
+            p.drawText(panelRect.left() + 2,
+                       y - 9,
+                       left - 8,
+                       18,
+                       Qt::AlignRight | Qt::AlignVCenter,
+                       QString::number(int(std::round(yValue))));
+        }
+
+        const double barW = double(plotRect.width()) / double(kCMSpectraMaxEnergyBins);
+        QColor fillColor = series.color;
+        fillColor.setAlpha(170);
+        QColor edgeColor = series.color.darker(115);
+        edgeColor.setAlpha(210);
+
+        for (int bin = 1; bin <= kCMSpectraMaxEnergyBins; ++bin)
+        {
+            const int count = series.counts[bin];
+            const int x = plotRect.left() + int((bin - 1) * barW);
+            const int nextX = plotRect.left() + int(bin * barW);
+            const int y = mapY(count);
+            QRect bar(x + 1,
+                      y,
+                      std::max(1, nextX - x - 2),
+                      std::max(0, plotRect.bottom() - y));
+
+            if (count > 0)
+            {
+                p.fillRect(bar, fillColor);
+                p.setPen(QPen(edgeColor, 1));
+                p.drawRect(bar);
+            }
+        }
+
+        p.setPen(QPen(Qt::black, 1));
+        p.drawLine(plotRect.bottomLeft(), plotRect.bottomRight());
+        p.drawLine(plotRect.bottomLeft(), plotRect.topLeft());
+
+        for (int binEdge = 0; binEdge <= kCMSpectraMaxEnergyBins; binEdge += 10)
+        {
+            const int x = plotRect.left() + int((double(binEdge) / kCMSpectraMaxEnergyBins) * plotRect.width());
+            p.drawLine(x, plotRect.bottom(), x, plotRect.bottom() + 4);
+            p.drawText(x - 18,
+                       plotRect.bottom() + 6,
+                       36,
+                       16,
+                       Qt::AlignCenter,
+                       QString::number(binEdge));
+        }
+
+        const std::array<int, 6> labelBins = {1, 11, 21, 31, 41, 50};
+        for (int bin : labelBins)
+        {
+            const double xFrac = (double(bin) - 0.5) / double(kCMSpectraMaxEnergyBins);
+            const int x = plotRect.left() + int(xFrac * plotRect.width());
+            const int eLow = bin - 1;
+            const int eHigh = (bin == kCMSpectraMaxEnergyBins) ? 99 : bin;
+
+            p.drawText(x - 24,
+                       plotRect.bottom() + 25,
+                       48,
+                       16,
+                       Qt::AlignCenter,
+                       QString::number(eLow) + "-" + QString::number(eHigh));
+        }
+
+        QRect legendRect(plotRect.right() - 148, plotRect.top() + 8, 140, 50);
+        p.fillRect(legendRect, QColor(255, 255, 255, 225));
+        p.setPen(QPen(QColor(150, 150, 150), 1));
+        p.drawRect(legendRect);
+        p.fillRect(QRect(legendRect.left() + 8, legendRect.top() + 10, 18, 10), fillColor);
+        p.setPen(QPen(edgeColor, 1));
+        p.drawRect(QRect(legendRect.left() + 8, legendRect.top() + 10, 18, 10));
+        p.setPen(Qt::black);
+        p.drawText(legendRect.left() + 32,
+                   legendRect.top() + 5,
+                   legendRect.width() - 40,
+                   16,
+                   Qt::AlignLeft,
+                   "Counts/bin");
+        p.drawText(legendRect.left() + 8,
+                   legendRect.top() + 25,
+                   legendRect.width() - 16,
+                   16,
+                   Qt::AlignLeft,
+                   "Total " + QString::number(series.counts[kCMSpectraTotalIndex]) +
+                       ", Avg " + QString::number(series.averageEnergy, 'f', 2));
+
+        if (series.counts[kCMSpectraTotalIndex] == 0)
+        {
+            p.setPen(QColor(90, 90, 90));
+            p.drawText(plotRect, Qt::AlignCenter, "No counts");
+        }
+
+        p.setPen(Qt::black);
+        p.drawText(plotRect.left(),
+                   panelRect.bottom() - 20,
+                   plotRect.width(),
+                   16,
+                   Qt::AlignCenter,
+                   "Energy bin Ex (MeV)");
+
+        p.save();
+        p.translate(panelRect.left() + 16, plotRect.top() + plotRect.height() / 2);
+        p.rotate(-90);
+        p.drawText(QRect(-plotRect.height() / 2, -20, plotRect.height(), 20),
+                   Qt::AlignCenter,
+                   "Counts");
+        p.restore();
+    }
+    std::vector<CMSpectraSeries> m_series;
+};
 }
 
 void addAngularSample(AngularDistEntry &entry,
@@ -1642,10 +1940,7 @@ QString buildEmittedParticleCMSpectraHtmlGemini(
     const AngularDistEntry &alphaEntry,
     const AngularDistEntry &gammaEntry)
 {
-    constexpr int kMaxEnergyBins = 50;
-    constexpr int kTotalIndex = 51;
-
-    std::array<std::array<int, kTotalIndex + 1>, 5> NSPC{};
+    std::array<std::array<int, kCMSpectraTotalIndex + 1>, 5> NSPC{};
     std::array<double, 5> averageEnergy{};
 
     auto fillParticle = [&](int mode, const AngularDistEntry &entry)
@@ -1659,7 +1954,7 @@ QString buildEmittedParticleCMSpectraHtmlGemini(
 
             int bin = int(energy) + 1;
             if (bin < 1) bin = 1;
-            if (bin > kMaxEnergyBins) bin = kMaxEnergyBins;
+            if (bin > kCMSpectraMaxEnergyBins) bin = kCMSpectraMaxEnergyBins;
 
             NSPC[mode][bin]++;
         }
@@ -1673,7 +1968,7 @@ QString buildEmittedParticleCMSpectraHtmlGemini(
     bool hasAnyCounts = false;
     for (int mode = 1; mode <= 4; ++mode)
     {
-        for (int bin = 1; bin <= kMaxEnergyBins; ++bin)
+        for (int bin = 1; bin <= kCMSpectraMaxEnergyBins; ++bin)
         {
             if (NSPC[mode][bin] > 0)
             {
@@ -1688,10 +1983,11 @@ QString buildEmittedParticleCMSpectraHtmlGemini(
     QString html;
     html += "<p>&nbsp;</p>";
     html += "<h2 align=\"center\">C.M. spectra of emitted particles</h2>";
+    html += "<p align=\"center\"><a href=\"gemini://plot_cm_spectra\">Plot C.M. spectra</a></p>";
     html += "<table class=\"cm-spectra\" align=\"center\">";
     html += "<tr><th>Ex(MeV)</th><th>Neut</th><th>Prot</th><th>Alpha</th><th>Gamma</th></tr>";
 
-    for (int bin = 1; bin <= kMaxEnergyBins; ++bin)
+    for (int bin = 1; bin <= kCMSpectraMaxEnergyBins; ++bin)
     {
         const bool printRow =
             NSPC[1][bin] != 0 ||
@@ -1702,14 +1998,14 @@ QString buildEmittedParticleCMSpectraHtmlGemini(
         const double particleEnergy = double(bin) - 0.5;
         for (int mode = 1; mode <= 4; ++mode)
         {
-            NSPC[mode][kTotalIndex] += NSPC[mode][bin];
+            NSPC[mode][kCMSpectraTotalIndex] += NSPC[mode][bin];
             averageEnergy[mode] += particleEnergy * double(NSPC[mode][bin]);
         }
 
         if (!printRow) continue;
 
         const int eLow = bin - 1;
-        const int eHigh = (bin == kMaxEnergyBins) ? 99 : bin;
+        const int eHigh = (bin == kCMSpectraMaxEnergyBins) ? 99 : bin;
 
         html += "<tr><td align=\"center\">" +
                 QString::number(eLow) + " - " + QString::number(eHigh) +
@@ -1727,11 +2023,11 @@ QString buildEmittedParticleCMSpectraHtmlGemini(
     }
 
     for (int mode = 1; mode <= 4; ++mode)
-        averageEnergy[mode] /= double(NSPC[mode][kTotalIndex]) + 1.0e-9;
+        averageEnergy[mode] /= double(NSPC[mode][kCMSpectraTotalIndex]) + 1.0e-9;
 
     html += "<tr><th>Total</th>";
     for (int mode = 1; mode <= 4; ++mode)
-        html += "<th>" + QString::number(NSPC[mode][kTotalIndex]) + "</th>";
+        html += "<th>" + QString::number(NSPC[mode][kCMSpectraTotalIndex]) + "</th>";
     html += "</tr>";
 
     html += "<tr><th>Average Energy</th>";
@@ -1997,6 +2293,12 @@ void AngularDistributionWidget::link_clicked(const QUrl &url)
         return;
     }
 
+    if (url.host() == "plot_cm_spectra")
+    {
+        openCMSpectraPlotWindow();
+        return;
+    }
+
     if (url.host() == "plot_table" ||
         url.host() == "plot_ntheta" ||
         url.host() == "plot_ne" ||
@@ -2013,6 +2315,74 @@ void AngularDistributionWidget::link_clicked(const QUrl &url)
 
         openPlotWindow(false, idx, kind);
     }
+}
+
+void AngularDistributionWidget::openCMSpectraPlotWindow()
+{
+    if (!hasCMSpectraSamples(neutronEntryForPlots,
+                             protonEntryForPlots,
+                             alphaEntryForPlots,
+                             gammaEntryForPlots))
+    {
+        return;
+    }
+
+    const std::vector<CMSpectraSeries> series =
+        buildCMSpectraSeries(neutronEntryForPlots,
+                             protonEntryForPlots,
+                             alphaEntryForPlots,
+                             gammaEntryForPlots);
+
+    if (series.empty()) return;
+
+    QDialog *dlg = new QDialog(this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose, true);
+    dlg->setWindowIcon(QIcon(":/Gemini_logo.png"));
+    dlg->setWindowTitle("Gemini: C.M. spectra histograms");
+    dlg->setModal(false);
+
+    QVBoxLayout *mainLayout = new QVBoxLayout(dlg);
+
+    QHBoxLayout *topRow = new QHBoxLayout;
+
+    QLabel *topLabel = new QLabel("<h2 style='color:#1d4f91; margin:0;'>C.M. spectra histograms</h2>"
+                                  "<p style='margin:2px 0 0 0;'><em>"
+                                  + plotTitle.toHtmlEscaped() +
+                                  "</em> - one histogram per emitted particle</p>");
+    topLabel->setTextFormat(Qt::RichText);
+    topRow->addWidget(topLabel);
+    topRow->addStretch();
+
+    QPushButton *savePngButton = new QPushButton("Save as PNG");
+    savePngButton->setFixedHeight(26);
+    savePngButton->setMaximumWidth(110);
+    topRow->addWidget(savePngButton, 0, Qt::AlignTop | Qt::AlignRight);
+
+    mainLayout->addLayout(topRow);
+
+    CMSpectraPlotWidget *plot = new CMSpectraPlotWidget(series);
+    mainLayout->addWidget(plot);
+
+    QObject::connect(savePngButton, &QPushButton::clicked, dlg, [plot, dlg]()
+                     {
+                         const QString fileName = QFileDialog::getSaveFileName(
+                             dlg,
+                             QObject::tr("Save Plot as PNG"),
+                             QString(),
+                             QObject::tr("PNG Image (*.png)")
+                             );
+
+                         if (fileName.isEmpty()) return;
+
+                         QPixmap pixmap(plot->size());
+                         pixmap.fill(Qt::white);
+                         plot->render(&pixmap);
+                         pixmap.save(fileName, "PNG");
+                     });
+
+    dlg->setLayout(mainLayout);
+    dlg->resize(1200, 880);
+    dlg->show();
 }
 
 void AngularDistributionWidget::openPlotWindow(bool plotAllTables, int tableIndex, int plotKind)

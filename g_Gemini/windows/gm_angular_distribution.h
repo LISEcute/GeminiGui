@@ -103,6 +103,7 @@ private slots:
 
 private:
     void openPlotWindow(bool plotAllTables, int tableIndex, int plotKind);
+    void openCMSpectraPlotWindow();
 
     QString html;
     std::map<std::pair<int, int>, AngularDistEntry> entriesForPlots;
