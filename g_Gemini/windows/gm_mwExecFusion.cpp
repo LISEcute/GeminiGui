@@ -127,6 +127,7 @@ void MainWindow::execute_fusion()
     int countResidue = 0;
     int counter=0;
     std::map<std::pair<int, int>, AngularDistEntry> angularDistByZN;
+    std::map<std::pair<int, int>, AngularDistEntry> imfAngularByZN;
     AngularDistEntry neutronAngular;
     neutronAngular.z = 0;
     neutronAngular.n = 1;
@@ -259,7 +260,33 @@ void MainWindow::execute_fusion()
         }
 
         //intermediate mass fragment
-        if (CN.isAsymmetricFission()) {Nimf += weight; imf_total++;} //imf event
+        if (CN.isAsymmetricFission())
+        {
+            Nimf += weight;
+            imf_total++;
+
+            CNucleus *imfProducts = CN.getProducts(0);
+            for (int j = 0; j < Nfrag && imfProducts; j++)
+            {
+                if (imfProducts->iZ > CN.getZmaxEvap())
+                {
+                    float keLab = 0.f;
+                    float thetaLabDeg = 0.f;
+                    float vzLab = 0.f;
+                    float vxy = 0.f;
+                    computeLabKinematics(imfProducts, keLab, thetaLabDeg, vzLab, vxy);
+                    addAngularSample(imfAngularByZN,
+                                     imfProducts->iZ,
+                                     imfProducts->iA - imfProducts->iZ,
+                                     keLab,
+                                     thetaLabDeg,
+                                     vzLab,
+                                     vxy,
+                                     computeCMKineticEnergy(imfProducts));
+                }
+                imfProducts = CN.getProducts();
+            }
+        } //imf event
 
         total += weight;
 
@@ -557,11 +584,55 @@ void MainWindow::execute_fusion()
                 gammaAngular,
                 fus.Ex,
                 fus.iAcn,
+                fus.iZcn,
                 recoilBetaCN,
                 0,
                 this
                 );
         angularWindow->show();
+    }
+
+    if (ui->AngDistImf->isChecked())
+    {
+        const double recoilBetaCN =
+            std::sqrt(2.0 * (Elab * Ap / (Ap + At)) /
+                      (931.49432 * (Ap + At)));
+
+        const QString imfAngularHtml = buildAngularDistributionHtmlPACEStyle(
+            imfAngularByZN,
+            xfus,
+            qMax(1, counter),
+            _LowLimit,
+            _HighLimit,
+            fus.Ex,
+            fus.iAcn,
+            recoilBetaCN,
+            "Fusion mode - IMF",
+            0,
+            1
+            );
+
+        AngularDistributionWidget *imfAngularWindow =
+            new AngularDistributionWidget(
+                imfAngularHtml,
+                imfAngularByZN,
+                xfus,
+                qMax(1, counter),
+                _LowLimit,
+                _HighLimit,
+                "Fusion mode - IMF",
+                AngularDistEntry(),
+                AngularDistEntry(),
+                AngularDistEntry(),
+                AngularDistEntry(),
+                fus.Ex,
+                fus.iAcn,
+                fus.iZcn,
+                recoilBetaCN,
+                0,
+                this
+                );
+        imfAngularWindow->show();
     }
     CN.reset();
 }

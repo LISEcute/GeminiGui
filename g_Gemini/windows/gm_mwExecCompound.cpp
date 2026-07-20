@@ -93,6 +93,7 @@ void MainWindow::execute_compound()
 
     int counter=0;
     std::map<std::pair<int, int>, AngularDistEntry> angularDistByZN;
+    std::map<std::pair<int, int>, AngularDistEntry> imfAngularByZN;
     AngularDistEntry neutronAngular;
     neutronAngular.z = 0;
     neutronAngular.n = 1;
@@ -103,6 +104,7 @@ void MainWindow::execute_compound()
     alphaAngular.z = 2;
     alphaAngular.n = 2;
     const bool showAngDist = _showangdist;
+    const bool showAngDistimf = _showangdistimf;
 
     auto computeLabKinematics = [&](CNucleus *particle,
                                     float &keLab,
@@ -205,7 +207,33 @@ void MainWindow::execute_compound()
         }
 
         //intermediate mass fragment
-        if (CN.isAsymmetricFission()) { Nimf += weight; imf_total++; }
+        if (CN.isAsymmetricFission())
+        {
+            Nimf += weight;
+            imf_total++;
+
+            CNucleus *imfProducts = CN.getProducts(0);
+            for (int j = 0; j < Nfrag && imfProducts; j++)
+            {
+                if (imfProducts->iZ > CN.getZmaxEvap())
+                {
+                    float keLab = 0.f;
+                    float thetaLabDeg = 0.f;
+                    float vzLab = 0.f;
+                    float vxy = 0.f;
+                    computeLabKinematics(imfProducts, keLab, thetaLabDeg, vzLab, vxy);
+                    addAngularSample(imfAngularByZN,
+                                     imfProducts->iZ,
+                                     imfProducts->iA - imfProducts->iZ,
+                                     keLab,
+                                     thetaLabDeg,
+                                     vzLab,
+                                     vxy,
+                                     computeCMKineticEnergy(imfProducts));
+                }
+                imfProducts = CN.getProducts();
+            }
+        }
 
         total += weight;
 
@@ -442,6 +470,7 @@ void MainWindow::execute_compound()
                 AngularDistEntry(),
                 fEx,
                 iACN,
+                iZCN,
                 0.0,
                 0,
                 this
@@ -465,6 +494,45 @@ void MainWindow::execute_compound()
         }
 
         angularWindow->show();
+    }
+
+    if (showAngDistimf)
+    {
+        const QString imfAngularHtml = buildAngularDistributionHtmlPACEStyle(
+            imfAngularByZN,
+            _SIGMA,
+            qMax(1, counter),
+            _LowLimit,
+            _HighLimit,
+            fEx,
+            iACN,
+            0.0,
+            "Compound mode - IMF",
+            0,
+            2
+            );
+
+        AngularDistributionWidget *imfAngularWindow =
+            new AngularDistributionWidget(
+                imfAngularHtml,
+                imfAngularByZN,
+                _SIGMA,
+                qMax(1, counter),
+                _LowLimit,
+                _HighLimit,
+                "Compound mode - IMF",
+                AngularDistEntry(),
+                AngularDistEntry(),
+                AngularDistEntry(),
+                AngularDistEntry(),
+                fEx,
+                iACN,
+                iZCN,
+                0.0,
+                0,
+                this
+                );
+        imfAngularWindow->show();
     }
 
     CN.reset();

@@ -286,6 +286,7 @@ void MainWindow::readPage()
   _useIMF    = ui->cb_IMF->isChecked();
   _useIMFenh = ui->cb_IMFenh->isChecked();
   _showangdist = ui->DistAng->isChecked();
+  _showangdistimf = ui->AngDistImf->isChecked();
 
   if(ui->rb_EM0->isChecked()) _optEvap=0;
   else if(ui->rb_EM1->isChecked()) _optEvap=1;
@@ -344,6 +345,7 @@ void MainWindow::writePage()
   ui->rb_EM0->setChecked(_optEvap==0);
   ui->rb_EM1->setChecked(_optEvap==1);
   ui->rb_EM2->setChecked(_optEvap==2);
+  ui->AngDistImf->setChecked(_showangdistimf);
 
   if(_useAME) ui->ame_mass_button->setChecked(true);
   else        ui->trad_mass_button->setChecked(true);

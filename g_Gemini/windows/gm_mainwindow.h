@@ -99,6 +99,7 @@ private slots:
 private:
     Ui::MainWindow *ui;
     bool _showangdist = false;
+    bool _showangdistimf = false;
 
 };
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW

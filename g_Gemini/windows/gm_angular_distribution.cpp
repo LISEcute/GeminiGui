@@ -92,12 +92,27 @@ QString nucleusLabelFromZNPlain(int z, int n)
     return s.simplified();
 }
 
+QString nucleusLabelFromZNHtml(int z, int n)
+{
+    CNucleus nuc(z, z + n);
+    QString s = nuc.getGName();
+    s.replace("<font color=\"darkBlue\">", "");
+    s.replace("<font size=+1>", "");
+    s.replace("</font>", "");
+    return s.simplified();
+}
+
 int isum(const PaceAngularAccum &acc, int energyBin, int l1, int l2)
 {
     int sum = 0;
     for (int l = l1; l <= l2; ++l)
         sum += acc.NR[energyBin][l];
     return sum;
+}
+
+int totalAngularCount(const PaceAngularAccum &acc)
+{
+    return isum(acc, 32, 1, 37);
 }
 
 void initPaceAccum(PaceAngularAccum &acc,
@@ -362,9 +377,9 @@ void appendMainPaceTable(QString &html,
         DSIG[i] = FAC * double(acc.NR[32][i]) / (std::sin(TET) * kDegToRad);
     }
 
-    html += "<tr><td>Total</td>";
+    html += "<tr class=\"total-row\"><th>Total</th>";
     for (int k = 1; k <= 18; ++k)
-        html += (acc.NR[32][k] > 0) ? "<td align=\"center\">" + QString::number(acc.NR[32][k]) + "</td>" : "<td></td>";
+        html += (acc.NR[32][k] > 0) ? "<th align=\"center\">" + QString::number(acc.NR[32][k]) + "</th>" : "<th></th>";
     html += "</tr>";
 
     html += "<tr><td>d&sigma;/d&Omega;</td>";
@@ -435,7 +450,7 @@ void appendSecondPaceTableIfNeeded(QString &html,
         html += (acc.NR[31][k] > 0) ? "<td align=\"center\">" + QString::number(acc.NR[31][k]) + "</td>" : "<td></td>";
     html += "<td></td></tr>";
 
-    html += "<tr><th>Total</th>";
+    html += "<tr class=\"total-row\"><th>Total</th>";
     for (int k = 19; k <= 36; ++k)
         html += (acc.NR[32][k] > 0) ? "<th>" + QString::number(acc.NR[32][k]) + "</th>" : "<th></th>";
     html += "<th></th></tr>";
@@ -470,22 +485,27 @@ void appendSecondPaceTableIfNeeded(QString &html,
     html += "<p>&nbsp;</p>";
 }
 
-QString buildHeaderForResiduePACE(int displayIndex, int z, int n)
+QString buildHeaderForResiduePACE(int displayIndex,
+                                  int z,
+                                  int n,
+                                  const QString &fragmentKind = "residual nucleus")
 {
-    const QString nuc = nucleusLabelFromZNPlain(z, n);
-    return QString("<br><h3>%1. Energy and angular distribution of residual nucleus Z = "
-                   "<span style=\"color:blue\">%2</span> and N = <span style=\"color:blue\">%3</span> "
-                   "(<span style=\"color:blue\">%4</span>)</h3>")
+    const QString nuc = nucleusLabelFromZNHtml(z, n);
+    return QString("<br><h3>%1. Energy and angular distribution of %2 Z = "
+                   "<span style=\"color:blue\">%3</span> and N = <span style=\"color:blue\">%4</span> "
+                   "(<span style=\"color:blue\">%5</span>)</h3>")
         .arg(displayIndex)
+        .arg(fragmentKind.toHtmlEscaped())
         .arg(z)
         .arg(n)
         .arg(nuc);
 }
 
-QString buildHeaderAllPACE(int displayIndex)
+QString buildHeaderAllPACE(int displayIndex, const QString &fragmentKindPlural = "residual nuclei")
 {
-    return QString("<br><h3>%1. Energy and angular distribution of ALL residual nuclei</h3>")
-        .arg(displayIndex);
+    return QString("<br><h3>%1. Energy and angular distribution of ALL %2</h3>")
+        .arg(displayIndex)
+        .arg(fragmentKindPlural.toHtmlEscaped());
 }
 
 QString buildHeaderForParticlePACE(int displayIndex, const QString &particleLabel)
@@ -516,11 +536,23 @@ void appendEntryToAccum(PaceAngularAccum &acc, const AngularDistEntry &entry)
         addToPaceAccum(acc, entry.kineticEnergy[i], entry.thetaDeg[i]);
 }
 
+enum OverlayParticleKind
+{
+    OverlayNone = 0,
+    OverlayNeutron,
+    OverlayProton,
+    OverlayAlpha
+};
+
 struct PlotTableEntry
 {
     QString label;
+    QString htmlLabel;
     AngularDistEntry entry;
     PaceAngularAccum acc;
+    bool allowGaussianEnergyOverlay = true;
+    bool allowBoltzmannEnergyFit = false;
+    OverlayParticleKind boltzmannKind = OverlayNone;
 };
 
 std::vector<PlotTableEntry> buildPlotTableListPACE(
@@ -535,8 +567,12 @@ std::vector<PlotTableEntry> buildPlotTableListPACE(
     double compoundExcitationMeV,
     int compoundA,
     double recoilBetaCN,
-    int mdir)
+    int mdir,
+    bool isImf = false)
 {
+    const QString fragmentKind = isImf ? "IMF fragment" : "residual nucleus";
+    const QString fragmentKindPlural = isImf ? "IMF fragments" : "residual nuclei";
+
     const std::vector<PaceSelectedResidue> selected =
         buildSelectedResiduesPACE(entries, nEvents, lowLimitPercent, highLimitPercent);
 
@@ -586,11 +622,19 @@ std::vector<PlotTableEntry> buildPlotTableListPACE(
         if (it == entries.end()) continue;
 
         PlotTableEntry t;
-        t.label = QString("%1. Energy and angular distribution of residual nucleus Z = %2 and N = %3 (%4)")
+        if (totalAngularCount(item.second) <= 0) continue;
+        t.label = QString("%1. Energy and angular distribution of %2 Z = %3 and N = %4 (%5)")
                       .arg(idx)
+                      .arg(fragmentKind)
                       .arg(r.z)
                       .arg(r.n)
                       .arg(nucleusLabelFromZNPlain(r.z, r.n));
+        t.htmlLabel = QString("%1. Energy and angular distribution of %2 Z = %3 and N = %4 (%5)")
+                          .arg(idx)
+                          .arg(fragmentKind.toHtmlEscaped())
+                          .arg(r.z)
+                          .arg(r.n)
+                          .arg(nucleusLabelFromZNHtml(r.z, r.n));
         t.entry = it->second;
         t.acc = item.second;
         tables.push_back(t);
@@ -611,13 +655,20 @@ std::vector<PlotTableEntry> buildPlotTableListPACE(
     }
 
     PlotTableEntry tAll;
-    tAll.label = QString("%1. Energy and angular distribution of ALL residual nuclei").arg(idx);
-    tAll.entry = all;
-    tAll.acc = allAcc;
-    tables.push_back(tAll);
-    idx++;
+    if (totalAngularCount(allAcc) > 0)
+    {
+        tAll.label = QString("%1. Energy and angular distribution of ALL %2")
+                         .arg(idx)
+                         .arg(fragmentKindPlural);
+        tAll.entry = all;
+        tAll.acc = allAcc;
+        tables.push_back(tAll);
+        idx++;
+    }
 
-    auto appendParticlePlot = [&](const QString &particleLabel, const AngularDistEntry &entry)
+    auto appendParticlePlot = [&](const QString &particleLabel,
+                                  const AngularDistEntry &entry,
+                                  OverlayParticleKind overlayParticleKind)
     {
         if (!hasAngularSamples(entry)) return;
 
@@ -629,14 +680,24 @@ std::vector<PlotTableEntry> buildPlotTableListPACE(
         initPaceAccum(table.acc, compoundA, compoundExcitationMeV, recoilBetaCN, mdir);
         setParticleEnergyInterval(table.acc);
         appendEntryToAccum(table.acc, entry);
+        if (totalAngularCount(table.acc) <= 0) return;
+        if (overlayParticleKind != OverlayNone)
+        {
+            table.allowBoltzmannEnergyFit = true;
+            table.boltzmannKind = overlayParticleKind;
+        }
+        else
+        {
+            table.allowGaussianEnergyOverlay = false;
+        }
         tables.push_back(table);
         idx++;
     };
 
-    appendParticlePlot("neutrons", neutronEntry);
-    appendParticlePlot("protons", protonEntry);
-    appendParticlePlot("alpha particles", alphaEntry);
-    appendParticlePlot("gamma particles", gammaEntry);
+    appendParticlePlot("neutrons", neutronEntry, OverlayNeutron);
+    appendParticlePlot("protons", protonEntry, OverlayProton);
+    appendParticlePlot("alpha particles", alphaEntry, OverlayAlpha);
+    appendParticlePlot("gamma particles", gammaEntry, OverlayNone);
 
     return tables;
 }
@@ -1023,49 +1084,99 @@ void computeGaussianQualityAndArea(GaussianOverlayStats &stats,
 }
 
 GaussianOverlayStats computeGaussianOverlayStats(const std::vector<double> &xCenters,
-                                                 const std::vector<double> &yValues)
+                                                 const std::vector<double> &yValues,
+                                                 bool trimToPopulatedSpan = false)
 {
     GaussianOverlayStats stats;
 
-    if (xCenters.size() != yValues.size() || xCenters.size() < 3)
+    if (xCenters.size() != yValues.size() || xCenters.empty())
         return stats;
+
+    int firstPopulated = -1;
+    int lastPopulated = -1;
+    int populatedBins = 0;
+
+    for (int i = 0; i < int(yValues.size()); ++i)
+    {
+        if (yValues[i] <= 0.0) continue;
+
+        if (firstPopulated < 0)
+            firstPopulated = i;
+        lastPopulated = i;
+        populatedBins++;
+    }
+
+    if (firstPopulated < 0 || lastPopulated < 0)
+        return stats;
+
+    const int fitFirst = trimToPopulatedSpan ? firstPopulated : 0;
+    const int fitLast = trimToPopulatedSpan ? lastPopulated : int(yValues.size()) - 1;
+
+    std::vector<double> fitX;
+    std::vector<double> fitY;
+    fitX.reserve(fitLast - fitFirst + 1);
+    fitY.reserve(fitLast - fitFirst + 1);
+
+    for (int i = fitFirst; i <= fitLast; ++i)
+    {
+        fitX.push_back(xCenters[i]);
+        fitY.push_back(std::max(0.0, yValues[i]));
+    }
 
     double sumW = 0.0;
     double sumX = 0.0;
     double maxY = 0.0;
 
-    for (int i = 0; i < int(yValues.size()); ++i)
+    for (int i = 0; i < int(fitY.size()); ++i)
     {
-        const double w = std::max(0.0, yValues[i]);
+        const double w = fitY[i];
         if (w <= 0.0) continue;
 
         sumW += w;
-        sumX += w * xCenters[i];
+        sumX += w * fitX[i];
         maxY = std::max(maxY, w);
     }
 
     if (sumW <= 0.0 || maxY <= 0.0)
         return stats;
 
-    const double xMin = xCenters.front();
-    const double xMax = xCenters.back();
+    const double xMin = fitX.front();
+    const double xMax = fitX.back();
     const double xRange = std::max(1.0e-9, xMax - xMin);
+    const double fallbackSigma =
+        (fitX.size() >= 2)
+            ? std::max(1.0e-9, std::fabs(fitX.back() - fitX.front()) / double(fitX.size() - 1))
+            : std::max(1.0, xRange);
 
     double A = maxY;
     double mu = sumX / sumW;
 
     double variance = 0.0;
-    for (int i = 0; i < int(yValues.size()); ++i)
+    for (int i = 0; i < int(fitY.size()); ++i)
     {
-        const double w = std::max(0.0, yValues[i]);
+        const double w = fitY[i];
         if (w <= 0.0) continue;
 
-        const double dx = xCenters[i] - mu;
+        const double dx = fitX[i] - mu;
         variance += w * dx * dx;
     }
 
     double sigma = std::sqrt(std::max(variance / sumW, 1.0e-12));
-    sigma = std::max(sigma, xRange / 1000.0);
+    sigma = std::max(sigma, fallbackSigma);
+
+    if (populatedBins < 3 || fitX.size() < 3)
+    {
+        stats.amplitude = A;
+        stats.mean = mu;
+        stats.sigma = sigma;
+        stats.valid = std::isfinite(stats.amplitude) &&
+                      std::isfinite(stats.mean) &&
+                      std::isfinite(stats.sigma) &&
+                      stats.amplitude > 0.0 &&
+                      stats.sigma > 1.0e-12;
+        computeGaussianQualityAndArea(stats, fitX, fitY);
+        return stats;
+    }
 
     auto sseFor = [&](double testA, double testMu, double testSigma)
     {
@@ -1074,10 +1185,10 @@ GaussianOverlayStats computeGaussianOverlayStats(const std::vector<double> &xCen
 
         double sse = 0.0;
 
-        for (int i = 0; i < int(yValues.size()); ++i)
+        for (int i = 0; i < int(fitY.size()); ++i)
         {
-            const double yFit = gaussianValue(testA, testMu, testSigma, xCenters[i]);
-            const double r = yValues[i] - yFit;
+            const double yFit = gaussianValue(testA, testMu, testSigma, fitX[i]);
+            const double r = fitY[i] - yFit;
             sse += r * r;
         }
 
@@ -1092,10 +1203,10 @@ GaussianOverlayStats computeGaussianOverlayStats(const std::vector<double> &xCen
         double jtj[3][3] = {};
         double jtr[3] = {};
 
-        for (int i = 0; i < int(yValues.size()); ++i)
+        for (int i = 0; i < int(fitY.size()); ++i)
         {
-            const double x = xCenters[i];
-            const double y = yValues[i];
+            const double x = fitX[i];
+            const double y = fitY[i];
 
             const double z = (x - mu) / sigma;
             const double e = std::exp(-0.5 * z * z);
@@ -1176,7 +1287,7 @@ GaussianOverlayStats computeGaussianOverlayStats(const std::vector<double> &xCen
 
         newA = std::max(0.0, newA);
         newMu = std::max(xMin - xRange, std::min(xMax + xRange, newMu));
-        newSigma = std::max(xRange / 1000.0, std::min(xRange * 10.0, newSigma));
+        newSigma = std::max(fallbackSigma, std::min(std::max(fallbackSigma, xRange * 10.0), newSigma));
 
         const double newSse = sseFor(newA, newMu, newSigma);
 
@@ -1213,7 +1324,7 @@ GaussianOverlayStats computeGaussianOverlayStats(const std::vector<double> &xCen
                   stats.amplitude > 0.0 &&
                   stats.sigma > 1.0e-12;
 
-    computeGaussianQualityAndArea(stats, xCenters, yValues);
+    computeGaussianQualityAndArea(stats, fitX, fitY);
 
     return stats;
 }
@@ -1232,6 +1343,277 @@ QString formatGaussianNumber(double value)
     return QString::number(value, 'g', 4);
 }
 
+struct BoltzmannOverlayCurve
+{
+    bool valid = false;
+    bool drawBarrier = false;
+    bool unavailable = false;
+    QString unavailableReason;
+    double amplitude = 0.0;
+    double temperatureMeV = 1.0;
+    double barrierMeV = 0.0;
+    bool barrierEstimated = false;
+    double chiSquare = 0.0;
+    double reducedChiSquare = 0.0;
+    double maxY = 0.0;
+    QPolygonF points;
+};
+
+struct BoltzmannFitResult
+{
+    bool valid = false;
+    bool unavailable = false;
+    QString unavailableReason;
+    double amplitude = 0.0;
+    double temperatureMeV = 0.0;
+    double barrierMeV = 0.0;
+    double chiSquare = 0.0;
+    double reducedChiSquare = 0.0;
+};
+
+struct CoulombBarrierInfo
+{
+    double valueMeV = 0.0;
+    bool estimated = false;
+};
+
+CoulombBarrierInfo coulombBarrierForParticle(OverlayParticleKind particleKind,
+                                             int sourceZ,
+                                             int sourceA)
+{
+    CoulombBarrierInfo barrier;
+
+    if (particleKind == OverlayNeutron)
+        return barrier;
+
+    int zParticle = 0;
+    int aParticle = 0;
+    double fallback = 0.0;
+    double minBarrier = 0.0;
+    double maxBarrier = 0.0;
+
+    if (particleKind == OverlayProton)
+    {
+        zParticle = 1;
+        aParticle = 1;
+        fallback = 5.0;
+        minBarrier = 1.0;
+        maxBarrier = 30.0;
+    }
+    else if (particleKind == OverlayAlpha)
+    {
+        zParticle = 2;
+        aParticle = 4;
+        fallback = 10.0;
+        minBarrier = 2.0;
+        maxBarrier = 60.0;
+    }
+    else
+    {
+        return barrier;
+    }
+
+    barrier.valueMeV = fallback;
+
+    const int zDaughter = sourceZ - zParticle;
+    const int aDaughter = sourceA - aParticle;
+    if (sourceZ <= 0 || sourceA <= 0 || zDaughter <= 0 || aDaughter <= 0)
+        return barrier;
+
+    constexpr double r0 = 1.2;
+    const double radiusSum = r0 * (std::cbrt(double(aParticle)) + std::cbrt(double(aDaughter)));
+    if (radiusSum <= 0.0)
+        return barrier;
+
+    const double estimated =
+        1.44 * double(zParticle) * double(zDaughter) / radiusSum;
+    if (!std::isfinite(estimated) || estimated <= 0.0)
+        return barrier;
+
+    barrier.valueMeV = std::clamp(estimated, minBarrier, maxBarrier);
+    barrier.estimated = true;
+    return barrier;
+}
+
+double boltzmannShape(double energyMeV,
+                      double temperatureMeV,
+                      double barrierMeV,
+                      bool charged)
+{
+    if (temperatureMeV <= 0.0)
+        return 0.0;
+
+    if (!charged)
+    {
+        if (energyMeV <= 0.0)
+            return 0.0;
+        return std::sqrt(energyMeV) * std::exp(-energyMeV / temperatureMeV);
+    }
+
+    if (energyMeV <= barrierMeV)
+        return 0.0;
+
+    const double shiftedEnergy = energyMeV - barrierMeV;
+    if (shiftedEnergy <= 0.0 || energyMeV <= 1.0e-12)
+        return 0.0;
+
+    return (std::pow(shiftedEnergy, 1.5) / energyMeV) *
+           std::exp(-shiftedEnergy / temperatureMeV);
+}
+
+BoltzmannFitResult fitBoltzmannToHistogram(const std::vector<double> &xCenters,
+                                           const std::vector<double> &yValues,
+                                           OverlayParticleKind particleKind,
+                                           double barrierMeV)
+{
+    // Boltzmann fitting is used only as a diagnostic for emitted neutron/proton/alpha spectra.
+    // It is not applied to residual nuclei or IMF fragments. In GEMINI, IMFs are
+    // complex-fragment/asymmetric binary-decay products, so a simple emitted-particle
+    // Boltzmann+Coulomb spectrum is not appropriate for IMF plots. The Coulomb barrier
+    // used here is an approximate plotting barrier, not the full GEMINI
+    // transmission-coefficient treatment.
+    //
+    // This is a hard Coulomb-barrier approximation using a simple touching-spheres
+    // Coulomb estimate. Sub-barrier tunneling, barrier distributions, and full GEMINI
+    // transmission coefficients are not included in this plotting fit.
+    BoltzmannFitResult result;
+
+    if (xCenters.size() != yValues.size() || xCenters.empty() || particleKind == OverlayNone)
+    {
+        result.unavailable = true;
+        result.unavailableReason = "Boltzmann fit unavailable";
+        return result;
+    }
+
+    const bool charged = particleKind != OverlayNeutron;
+    const double barrier = charged ? barrierMeV : 0.0;
+    result.barrierMeV = barrier;
+
+    std::vector<double> fitX;
+    std::vector<double> fitY;
+
+    for (int i = 0; i < int(yValues.size()); ++i)
+    {
+        const double y = yValues[i];
+        const double x = xCenters[i];
+        if (y <= 0.0) continue;
+        if (charged && x <= barrier) continue;
+
+        fitX.push_back(x);
+        fitY.push_back(y);
+    }
+
+    if (fitX.size() < 3)
+    {
+        result.unavailable = true;
+        result.unavailableReason = "Boltzmann fit unavailable: too few points";
+        return result;
+    }
+
+    auto evaluateT = [&](double temperature,
+                         double &amplitude,
+                         double &objective,
+                         double &chiSquare,
+                         double &reducedChiSquare)
+    {
+        double numerator = 0.0;
+        double denominator = 0.0;
+        std::vector<double> shapes;
+        shapes.reserve(fitX.size());
+
+        for (double x : fitX)
+        {
+            const double shape = boltzmannShape(x, temperature, barrier, charged);
+            shapes.push_back(shape);
+            numerator += fitY[shapes.size() - 1] * shape;
+            denominator += shape * shape;
+        }
+
+        if (denominator <= 1.0e-18)
+            return false;
+
+        amplitude = numerator / denominator;
+        if (!std::isfinite(amplitude) || amplitude <= 0.0)
+            return false;
+
+        objective = 0.0;
+        chiSquare = 0.0;
+
+        for (int i = 0; i < int(fitY.size()); ++i)
+        {
+            const double expected = amplitude * shapes[i];
+            const double diff = fitY[i] - expected;
+            objective += diff * diff;
+            chiSquare += (diff * diff) / std::max(1.0, expected);
+        }
+
+        reducedChiSquare = chiSquare / double(std::max(1, int(fitY.size()) - 2));
+        return std::isfinite(objective) && std::isfinite(chiSquare) && std::isfinite(reducedChiSquare);
+    };
+
+    constexpr double tMin = 0.2;
+    constexpr double tMax = 10.0;
+    constexpr int gridSteps = 800;
+
+    double bestA = 0.0;
+    double bestT = 0.0;
+    double bestObjective = 1.0e300;
+    double bestChi = 0.0;
+    double bestReducedChi = 0.0;
+
+    auto tryRange = [&](double rangeMin, double rangeMax, int steps)
+    {
+        for (int i = 0; i <= steps; ++i)
+        {
+            const double frac = double(i) / double(steps);
+            const double temperature = rangeMin + frac * (rangeMax - rangeMin);
+
+            double amplitude = 0.0;
+            double objective = 0.0;
+            double chi = 0.0;
+            double reducedChi = 0.0;
+            if (!evaluateT(temperature, amplitude, objective, chi, reducedChi))
+                continue;
+
+            if (objective < bestObjective)
+            {
+                bestObjective = objective;
+                bestA = amplitude;
+                bestT = temperature;
+                bestChi = chi;
+                bestReducedChi = reducedChi;
+            }
+        }
+    };
+
+    tryRange(tMin, tMax, gridSteps);
+
+    if (bestT > 0.0)
+    {
+        const double coarseStep = (tMax - tMin) / double(gridSteps);
+        const double localMin = std::max(tMin, bestT - 8.0 * coarseStep);
+        const double localMax = std::min(tMax, bestT + 8.0 * coarseStep);
+        tryRange(localMin, localMax, 500);
+    }
+
+    result.valid = bestT > 0.0 &&
+                   std::isfinite(bestA) &&
+                   std::isfinite(bestT) &&
+                   bestA > 0.0;
+    if (!result.valid)
+    {
+        result.unavailable = true;
+        result.unavailableReason = "Boltzmann fit unavailable";
+        return result;
+    }
+
+    result.amplitude = bestA;
+    result.temperatureMeV = bestT;
+    result.chiSquare = bestChi;
+    result.reducedChiSquare = bestReducedChi;
+    return result;
+}
+
 class OneDPlotWidget : public QWidget
 {
 public:
@@ -1240,13 +1622,23 @@ public:
                    int plotKind,
                    double sigmaTotal,
                    int nEvents,
+                   int sourceZ,
+                   int sourceA,
+                   bool allowGaussianEnergyOverlay,
+                   bool allowBoltzmannEnergyFit,
+                   OverlayParticleKind boltzmannKind,
                    QWidget *parent = nullptr)
         : QWidget(parent),
         m_entry(entry),
         m_acc(acc),
         m_plotKind(plotKind),
         m_sigmaTotal(sigmaTotal),
-        m_nEvents(std::max(1, nEvents))
+        m_nEvents(std::max(1, nEvents)),
+        m_sourceZ(sourceZ),
+        m_sourceA(sourceA),
+        m_allowGaussianEnergyOverlay(allowGaussianEnergyOverlay),
+        m_allowBoltzmannEnergyFit(allowBoltzmannEnergyFit),
+        m_boltzmannKind(boltzmannKind)
     {
         setMinimumSize(980, 560);
         resize(980, 560);
@@ -1269,7 +1661,14 @@ protected:
         p.setPen(QPen(Qt::black, 1));
         p.drawRect(plotRect);
 
-        const int n = int(std::min(m_entry.thetaDeg.size(), m_entry.kineticEnergy.size()));
+        const bool useCmEnergy =
+            (m_plotKind == PlotCountsVsEnergy && !m_entry.cmEnergy.empty());
+        const std::vector<float> &energySamples =
+            useCmEnergy ? m_entry.cmEnergy : m_entry.kineticEnergy;
+
+        const int n = (m_plotKind == PlotCountsVsEnergy)
+                          ? int(energySamples.size())
+                          : int(std::min(m_entry.thetaDeg.size(), m_entry.kineticEnergy.size()));
 
         if (n <= 0)
         {
@@ -1354,37 +1753,71 @@ protected:
         else if (m_plotKind == PlotCountsVsEnergy)
         {
             minX = 0.0;
-            maxX = m_acc.ELOW + 29.0 * m_acc.DELE;
-            bins = 31;
+            const bool useDataEnergyBins = useCmEnergy || m_allowBoltzmannEnergyFit;
+            double binWidth = 1.0;
 
-            values.assign(bins, 0.0);
-            xCenters.assign(bins, 0.0);
-
-            for (int i = 0; i < bins; ++i)
+            if (useDataEnergyBins)
             {
-                if (i == 0)
-                    xCenters[i] = (m_acc.ELOW > 0.0) ? 0.5 * m_acc.ELOW : 0.0;
-                else if (i < bins - 1)
-                    xCenters[i] = m_acc.ELOW + (double(i) - 0.5) * m_acc.DELE;
-                else
-                    xCenters[i] = m_acc.ELOW + 29.5 * m_acc.DELE;
+                double maxEnergy = 0.0;
+                for (float energy : energySamples)
+                {
+                    if (std::isfinite(double(energy)) && energy > 0.0f)
+                        maxEnergy = std::max(maxEnergy, double(energy));
+                }
+
+                maxX = (maxEnergy > 0.0) ? std::ceil(maxEnergy * 1.10) : 1.0;
+                if (maxX <= 0.0)
+                    maxX = 1.0;
+
+                binWidth = (maxX <= 80.0) ? 1.0 : 2.0;
+                bins = int(std::ceil(maxX / binWidth));
+                bins = std::clamp(bins, 20, 80);
+                binWidth = maxX / double(bins);
+
+                values.assign(bins, 0.0);
+                xCenters.assign(bins, 0.0);
+
+                for (int i = 0; i < bins; ++i)
+                    xCenters[i] = minX + (double(i) + 0.5) * binWidth;
+            }
+            else
+            {
+                maxX = m_acc.ELOW + 29.0 * m_acc.DELE;
+                bins = 31;
+                values.assign(bins, 0.0);
+                xCenters.assign(bins, 0.0);
+
+                for (int i = 0; i < bins; ++i)
+                {
+                    if (i == 0)
+                        xCenters[i] = (m_acc.ELOW > 0.0) ? 0.5 * m_acc.ELOW : 0.0;
+                    else if (i < bins - 1)
+                        xCenters[i] = m_acc.ELOW + (double(i) - 0.5) * m_acc.DELE;
+                    else
+                        xCenters[i] = m_acc.ELOW + 29.5 * m_acc.DELE;
+                }
             }
 
             for (int i = 0; i < n; ++i)
             {
-                const double energy = m_entry.kineticEnergy[i];
-
+                const double energy = energySamples[i];
+                if (!std::isfinite(energy) || energy < minX)
+                    continue;
                 int bin = 0;
 
-                if (energy >= m_acc.ELOW)
+                if (useDataEnergyBins)
+                    bin = int((energy - minX) / binWidth);
+                else if (energy >= m_acc.ELOW)
                     bin = std::min(30, int((energy - m_acc.ELOW) / m_acc.DELE) + 1);
 
+                if (bin >= bins)
+                    bin = bins - 1;
                 if (bin >= 0 && bin < bins)
                     values[bin] += 1.0;
             }
 
             title = "N = f(E)";
-            xTitle = "Energy (MeV)";
+            xTitle = useCmEnergy ? "C.M. / source energy (MeV)" : "Lab energy (MeV)";
             yTitle = "Counts N";
         }
 
@@ -1394,15 +1827,73 @@ protected:
             maxY = std::max(maxY, v);
 
         const bool showGaussian =
-            (m_plotKind == PlotCountsVsTheta || m_plotKind == PlotCountsVsEnergy);
+            (m_plotKind == PlotCountsVsTheta ||
+             (m_plotKind == PlotCountsVsEnergy && m_allowGaussianEnergyOverlay));
 
         GaussianOverlayStats gaussianStats;
 
         if (showGaussian)
-            gaussianStats = computeGaussianOverlayStats(xCenters, values);
+            gaussianStats = computeGaussianOverlayStats(xCenters,
+                                                        values,
+                                                        m_plotKind == PlotCountsVsEnergy);
 
         if (gaussianStats.valid)
             maxY = std::max(maxY, gaussianStats.amplitude * 1.15);
+
+        BoltzmannOverlayCurve boltzmannCurve;
+        const bool showBoltzmann =
+            m_plotKind == PlotCountsVsEnergy &&
+            m_allowBoltzmannEnergyFit &&
+            m_boltzmannKind != OverlayNone;
+
+        if (showBoltzmann)
+        {
+            const bool charged = m_boltzmannKind != OverlayNeutron;
+            const CoulombBarrierInfo barrier =
+                coulombBarrierForParticle(m_boltzmannKind, m_sourceZ, m_sourceA);
+            const BoltzmannFitResult fit =
+                fitBoltzmannToHistogram(xCenters, values, m_boltzmannKind, barrier.valueMeV);
+
+            boltzmannCurve.drawBarrier = charged;
+            boltzmannCurve.barrierMeV = barrier.valueMeV;
+            boltzmannCurve.barrierEstimated = barrier.estimated;
+            boltzmannCurve.unavailable = fit.unavailable;
+            boltzmannCurve.unavailableReason = fit.unavailableReason;
+
+            if (fit.valid)
+            {
+                const double startX = charged ? std::max(minX, barrier.valueMeV + 1.0e-6) : minX;
+
+                boltzmannCurve.valid = startX < maxX;
+                boltzmannCurve.amplitude = fit.amplitude;
+                boltzmannCurve.temperatureMeV = fit.temperatureMeV;
+                boltzmannCurve.chiSquare = fit.chiSquare;
+                boltzmannCurve.reducedChiSquare = fit.reducedChiSquare;
+
+                if (boltzmannCurve.valid)
+                {
+                    const int samples = 700;
+                    for (int i = 0; i <= samples; ++i)
+                    {
+                        const double frac = double(i) / double(samples);
+                        const double xValue = startX + frac * (maxX - startX);
+                        const double yValue =
+                            fit.amplitude *
+                            boltzmannShape(xValue, fit.temperatureMeV, barrier.valueMeV, charged);
+                        boltzmannCurve.maxY = std::max(boltzmannCurve.maxY, yValue);
+                        boltzmannCurve.points << QPointF(xValue, yValue);
+                    }
+                }
+            }
+            else if (fit.unavailable)
+            {
+                boltzmannCurve.unavailable = true;
+                boltzmannCurve.unavailableReason = fit.unavailableReason;
+            }
+        }
+
+        if (boltzmannCurve.valid)
+            maxY = std::max(maxY, boltzmannCurve.maxY * 1.15);
 
         if (maxY <= 0.0)
         {
@@ -1514,12 +2005,35 @@ protected:
             p.drawRect(bar);
         }
 
-        auto drawOneDLegend = [&](const QPen &samplePen, bool includeGaussian)
+        auto mapX = [&](double xValue)
         {
+            const double frac = (xValue - minX) / (maxX - minX);
+            return plotRect.left() + int(frac * plotRect.width());
+        };
+
+        QPen gaussianPen(QColor(220, 40, 40, 155), 2, Qt::DotLine);
+        gaussianPen.setCapStyle(Qt::RoundCap);
+        QPen boltzmannPen(QColor(210, 75, 30), 2, Qt::SolidLine);
+        boltzmannPen.setCapStyle(Qt::RoundCap);
+        QPen barrierPen(QColor(80, 80, 80), 2, Qt::DashLine);
+
+        auto drawOneDLegend = [&]()
+        {
+            const bool includeGaussian = showGaussian && gaussianStats.valid;
+            const bool includeBoltzmann = boltzmannCurve.valid;
+            const bool includeBoltzmannUnavailable =
+                showBoltzmann && boltzmannCurve.unavailable && !boltzmannCurve.unavailableReason.isEmpty();
+
             p.save();
 
-            const int legendW = 210;
-            const int legendH = includeGaussian ? 140 : 36;
+            const int legendW = (includeBoltzmann || includeBoltzmannUnavailable) ? 270 : 210;
+            int legendH = 36;
+            if (includeGaussian)
+                legendH += 105;
+            if (includeBoltzmann)
+                legendH += boltzmannCurve.drawBarrier ? 100 : 85;
+            else if (includeBoltzmannUnavailable)
+                legendH += 35;
             const int legendX = plotRect.right() - legendW - 12;
             const int legendY = plotRect.top() + 12;
 
@@ -1542,72 +2056,140 @@ protected:
                        Qt::AlignLeft,
                        "N = " + QString::number(n));
 
-            if (!includeGaussian)
+            if (!includeGaussian && !includeBoltzmann && !includeBoltzmannUnavailable)
             {
                 p.restore();
                 return;
             }
 
-            p.setPen(samplePen);
-            p.drawLine(legendX + 10, legendY + 33, legendX + 42, legendY + 33);
-            p.setPen(Qt::black);
+            int cursorY = legendY + 33;
 
-            p.drawText(legendX + 50,
-                       legendY + 24,
-                       legendW - 58,
-                       16,
-                       Qt::AlignLeft,
-                       "Gaussian fit");
+            if (includeGaussian)
+            {
+                p.setPen(gaussianPen);
+                p.drawLine(legendX + 10, cursorY, legendX + 42, cursorY);
+                p.setPen(Qt::black);
 
-            p.drawText(legendX + 10,
-                       legendY + 48,
-                       legendW - 20,
-                       14,
-                       Qt::AlignLeft,
-                       "Amp = " + formatGaussianNumber(gaussianStats.amplitude));
+                p.drawText(legendX + 10,
+                           cursorY + 15,
+                           legendW - 20,
+                           14,
+                           Qt::AlignLeft,
+                           "Amp = " + formatGaussianNumber(gaussianStats.amplitude));
 
-            p.drawText(legendX + 10,
-                       legendY + 63,
-                       legendW - 20,
-                       14,
-                       Qt::AlignLeft,
-                       "Mean = " + formatGaussianNumber(gaussianStats.mean));
+                p.drawText(legendX + 10,
+                           cursorY + 30,
+                           legendW - 20,
+                           14,
+                           Qt::AlignLeft,
+                           "Mean = " + formatGaussianNumber(gaussianStats.mean));
 
-            p.drawText(legendX + 10,
-                       legendY + 78,
-                       legendW - 20,
-                       14,
-                       Qt::AlignLeft,
-                       "Rms = " + formatGaussianNumber(gaussianStats.sigma));
+                p.drawText(legendX + 10,
+                           cursorY + 45,
+                           legendW - 20,
+                           14,
+                           Qt::AlignLeft,
+                           "Sigma = " + formatGaussianNumber(gaussianStats.sigma));
 
-            p.drawText(legendX + 10,
-                       legendY + 93,
-                       legendW - 20,
-                       14,
-                       Qt::AlignLeft,
-                       "Chi^2 = " + formatGaussianNumber(gaussianStats.chiSquare));
+                p.drawText(legendX + 10,
+                           cursorY + 60,
+                           legendW - 20,
+                           14,
+                           Qt::AlignLeft,
+                           "Chi^2 = " + formatGaussianNumber(gaussianStats.chiSquare));
 
-            p.drawText(legendX + 10,
-                       legendY + 108,
-                       legendW - 20,
-                       14,
-                       Qt::AlignLeft,
-                       "Area = " + formatGaussianNumber(gaussianStats.area));
+                p.drawText(legendX + 10,
+                           cursorY + 75,
+                           legendW - 20,
+                           14,
+                           Qt::AlignLeft,
+                           "Area = " + formatGaussianNumber(gaussianStats.area));
+
+                p.drawText(legendX + 50,
+                           cursorY - 9,
+                           legendW - 58,
+                           16,
+                           Qt::AlignLeft,
+                           "Gaussian fit");
+
+                cursorY += 105;
+            }
+
+            if (includeBoltzmann)
+            {
+                p.setPen(boltzmannPen);
+                p.drawLine(legendX + 10, cursorY, legendX + 42, cursorY);
+                p.setPen(Qt::black);
+
+                p.drawText(legendX + 50,
+                           cursorY - 9,
+                           legendW - 58,
+                           16,
+                           Qt::AlignLeft,
+                           "Boltzmann fit");
+
+                p.drawText(legendX + 10,
+                           cursorY + 15,
+                           legendW - 20,
+                           14,
+                           Qt::AlignLeft,
+                           "A = " + formatGaussianNumber(boltzmannCurve.amplitude));
+
+                p.drawText(legendX + 10,
+                           cursorY + 30,
+                           legendW - 20,
+                           14,
+                           Qt::AlignLeft,
+                           "T_fit = " + QString::number(boltzmannCurve.temperatureMeV, 'g', 3) + " MeV");
+
+                int infoY = cursorY + 45;
+                if (boltzmannCurve.drawBarrier)
+                {
+                    p.drawText(legendX + 10,
+                               infoY,
+                               legendW - 20,
+                               14,
+                               Qt::AlignLeft,
+                               "Coulomb barrier B = " +
+                                   QString::number(boltzmannCurve.barrierMeV, 'g', 3) + " MeV (" +
+                                   QString(boltzmannCurve.barrierEstimated ? "estimated" : "fallback") + ")");
+                    infoY += 15;
+                }
+
+                p.drawText(legendX + 10,
+                           infoY,
+                           legendW - 20,
+                           14,
+                           Qt::AlignLeft,
+                           "Reduced Chi^2 = " +
+                               formatGaussianNumber(boltzmannCurve.reducedChiSquare));
+            }
+            else if (includeBoltzmannUnavailable)
+            {
+                p.setPen(boltzmannPen);
+                p.drawLine(legendX + 10, cursorY, legendX + 42, cursorY);
+                p.setPen(Qt::black);
+
+                p.drawText(legendX + 50,
+                           cursorY - 9,
+                           legendW - 58,
+                           16,
+                           Qt::AlignLeft,
+                           "Boltzmann fit");
+
+                p.drawText(legendX + 10,
+                           cursorY + 15,
+                           legendW - 20,
+                           14,
+                           Qt::AlignLeft,
+                           boltzmannCurve.unavailableReason);
+            }
 
             p.restore();
         };
 
-        QPen gaussianPen(QColor(220, 40, 40, 155), 2, Qt::DotLine);
-        gaussianPen.setCapStyle(Qt::RoundCap);
-
         if (showGaussian && gaussianStats.valid)
         {
-            auto mapX = [&](double xValue)
-            {
-                const double frac = (xValue - minX) / (maxX - minX);
-                return plotRect.left() + int(frac * plotRect.width());
-            };
-
             QPolygonF gaussianCurve;
 
             const int samples = 500;
@@ -1629,7 +2211,40 @@ protected:
             p.drawPolyline(gaussianCurve);
         }
 
-        drawOneDLegend(gaussianPen, showGaussian && gaussianStats.valid);
+        if (showBoltzmann &&
+            boltzmannCurve.drawBarrier &&
+            boltzmannCurve.barrierMeV >= minX &&
+            boltzmannCurve.barrierMeV <= maxX)
+        {
+            const int barrierX = mapX(boltzmannCurve.barrierMeV);
+            p.setPen(barrierPen);
+            p.drawLine(barrierX, plotRect.top(), barrierX, plotRect.bottom());
+
+            p.save();
+            QFont barrierFont = p.font();
+            barrierFont.setPointSize(8);
+            p.setFont(barrierFont);
+            p.setPen(QColor(70, 70, 70));
+            p.translate(barrierX + 8, plotRect.top() + 8);
+            p.rotate(-90);
+            p.drawText(QRect(-120, 0, 120, 16),
+                       Qt::AlignRight | Qt::AlignVCenter,
+                       "Coulomb barrier B = " +
+                           QString::number(boltzmannCurve.barrierMeV, 'g', 3) + " MeV");
+            p.restore();
+        }
+
+        if (boltzmannCurve.valid)
+        {
+            QPolygonF scaledBoltzmannCurve;
+            for (const QPointF &point : boltzmannCurve.points)
+                scaledBoltzmannCurve << QPointF(mapX(point.x()), mapY(point.y()));
+
+            p.setPen(boltzmannPen);
+            p.drawPolyline(scaledBoltzmannCurve);
+        }
+
+        drawOneDLegend();
 
         p.setPen(Qt::black);
 
@@ -1658,6 +2273,11 @@ private:
     int m_plotKind = PlotCountsVsTheta;
     double m_sigmaTotal = 1.0;
     int m_nEvents = 1;
+    int m_sourceZ = 0;
+    int m_sourceA = 0;
+    bool m_allowGaussianEnergyOverlay = true;
+    bool m_allowBoltzmannEnergyFit = false;
+    OverlayParticleKind m_boltzmannKind = OverlayNone;
 };
 
 class CMSpectraPlotWidget : public QWidget
@@ -2057,12 +2677,18 @@ QString buildAngularDistributionHtmlPACEStyle(
     const AngularDistEntry &gammaEntry)
 {
     QString html;
+    const bool isImf = title.contains("IMF", Qt::CaseInsensitive);
+    const QString fragmentKind = isImf ? "IMF fragment" : "residual nucleus";
+    const QString fragmentKindPlural = isImf ? "IMF fragments" : "residual nuclei";
+    const QString velocityLabel = isImf ? "Fragment velocity/c" : "Residual velocity/c";
+
     html += "<!DOCTYPE html><html><head><meta charset=\"utf-8\">";
     html += "<style>"
             "body{font-family:Sans-Serif;}"
             "table{border-collapse:collapse; margin:10px 0;}"
             "th,td{border:1px solid #909090; padding:4px 6px;}"
             "th{background:#ececec;}"
+            ".total-row th,.total-row td{background:#ececec; font-weight:bold;}"
             "h2{color:#1d4f91;}"
             "h3{margin-top:25px;}"
             ".small{font-size:12px; color:#666;}"
@@ -2087,7 +2713,9 @@ QString buildAngularDistributionHtmlPACEStyle(
     const std::vector<PaceSelectedResidue> selected =
         buildSelectedResiduesPACE(entries, nCascades, lowLimitPercent, highLimitPercent);
 
-    html += "<p>&nbsp;</p><h2 align=\"center\">Angular distribution results</h2>";
+    html += isImf
+                ? "<p>&nbsp;</p><h2 align=\"center\">Angular distribution results(IMF)</h2>"
+                : "<p>&nbsp;</p><h2 align=\"center\">Angular distribution results</h2>";
     html += "<p>";
     html += "<a href=\"gemini://plot_all\">Plot All: E vs &theta;</a> &nbsp; ";
     html += "<a href=\"gemini://plot_all_ntheta\">Plot All: N vs &theta;</a> &nbsp; ";
@@ -2135,6 +2763,16 @@ QString buildAngularDistributionHtmlPACEStyle(
         }
     }
 
+    if (totalAngularCount(allAcc) <= 0
+        && !hasAngularSamples(neutronEntry)
+        && !hasAngularSamples(protonEntry)
+        && !hasAngularSamples(alphaEntry)
+        && !hasAngularSamples(gammaEntry))
+    {
+        html += "<p>No angular-distribution events were found for output.</p></body></html>";
+        return html;
+    }
+
     int displayIndex = 1;
     int plotIndex = 0;
 
@@ -2142,21 +2780,25 @@ QString buildAngularDistributionHtmlPACEStyle(
     {
         const PaceSelectedResidue &r = item.first;
         const PaceAngularAccum &acc = item.second;
+        if (totalAngularCount(acc) <= 0) continue;
 
-        html += buildHeaderForResiduePACE(displayIndex, r.z, r.n);
+        html += buildHeaderForResiduePACE(displayIndex, r.z, r.n, fragmentKind);
         appendMainPaceTable(html, acc, r.a, sigmaTotalMb, nCascades, inputMode, false, plotIndex,
-                            "Residual velocity/c");
+                            velocityLabel);
         appendSecondPaceTableIfNeeded(html, acc, plotIndex);
         displayIndex++;
         plotIndex++;
     }
 
-    html += buildHeaderAllPACE(displayIndex);
-    appendMainPaceTable(html, allAcc, compoundA, sigmaTotalMb, nCascades, inputMode, true, plotIndex,
-                        "Residual velocity/c");
-    appendSecondPaceTableIfNeeded(html, allAcc, plotIndex);
-    displayIndex++;
-    plotIndex++;
+    if (totalAngularCount(allAcc) > 0)
+    {
+        html += buildHeaderAllPACE(displayIndex, fragmentKindPlural);
+        appendMainPaceTable(html, allAcc, compoundA, sigmaTotalMb, nCascades, inputMode, true, plotIndex,
+                            velocityLabel);
+        appendSecondPaceTableIfNeeded(html, allAcc, plotIndex);
+        displayIndex++;
+        plotIndex++;
+    }
 
     auto appendParticleSection = [&](const QString &particleLabel,
                                      const QString &velocityLabel,
@@ -2170,6 +2812,7 @@ QString buildAngularDistributionHtmlPACEStyle(
         initPaceAccum(acc, compoundA, compoundExcitationMeV, recoilBetaCN, mdir);
         setParticleEnergyInterval(acc);
         appendEntryToAccum(acc, entry);
+        if (totalAngularCount(acc) <= 0) return;
 
         html += buildHeaderForParticlePACE(displayIndex, particleLabel);
         appendMainPaceTable(html, acc, particleA, sigmaTotalMb, nCascades,
@@ -2210,6 +2853,7 @@ AngularDistributionWidget::AngularDistributionWidget(const QString &htmlContent,
                                                      const AngularDistEntry &gammaEntry,
                                                      double compoundExcitationMeV,
                                                      int compoundA,
+                                                     int compoundZ,
                                                      double recoilBetaCN,
                                                      int mdir,
                                                      QWidget *parent)
@@ -2227,6 +2871,7 @@ AngularDistributionWidget::AngularDistributionWidget(const QString &htmlContent,
     gammaEntryForPlots(gammaEntry),
     compoundExcitationForPlots(compoundExcitationMeV),
     compoundAForPlots(compoundA),
+    compoundZForPlots(compoundZ),
     recoilBetaForPlots(recoilBetaCN),
     mdirForPlots(mdir)
 {
@@ -2406,7 +3051,10 @@ void AngularDistributionWidget::openPlotWindow(bool plotAllTables, int tableInde
                                compoundExcitationForPlots,
                                compoundAForPlots,
                                recoilBetaForPlots,
-                               mdirForPlots);
+                               mdirForPlots,
+                               plotTitle.contains("IMF", Qt::CaseInsensitive));
+
+    if (tables.empty()) return;
 
     QDialog *dlg = new QDialog(this);
     dlg->setAttribute(Qt::WA_DeleteOnClose, true);
@@ -2450,7 +3098,10 @@ void AngularDistributionWidget::openPlotWindow(bool plotAllTables, int tableInde
     {
         if (!plotAllTables && i != tableIndex) continue;
 
-        QLabel *lbl = new QLabel("<b>" + tables[i].label.toHtmlEscaped() + "</b>");
+        const QString displayLabel = tables[i].htmlLabel.isEmpty()
+                                         ? tables[i].label.toHtmlEscaped()
+                                         : tables[i].htmlLabel;
+        QLabel *lbl = new QLabel("<b>" + displayLabel + "</b>");
         lbl->setWordWrap(true);
         lbl->setTextFormat(Qt::RichText);
         plotsLayout->addWidget(lbl);
@@ -2463,7 +3114,12 @@ void AngularDistributionWidget::openPlotWindow(bool plotAllTables, int tableInde
                                       tables[i].acc,
                                       plotKind,
                                       sigmaTotalForPlots,
-                                      nEventsForPlots);
+                                      nEventsForPlots,
+                                      compoundZForPlots,
+                                      compoundAForPlots,
+                                      tables[i].allowGaussianEnergyOverlay,
+                                      tables[i].allowBoltzmannEnergyFit,
+                                      tables[i].boltzmannKind);
 
         plotsLayout->addWidget(plot);
 

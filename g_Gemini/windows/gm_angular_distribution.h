@@ -92,6 +92,7 @@ public:
         const AngularDistEntry &gammaEntry = AngularDistEntry(),
         double compoundExcitationMeV = 0.0,
         int compoundA = 1,
+        int compoundZ = 0,
         double recoilBetaCN = 0.0,
         int mdir = 0,
         QWidget *parent = nullptr);
@@ -122,6 +123,7 @@ private:
 
     double compoundExcitationForPlots = 0.0;
     int compoundAForPlots = 1;
+    int compoundZForPlots = 0;
     double recoilBetaForPlots = 0.0;
     int mdirForPlots = 0;
 };

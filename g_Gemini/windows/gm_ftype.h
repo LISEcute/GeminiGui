@@ -79,4 +79,6 @@
 // 3.2.1   06/12/26  Added Gamma angular Distribution Table; UI changes
 // 3.2.2   06/14/26  Added C.M Spectra for emmitted particles
 // 3.2.3   06/19/26  Added C.M Spectra plots for emmitted particles
+// 3.2.4   07/20/26  Added angular distribbution tables and plots for IMF
+// 3.2.5   07/20/26  Added Boltzmann distribution and columb barrier to plots
 
