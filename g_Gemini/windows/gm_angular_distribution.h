@@ -18,6 +18,7 @@ struct AngularDistEntry
     std::vector<float> vz;
     std::vector<float> vxy;
     std::vector<float> cmEnergy;
+    std::vector<float> weight;
 };
 
 void addAngularSample(AngularDistEntry &entry,
@@ -33,6 +34,14 @@ void addAngularSample(AngularDistEntry &entry,
                       float vxy,
                       float cmEnergy);
 
+void addAngularSample(AngularDistEntry &entry,
+                      float kineticEnergy,
+                      float thetaDeg,
+                      float vz,
+                      float vxy,
+                      float cmEnergy,
+                      float weight);
+
 void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
                       int z,
                       int n,
@@ -49,6 +58,16 @@ void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
                       float vz,
                       float vxy,
                       float cmEnergy);
+
+void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
+                      int z,
+                      int n,
+                      float kineticEnergy,
+                      float thetaDeg,
+                      float vz,
+                      float vxy,
+                      float cmEnergy,
+                      float weight);
 
 QString buildEmittedParticleCMSpectraHtmlGemini(
     const AngularDistEntry &neutronEntry,
@@ -68,6 +87,7 @@ QString buildAngularDistributionHtmlPACEStyle(
     const QString &title,
     int mdir = 0,
     int inputMode = 1,
+    double yieldSigmaTotalMb = -1.0,
     const AngularDistEntry &neutronEntry = AngularDistEntry(),
     const AngularDistEntry &protonEntry = AngularDistEntry(),
     const AngularDistEntry &alphaEntry = AngularDistEntry(),

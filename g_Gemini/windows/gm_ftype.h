@@ -81,4 +81,7 @@
 // 3.2.3   06/19/26  Added C.M Spectra plots for emmitted particles
 // 3.2.4   07/20/26  Added angular distribbution tables and plots for IMF
 // 3.2.5   07/20/26  Added Boltzmann distribution and columb barrier to plots
+// 3.2.5   07/23/26  Added Yields of IMF Particles; Changes to fit logic in Boltzmann distribution
+
+
 

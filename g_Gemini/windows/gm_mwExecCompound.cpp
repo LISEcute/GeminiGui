@@ -229,7 +229,8 @@ void MainWindow::execute_compound()
                                      thetaLabDeg,
                                      vzLab,
                                      vxy,
-                                     computeCMKineticEnergy(imfProducts));
+                                     computeCMKineticEnergy(imfProducts),
+                                     weight);
                 }
                 imfProducts = CN.getProducts();
             }
@@ -450,6 +451,7 @@ void MainWindow::execute_compound()
             "Compound mode",
             0,
             2,
+            -1.0,
             neutronAngular,
             protonAngular,
             alphaAngular
@@ -498,6 +500,8 @@ void MainWindow::execute_compound()
 
     if (showAngDistimf)
     {
+        const double imfYieldSigmaMb = double(Nimf*Sconst);
+
         const QString imfAngularHtml = buildAngularDistributionHtmlPACEStyle(
             imfAngularByZN,
             _SIGMA,
@@ -509,7 +513,8 @@ void MainWindow::execute_compound()
             0.0,
             "Compound mode - IMF",
             0,
-            2
+            2,
+            _useIMFenh ? imfYieldSigmaMb : -1.0
             );
 
         AngularDistributionWidget *imfAngularWindow =

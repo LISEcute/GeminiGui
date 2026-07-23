@@ -282,7 +282,8 @@ void MainWindow::execute_fusion()
                                      thetaLabDeg,
                                      vzLab,
                                      vxy,
-                                     computeCMKineticEnergy(imfProducts));
+                                     computeCMKineticEnergy(imfProducts),
+                                     weight);
                 }
                 imfProducts = CN.getProducts();
             }
@@ -563,6 +564,7 @@ void MainWindow::execute_fusion()
             "Fusion mode",
             0,
             1,
+            -1.0,
             neutronAngular,
             protonAngular,
             alphaAngular,
@@ -597,6 +599,7 @@ void MainWindow::execute_fusion()
         const double recoilBetaCN =
             std::sqrt(2.0 * (Elab * Ap / (Ap + At)) /
                       (931.49432 * (Ap + At)));
+        const double imfYieldSigmaMb = double(Nimf*Sconst);
 
         const QString imfAngularHtml = buildAngularDistributionHtmlPACEStyle(
             imfAngularByZN,
@@ -609,7 +612,8 @@ void MainWindow::execute_fusion()
             recoilBetaCN,
             "Fusion mode - IMF",
             0,
-            1
+            1,
+            _useIMFenh ? imfYieldSigmaMb : -1.0
             );
 
         AngularDistributionWidget *imfAngularWindow =

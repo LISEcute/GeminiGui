@@ -43,7 +43,7 @@ struct PaceSelectedResidue
     int z = 0;
     int n = 0;
     int a = 0;
-    int count = 0;
+    double count = 0.0;
     double percent = 0.0;
 };
 
@@ -60,8 +60,8 @@ struct PaceAngularAccum
     std::array<double, 5> EWR1{};
     std::array<double, 5> EWR2{};
 
-    std::array<std::array<int, 38>, 33> NR{};
-    std::array<std::array<int, 38>, 5> NRW{};
+    std::array<std::array<double, 38>, 33> NR{};
+    std::array<std::array<double, 38>, 5> NRW{};
 };
 
 QString fmt0(double x)
@@ -72,6 +72,13 @@ QString fmt0(double x)
 QString fmt1(double x)
 {
     return QString::number(x, 'f', 1);
+}
+
+QString fmtCount(double x)
+{
+    if (std::abs(x - std::round(x)) < 1.0e-6)
+        return QString::number(x, 'f', 0);
+    return QString::number(x, 'g', 4);
 }
 
 void setParticleEnergyInterval(PaceAngularAccum &acc)
@@ -102,17 +109,41 @@ QString nucleusLabelFromZNHtml(int z, int n)
     return s.simplified();
 }
 
-int isum(const PaceAngularAccum &acc, int energyBin, int l1, int l2)
+double isum(const PaceAngularAccum &acc, int energyBin, int l1, int l2)
 {
-    int sum = 0;
+    double sum = 0.0;
     for (int l = l1; l <= l2; ++l)
         sum += acc.NR[energyBin][l];
     return sum;
 }
 
-int totalAngularCount(const PaceAngularAccum &acc)
+double totalAngularCount(const PaceAngularAccum &acc)
 {
     return isum(acc, 32, 1, 37);
+}
+
+double sampleWeightAt(const AngularDistEntry &entry, int index)
+{
+    if (index >= 0 && index < int(entry.weight.size()))
+        return std::max(0.0, double(entry.weight[index]));
+    return 1.0;
+}
+
+double entryWeightTotal(const AngularDistEntry &entry)
+{
+    const int n = int(entry.kineticEnergy.size());
+    double total = 0.0;
+    for (int i = 0; i < n; ++i)
+        total += sampleWeightAt(entry, i);
+    return total;
+}
+
+double totalEntryWeight(const std::map<std::pair<int, int>, AngularDistEntry> &entries)
+{
+    double totalCount = 0.0;
+    for (const auto &it : entries)
+        totalCount += entryWeightTotal(it.second);
+    return totalCount;
 }
 
 void initPaceAccum(PaceAngularAccum &acc,
@@ -156,8 +187,13 @@ void initPaceAccum(PaceAngularAccum &acc,
     acc.EWR1[4] = acc.EWR[3];
 }
 
-void addToPaceAccum(PaceAngularAccum &acc, double energyLabMeV, double angleLabDeg)
+void addToPaceAccum(PaceAngularAccum &acc,
+                    double energyLabMeV,
+                    double angleLabDeg,
+                    double sampleWeight = 1.0)
 {
+    if (sampleWeight <= 0.0) return;
+
     int K = 1;
     if (energyLabMeV >= acc.ELOW)
         K = std::min(31, int((energyLabMeV - acc.ELOW) / acc.DELE) + 2);
@@ -165,15 +201,15 @@ void addToPaceAccum(PaceAngularAccum &acc, double energyLabMeV, double angleLabD
     int L = std::min(37, int(angleLabDeg / acc.DELANG) + 1);
     if (L < 1) L = 1;
 
-    acc.NR[K][L]++;
-    acc.NR[32][L]++;
+    acc.NR[K][L] += sampleWeight;
+    acc.NR[32][L] += sampleWeight;
 
     int KW = 4;
     if (energyLabMeV <= acc.EWR[1]) KW = 1;
     else if (energyLabMeV <= acc.EWR[2]) KW = 2;
     else if (energyLabMeV <= acc.EWR[3]) KW = 3;
 
-    acc.NRW[KW][L]++;
+    acc.NRW[KW][L] += sampleWeight;
 }
 
 std::vector<PaceSelectedResidue> buildSelectedResiduesPACE(
@@ -188,15 +224,15 @@ std::vector<PaceSelectedResidue> buildSelectedResiduesPACE(
     for (const auto &it : entries)
     {
         const AngularDistEntry &e = it.second;
-        const int cnt = int(e.kineticEnergy.size());
-        if (cnt <= 0) continue;
+        const double count = entryWeightTotal(e);
+        if (count <= 0.0) continue;
 
         PaceSelectedResidue r;
         r.z = e.z;
         r.n = e.n;
         r.a = e.z + e.n;
-        r.count = cnt;
-        r.percent = 100.0 * double(cnt) / double(std::max(1, nCascades));
+        r.count = count;
+        r.percent = 100.0 * count / double(std::max(1, nCascades));
         allResidues.push_back(r);
     }
 
@@ -220,6 +256,73 @@ std::vector<PaceSelectedResidue> buildSelectedResiduesPACE(
     }
 
     return selected;
+}
+
+QString buildImfYieldTableHtml(
+    const std::map<std::pair<int, int>, AngularDistEntry> &entries,
+    double sigmaTotalMb,
+    int nCascades,
+    double yieldSigmaTotalMb)
+{
+    std::vector<PaceSelectedResidue> imfs;
+    imfs.reserve(entries.size());
+
+    double totalCount = 0.0;
+    for (const auto &it : entries)
+    {
+        const AngularDistEntry &e = it.second;
+        const double count = entryWeightTotal(e);
+        if (count <= 0.0) continue;
+
+        PaceSelectedResidue r;
+        r.z = e.z;
+        r.n = e.n;
+        r.a = e.z + e.n;
+        r.count = count;
+        imfs.push_back(r);
+        totalCount += count;
+    }
+
+    if (totalCount <= 0.0) return QString();
+
+    std::sort(imfs.begin(), imfs.end(),
+              [](const PaceSelectedResidue &lhs, const PaceSelectedResidue &rhs)
+              {
+                  if (lhs.z != rhs.z) return lhs.z > rhs.z;
+                  return lhs.a > rhs.a;
+              });
+
+    const double tableSigmaTotal =
+        (yieldSigmaTotalMb >= 0.0)
+            ? yieldSigmaTotalMb
+            : sigmaTotalMb * double(totalCount) / double(std::max(1, nCascades));
+
+    QString html;
+    html += "<h3 align=\"center\" style=\"color: blue\"> Yields of IMF Particles </h3>";
+    html += "<table class=\"yield-table\" cellpadding=\"5\" align=\"center\">";
+    html += "<tr><th>Z</th><th>Name</th><th>Events</th><th>Percent</th><th>x-section (mb)</th><th> err(mb)</th></tr>";
+
+    for (const auto &r : imfs)
+    {
+        const double sigma = tableSigmaTotal * double(r.count) / double(totalCount);
+        const double sigmaErr = sigma / std::sqrt(double(r.count));
+
+        html += "<tr>"
+                "<td>" + QString::number(r.z) + "</td>"
+                "<td style=\"font-weight:bold\">" + nucleusLabelFromZNHtml(r.z, r.n) + "</td>"
+                "<td>" + fmtCount(r.count) + "</td>"
+                "<td>" + QString::number(100.0 * r.count / totalCount, 'f', 1) + "%</td>"
+                "<td>" + QString::number(sigma, 'g', 4) + "</td>"
+                "<td>" + QString::number(sigmaErr, 'g', 4) + "</td>"
+                "</tr>";
+    }
+
+    html += "<tr><td></td><td style=\"font-weight:bold; color:green;\">Total</td><td>"
+            + fmtCount(totalCount) + "</td><td></td><td style=\"font-weight:bold; color:green;\">"
+            + QString::number(tableSigmaTotal, 'f', 2) + "</td><td></td></tr>";
+    html += "</table>";
+
+    return html;
 }
 
 QString buildVelocityLinePACE(const PaceAngularAccum &acc,
@@ -346,7 +449,7 @@ void appendMainPaceTable(QString &html,
         E2 = acc.ELOW;
         html += "<tr><td>Below " + fmt0(E2) + "</td>";
         for (int k = 1; k <= 18; ++k)
-            html += (acc.NR[1][k] > 0) ? "<td align=\"center\">" + QString::number(acc.NR[1][k]) + "</td>" : "<td></td>";
+            html += (acc.NR[1][k] > 0) ? "<td align=\"center\">" + fmtCount(acc.NR[1][k]) + "</td>" : "<td></td>";
         html += "</tr>";
     }
 
@@ -359,14 +462,14 @@ void appendMainPaceTable(QString &html,
         {
             html += "<tr><td>" + fmt1(E1) + " - " + fmt1(E2) + "</td>";
             for (int k = 1; k <= 18; ++k)
-                html += (acc.NR[K][k] > 0) ? "<td align=\"center\">" + QString::number(acc.NR[K][k]) + "</td>" : "<td></td>";
+                html += (acc.NR[K][k] > 0) ? "<td align=\"center\">" + fmtCount(acc.NR[K][k]) + "</td>" : "<td></td>";
             html += "</tr>";
         }
     }
 
     html += "<tr><td>Above " + fmt0(E2) + "</td>";
     for (int k = 1; k <= 18; ++k)
-        html += (acc.NR[31][k] > 0) ? "<td align=\"center\">" + QString::number(acc.NR[31][k]) + "</td>" : "<td></td>";
+        html += (acc.NR[31][k] > 0) ? "<td align=\"center\">" + fmtCount(acc.NR[31][k]) + "</td>" : "<td></td>";
     html += "</tr>";
 
     std::array<double, 37> DSIG{};
@@ -379,7 +482,7 @@ void appendMainPaceTable(QString &html,
 
     html += "<tr class=\"total-row\"><th>Total</th>";
     for (int k = 1; k <= 18; ++k)
-        html += (acc.NR[32][k] > 0) ? "<th align=\"center\">" + QString::number(acc.NR[32][k]) + "</th>" : "<th></th>";
+        html += (acc.NR[32][k] > 0) ? "<th align=\"center\">" + fmtCount(acc.NR[32][k]) + "</th>" : "<th></th>";
     html += "</tr>";
 
     html += "<tr><td>d&sigma;/d&Omega;</td>";
@@ -394,7 +497,7 @@ void appendMainPaceTable(QString &html,
                     : "<tr><td>Above " + fmt0(acc.EWR1[4]) + "</td>";
 
         for (int k = 1; k <= 18; ++k)
-            html += (acc.NRW[i][k] > 0) ? "<td align=\"center\">" + QString::number(acc.NRW[i][k]) + "</td>" : "<td></td>";
+            html += (acc.NRW[i][k] > 0) ? "<td align=\"center\">" + fmtCount(acc.NRW[i][k]) + "</td>" : "<td></td>";
         html += "</tr>";
     }
 
@@ -427,7 +530,7 @@ void appendSecondPaceTableIfNeeded(QString &html,
         E2 = acc.ELOW;
         html += "<tr><td>Below " + fmt0(E2) + "</td>";
         for (int k = 19; k <= 36; ++k)
-            html += (acc.NR[1][k] > 0) ? "<td align=\"center\">" + QString::number(acc.NR[1][k]) + "</td>" : "<td></td>";
+            html += (acc.NR[1][k] > 0) ? "<td align=\"center\">" + fmtCount(acc.NR[1][k]) + "</td>" : "<td></td>";
         html += "<td></td></tr>";
     }
 
@@ -440,19 +543,19 @@ void appendSecondPaceTableIfNeeded(QString &html,
         {
             html += "<tr><td>" + fmt1(E1) + " - " + fmt1(E2) + "</td>";
             for (int k = 19; k <= 36; ++k)
-                html += (acc.NR[K][k] > 0) ? "<td align=\"center\">" + QString::number(acc.NR[K][k]) + "</td>" : "<td></td>";
+                html += (acc.NR[K][k] > 0) ? "<td align=\"center\">" + fmtCount(acc.NR[K][k]) + "</td>" : "<td></td>";
             html += "<td></td></tr>";
         }
     }
 
     html += "<tr><td>Above " + fmt0(E2) + "</td>";
     for (int k = 19; k <= 36; ++k)
-        html += (acc.NR[31][k] > 0) ? "<td align=\"center\">" + QString::number(acc.NR[31][k]) + "</td>" : "<td></td>";
+        html += (acc.NR[31][k] > 0) ? "<td align=\"center\">" + fmtCount(acc.NR[31][k]) + "</td>" : "<td></td>";
     html += "<td></td></tr>";
 
     html += "<tr class=\"total-row\"><th>Total</th>";
     for (int k = 19; k <= 36; ++k)
-        html += (acc.NR[32][k] > 0) ? "<th>" + QString::number(acc.NR[32][k]) + "</th>" : "<th></th>";
+        html += (acc.NR[32][k] > 0) ? "<th>" + fmtCount(acc.NR[32][k]) + "</th>" : "<th></th>";
     html += "<th></th></tr>";
 
     html += "<tr><td>d&sigma;/d&Omega;</td>";
@@ -468,13 +571,13 @@ void appendSecondPaceTableIfNeeded(QString &html,
     {
         html += "<tr><td>" + fmt0(acc.EWR1[i]) + " - " + fmt0(acc.EWR2[i]) + "</td>";
         for (int k = 19; k <= 36; ++k)
-            html += (acc.NRW[i][k] > 0) ? "<td align=\"center\">" + QString::number(acc.NRW[i][k]) + "</td>" : "<td></td>";
+            html += (acc.NRW[i][k] > 0) ? "<td align=\"center\">" + fmtCount(acc.NRW[i][k]) + "</td>" : "<td></td>";
         html += "<td></td></tr>";
     }
 
     html += "<tr><td>Above " + fmt0(acc.EWR1[4]) + "</td>";
     for (int k = 19; k <= 36; ++k)
-        html += (acc.NRW[4][k] > 0) ? "<td>" + QString::number(acc.NRW[4][k]) + "</td>" : "<td></td>";
+        html += (acc.NRW[4][k] > 0) ? "<td>" + fmtCount(acc.NRW[4][k]) + "</td>" : "<td></td>";
     html += "<td></td></tr></table>";
     html += "<p>";
     html += "<a href=\"gemini://plot_table/" + QString::number(plotIndex) + "\">Plot E vs &theta;</a> &nbsp; ";
@@ -533,7 +636,7 @@ void appendEntryToAccum(PaceAngularAccum &acc, const AngularDistEntry &entry)
 {
     const int n = std::min(entry.kineticEnergy.size(), entry.thetaDeg.size());
     for (int i = 0; i < n; ++i)
-        addToPaceAccum(acc, entry.kineticEnergy[i], entry.thetaDeg[i]);
+        addToPaceAccum(acc, entry.kineticEnergy[i], entry.thetaDeg[i], sampleWeightAt(entry, i));
 }
 
 enum OverlayParticleKind
@@ -605,9 +708,10 @@ std::vector<PlotTableEntry> buildPlotTableListPACE(
 
         for (int i = 0; i < m; ++i)
         {
-            addToPaceAccum(allAcc, e.kineticEnergy[i], e.thetaDeg[i]);
+            const double weight = sampleWeightAt(e, i);
+            addToPaceAccum(allAcc, e.kineticEnergy[i], e.thetaDeg[i], weight);
             if (selectedIndex >= 0)
-                addToPaceAccum(selectedAcc[selectedIndex].second, e.kineticEnergy[i], e.thetaDeg[i]);
+                addToPaceAccum(selectedAcc[selectedIndex].second, e.kineticEnergy[i], e.thetaDeg[i], weight);
         }
     }
 
@@ -652,6 +756,8 @@ std::vector<PlotTableEntry> buildPlotTableListPACE(
         all.vz.insert(all.vz.end(), e.vz.begin(), e.vz.end());
         all.vxy.insert(all.vxy.end(), e.vxy.begin(), e.vxy.end());
         all.cmEnergy.insert(all.cmEnergy.end(), e.cmEnergy.begin(), e.cmEnergy.end());
+        for (int i = 0; i < int(e.kineticEnergy.size()); ++i)
+            all.weight.push_back(float(sampleWeightAt(e, i)));
     }
 
     PlotTableEntry tAll;
@@ -838,12 +944,12 @@ protected:
         const int thetaBins = int(std::ceil(maxTheta / m_acc.DELANG));
         const int energyBins = 31;
 
-        std::vector<std::vector<int>> counts(
+        std::vector<std::vector<double>> counts(
             energyBins,
-            std::vector<int>(thetaBins, 0)
+            std::vector<double>(thetaBins, 0.0)
             );
 
-        int maxCount = 0;
+        double maxCount = 0.0;
         int highestPopulatedEnergyBin = 0;
 
         for (int i = 0; i < n; ++i)
@@ -863,7 +969,7 @@ protected:
 
             if (thetaBin < 0 || energyBin < 0) continue;
 
-            counts[energyBin][thetaBin]++;
+            counts[energyBin][thetaBin] += sampleWeightAt(m_entry, i);
             maxCount = std::max(maxCount, counts[energyBin][thetaBin]);
             highestPopulatedEnergyBin = std::max(highestPopulatedEnergyBin, energyBin);
         }
@@ -883,14 +989,14 @@ protected:
         {
             for (int t = 0; t < thetaBins; ++t)
             {
-                int count = counts[e][t];
+                const double count = counts[e][t];
 
                 int x = plotRect.left() + int(t * cellW);
                 int y = plotRect.bottom() - int((e + 1) * cellH);
 
                 QRect cell(x, y, int(cellW) + 1, int(cellH) + 1);
 
-                if (count == 0)
+                if (count <= 0.0)
                 {
                     p.fillRect(cell, QColor(250, 250, 250));
                 }
@@ -1035,7 +1141,6 @@ struct GaussianOverlayStats
     double amplitude = 0.0;        // A in y = A exp(-0.5 ((x - mean) / sigma)^2)
     double mean = 0.0;             // Gaussian center
     double sigma = 0.0;            // Gaussian width
-    double chiSquare = 0.0;        // Chi-square
     double reducedChiSquare = 0.0; // Chi-square / degrees of freedom
     double area = 0.0;             // A * sigma * sqrt(2pi)
     bool valid = false;
@@ -1049,17 +1154,49 @@ double gaussianValue(double amplitude, double mean, double sigma, double x)
     return amplitude * std::exp(-0.5 * z * z);
 }
 
+double poissonDevianceTerm(double observed, double expected)
+{
+    const double mu = std::max(expected, 1.0e-12);
+    const double n = std::max(0.0, observed);
+
+    if (n <= 0.0)
+        return 2.0 * mu;
+
+    return 2.0 * (mu - n + n * std::log(n / mu));
+}
+
+double inferUniformBinWidth(const std::vector<double> &xCenters)
+{
+    if (xCenters.size() < 2)
+        return 1.0;
+
+    std::vector<double> spacings;
+    spacings.reserve(xCenters.size() - 1);
+    for (int i = 1; i < int(xCenters.size()); ++i)
+    {
+        const double dx = xCenters[i] - xCenters[i - 1];
+        if (std::isfinite(dx) && dx > 0.0)
+            spacings.push_back(dx);
+    }
+
+    if (spacings.empty())
+        return 1.0;
+
+    std::sort(spacings.begin(), spacings.end());
+    return spacings[spacings.size() / 2];
+}
+
 void computeGaussianQualityAndArea(GaussianOverlayStats &stats,
                                    const std::vector<double> &xCenters,
                                    const std::vector<double> &yValues)
 {
-    stats.chiSquare = 0.0;
     stats.reducedChiSquare = 0.0;
     stats.area = 0.0;
 
     if (!stats.valid || stats.sigma <= 1.0e-12) return;
 
     int usedPoints = 0;
+    double pearsonSum = 0.0;
 
     for (int i = 0; i < int(yValues.size()); ++i)
     {
@@ -1072,12 +1209,12 @@ void computeGaussianQualityAndArea(GaussianOverlayStats &stats,
         const double denom = std::max(1.0, expected);
         const double diff = observed - expected;
 
-        stats.chiSquare += (diff * diff) / denom;
+        pearsonSum += (diff * diff) / denom;
         usedPoints++;
     }
 
     const int dof = std::max(1, usedPoints - 3);
-    stats.reducedChiSquare = stats.chiSquare / double(dof);
+    stats.reducedChiSquare = pearsonSum / double(dof);
 
     const double sqrtTwoPi = std::sqrt(2.0 * 3.14159265358979323846);
     stats.area = stats.amplitude * stats.sigma * sqrtTwoPi;
@@ -1094,7 +1231,6 @@ GaussianOverlayStats computeGaussianOverlayStats(const std::vector<double> &xCen
 
     int firstPopulated = -1;
     int lastPopulated = -1;
-    int populatedBins = 0;
 
     for (int i = 0; i < int(yValues.size()); ++i)
     {
@@ -1103,7 +1239,6 @@ GaussianOverlayStats computeGaussianOverlayStats(const std::vector<double> &xCen
         if (firstPopulated < 0)
             firstPopulated = i;
         lastPopulated = i;
-        populatedBins++;
     }
 
     if (firstPopulated < 0 || lastPopulated < 0)
@@ -1164,155 +1299,133 @@ GaussianOverlayStats computeGaussianOverlayStats(const std::vector<double> &xCen
     double sigma = std::sqrt(std::max(variance / sumW, 1.0e-12));
     sigma = std::max(sigma, fallbackSigma);
 
-    if (populatedBins < 3 || fitX.size() < 3)
-    {
-        stats.amplitude = A;
-        stats.mean = mu;
-        stats.sigma = sigma;
-        stats.valid = std::isfinite(stats.amplitude) &&
-                      std::isfinite(stats.mean) &&
-                      std::isfinite(stats.sigma) &&
-                      stats.amplitude > 0.0 &&
-                      stats.sigma > 1.0e-12;
-        computeGaussianQualityAndArea(stats, fitX, fitY);
-        return stats;
-    }
+    const double binWidth = inferUniformBinWidth(fitX);
 
-    auto sseFor = [&](double testA, double testMu, double testSigma)
+    auto evaluateGaussian = [&](double testMu,
+                                double testSigma,
+                                double &bestAForShape,
+                                double &deviance)
     {
-        if (testA <= 0.0 || testSigma <= 1.0e-12)
-            return 1.0e300;
+        bestAForShape = 0.0;
+        deviance = 1.0e300;
 
-        double sse = 0.0;
+        if (testSigma <= 1.0e-12 || !std::isfinite(testMu) || !std::isfinite(testSigma))
+            return false;
+
+        std::vector<double> shape;
+        shape.reserve(fitY.size());
+        double shapeSum = 0.0;
+        double observedSum = 0.0;
 
         for (int i = 0; i < int(fitY.size()); ++i)
         {
-            const double yFit = gaussianValue(testA, testMu, testSigma, fitX[i]);
-            const double r = fitY[i] - yFit;
-            sse += r * r;
+            const double s = gaussianValue(1.0, testMu, testSigma, fitX[i]);
+            shape.push_back(s);
+            shapeSum += s;
+            observedSum += std::max(0.0, fitY[i]);
         }
 
-        return sse;
+        if (shapeSum <= 1.0e-18 || observedSum <= 0.0)
+            return false;
+
+        bestAForShape = observedSum / shapeSum;
+        if (!std::isfinite(bestAForShape) || bestAForShape <= 0.0)
+            return false;
+
+        deviance = 0.0;
+        for (int i = 0; i < int(fitY.size()); ++i)
+        {
+            const double expected = std::max(1.0e-12, bestAForShape * shape[i]);
+            const double observed = std::max(0.0, fitY[i]);
+            deviance += poissonDevianceTerm(observed, expected);
+        }
+
+        return std::isfinite(deviance);
     };
 
-    double lambda = 1.0e-3;
-    double bestSse = sseFor(A, mu, sigma);
-
-    for (int iter = 0; iter < 100; ++iter)
+    auto considerGaussian = [&](double testMu,
+                                double testSigma,
+                                double &bestA,
+                                double &bestMu,
+                                double &bestSigma,
+                                double &bestDeviance)
     {
-        double jtj[3][3] = {};
-        double jtr[3] = {};
+        double testA = 0.0;
+        double testDeviance = 0.0;
+        if (!evaluateGaussian(testMu, testSigma, testA, testDeviance))
+            return;
 
-        for (int i = 0; i < int(fitY.size()); ++i)
+        if (testDeviance < bestDeviance)
         {
-            const double x = fitX[i];
-            const double y = fitY[i];
+            bestA = testA;
+            bestMu = testMu;
+            bestSigma = testSigma;
+            bestDeviance = testDeviance;
+        }
+    };
 
-            const double z = (x - mu) / sigma;
-            const double e = std::exp(-0.5 * z * z);
-            const double yFit = A * e;
-            const double r = y - yFit;
+    double bestA = A;
+    double bestMu = mu;
+    double bestSigma = sigma;
+    double bestDeviance = 1.0e300;
 
-            const double dA = e;
-            const double dMu = A * e * (z / sigma);
-            const double dSigma = A * e * ((z * z) / sigma);
+    considerGaussian(mu, sigma, bestA, bestMu, bestSigma, bestDeviance);
 
-            const double J[3] = {dA, dMu, dSigma};
+    const double muMin = xMin;
+    const double muMax = xMax;
+    const double sigmaMin = std::max(0.35 * binWidth, fallbackSigma * 0.35);
+    const double sigmaMax = std::max(sigmaMin * 1.05, std::max(xRange * 1.5, fallbackSigma));
 
-            for (int a = 0; a < 3; ++a)
+    const int coarseMuSteps = std::max(1, int(std::min<double>(80.0, std::max(20.0, fitX.size() * 2.0))));
+    const int coarseSigmaSteps = 80;
+    for (int mi = 0; mi <= coarseMuSteps; ++mi)
+    {
+        const double testMu =
+            muMin + (muMax - muMin) * double(mi) / double(coarseMuSteps);
+
+        for (int si = 0; si <= coarseSigmaSteps; ++si)
+        {
+            const double frac = double(si) / double(coarseSigmaSteps);
+            const double testSigma =
+                sigmaMin * std::pow(sigmaMax / sigmaMin, frac);
+            considerGaussian(testMu, testSigma, bestA, bestMu, bestSigma, bestDeviance);
+        }
+    }
+
+    for (int pass = 0; pass < 3; ++pass)
+    {
+        const double muHalfWindow =
+            std::max(0.25 * binWidth, xRange / std::pow(4.0, double(pass + 1)));
+        const double sigmaScale = std::pow(1.8, 1.0 / double(pass + 1));
+        const double localMuMin = std::max(xMin - binWidth, bestMu - muHalfWindow);
+        const double localMuMax = std::min(xMax + binWidth, bestMu + muHalfWindow);
+        const double localSigmaMin = std::max(sigmaMin, bestSigma / sigmaScale);
+        const double localSigmaMax = std::min(sigmaMax, bestSigma * sigmaScale);
+
+        for (int mi = 0; mi <= 40; ++mi)
+        {
+            const double testMu =
+                localMuMin + (localMuMax - localMuMin) * double(mi) / 40.0;
+
+            for (int si = 0; si <= 40; ++si)
             {
-                jtr[a] += J[a] * r;
-                for (int b = 0; b < 3; ++b)
-                    jtj[a][b] += J[a] * J[b];
+                const double frac = double(si) / 40.0;
+                const double testSigma =
+                    localSigmaMin * std::pow(localSigmaMax / localSigmaMin, frac);
+                considerGaussian(testMu, testSigma, bestA, bestMu, bestSigma, bestDeviance);
             }
         }
+    }
 
-        for (int d = 0; d < 3; ++d)
-            jtj[d][d] += lambda;
+    A = bestA;
+    mu = bestMu;
+    sigma = bestSigma;
 
-        double M[3][4] =
-            {
-                {jtj[0][0], jtj[0][1], jtj[0][2], jtr[0]},
-                {jtj[1][0], jtj[1][1], jtj[1][2], jtr[1]},
-                {jtj[2][0], jtj[2][1], jtj[2][2], jtr[2]}
-            };
-
-        bool singular = false;
-
-        for (int col = 0; col < 3; ++col)
-        {
-            int pivot = col;
-            for (int row = col + 1; row < 3; ++row)
-            {
-                if (std::fabs(M[row][col]) > std::fabs(M[pivot][col]))
-                    pivot = row;
-            }
-
-            if (std::fabs(M[pivot][col]) < 1.0e-18)
-            {
-                singular = true;
-                break;
-            }
-
-            if (pivot != col)
-            {
-                for (int k = col; k < 4; ++k)
-                    std::swap(M[col][k], M[pivot][k]);
-            }
-
-            const double div = M[col][col];
-            for (int k = col; k < 4; ++k)
-                M[col][k] /= div;
-
-            for (int row = 0; row < 3; ++row)
-            {
-                if (row == col) continue;
-
-                const double factor = M[row][col];
-                for (int k = col; k < 4; ++k)
-                    M[row][k] -= factor * M[col][k];
-            }
-        }
-
-        if (singular)
-            break;
-
-        const double dA = M[0][3];
-        const double dMu = M[1][3];
-        const double dSigma = M[2][3];
-
-        double newA = A + dA;
-        double newMu = mu + dMu;
-        double newSigma = sigma + dSigma;
-
-        newA = std::max(0.0, newA);
-        newMu = std::max(xMin - xRange, std::min(xMax + xRange, newMu));
-        newSigma = std::max(fallbackSigma, std::min(std::max(fallbackSigma, xRange * 10.0), newSigma));
-
-        const double newSse = sseFor(newA, newMu, newSigma);
-
-        if (newSse < bestSse)
-        {
-            A = newA;
-            mu = newMu;
-            sigma = newSigma;
-            bestSse = newSse;
-            lambda *= 0.3;
-
-            if (std::fabs(dA) < 1.0e-9 &&
-                std::fabs(dMu) < 1.0e-9 &&
-                std::fabs(dSigma) < 1.0e-9)
-            {
-                break;
-            }
-        }
-        else
-        {
-            lambda *= 10.0;
-        }
-
-        if (lambda > 1.0e12)
-            break;
+    if (!std::isfinite(A) || A <= 0.0 || !std::isfinite(mu) || !std::isfinite(sigma))
+    {
+        A = maxY;
+        mu = sumX / sumW;
+        sigma = std::max(sigma, fallbackSigma);
     }
 
     stats.amplitude = A;
@@ -1349,12 +1462,11 @@ struct BoltzmannOverlayCurve
     bool drawBarrier = false;
     bool unavailable = false;
     QString unavailableReason;
-    double amplitude = 0.0;
-    double temperatureMeV = 1.0;
-    double barrierMeV = 0.0;
-    bool barrierEstimated = false;
-    double chiSquare = 0.0;
-    double reducedChiSquare = 0.0;
+    double normalization = 0.0;
+    double coldTemperatureMeV = 0.0;
+    double effectiveBarrierMeV = 0.0;
+    double barrierDiffusenessMeV = 0.0;
+    double pearsonReducedChiSquare = 0.0;
     double maxY = 0.0;
     QPolygonF points;
 };
@@ -1364,17 +1476,23 @@ struct BoltzmannFitResult
     bool valid = false;
     bool unavailable = false;
     QString unavailableReason;
-    double amplitude = 0.0;
-    double temperatureMeV = 0.0;
-    double barrierMeV = 0.0;
-    double chiSquare = 0.0;
-    double reducedChiSquare = 0.0;
+    double normalization = 0.0;
+    double coldTemperatureMeV = 0.0;
+    double effectiveBarrierMeV = 0.0;
+    double barrierDiffusenessMeV = 0.0;
+    double pearsonReducedChiSquare = 0.0;
 };
 
 struct CoulombBarrierInfo
 {
     double valueMeV = 0.0;
-    bool estimated = false;
+};
+
+struct EvaporationModelParams
+{
+    double coldTemperatureMeV = 1.5;
+    double effectiveBarrierMeV = 0.0;
+    double barrierDiffusenessMeV = 1.0;
 };
 
 CoulombBarrierInfo coulombBarrierForParticle(OverlayParticleKind particleKind,
@@ -1420,51 +1538,194 @@ CoulombBarrierInfo coulombBarrierForParticle(OverlayParticleKind particleKind,
     if (sourceZ <= 0 || sourceA <= 0 || zDaughter <= 0 || aDaughter <= 0)
         return barrier;
 
-    constexpr double r0 = 1.2;
+    // r0 = 1.25 fm is a conventional nuclear-radius constant for this simple
+    // touching-spheres Coulomb estimate.
+    constexpr double r0 = 1.25;
+    constexpr double e2MeVFm = 1.4399764;
     const double radiusSum = r0 * (std::cbrt(double(aParticle)) + std::cbrt(double(aDaughter)));
     if (radiusSum <= 0.0)
         return barrier;
 
     const double estimated =
-        1.44 * double(zParticle) * double(zDaughter) / radiusSum;
+        e2MeVFm * double(zParticle) * double(zDaughter) / radiusSum;
     if (!std::isfinite(estimated) || estimated <= 0.0)
         return barrier;
 
     barrier.valueMeV = std::clamp(estimated, minBarrier, maxBarrier);
-    barrier.estimated = true;
     return barrier;
 }
 
-double boltzmannShape(double energyMeV,
-                      double temperatureMeV,
-                      double barrierMeV,
-                      bool charged)
+double safeExp(double x)
 {
-    if (temperatureMeV <= 0.0)
-        return 0.0;
+    return std::exp(std::clamp(x, -700.0, 700.0));
+}
 
-    if (!charged)
+double smoothCoulombPenetrability(double energyMeV,
+                                  double effectiveBarrierMeV,
+                                  double barrierDiffusenessMeV)
+{
+    if (effectiveBarrierMeV <= 0.0)
+        return 1.0;
+    if (barrierDiffusenessMeV <= 0.0)
+        return energyMeV >= effectiveBarrierMeV ? 1.0 : 0.0;
+
+    const double exponent = (effectiveBarrierMeV - energyMeV) / barrierDiffusenessMeV;
+    return 1.0 / (1.0 + safeExp(exponent));
+}
+
+double evaporationDensity(double energyMeV,
+                          OverlayParticleKind particleKind,
+                          const EvaporationModelParams &params)
+{
+    if (!std::isfinite(energyMeV) || energyMeV < 0.0 ||
+        params.coldTemperatureMeV <= 0.0)
     {
-        if (energyMeV <= 0.0)
-            return 0.0;
-        return std::sqrt(energyMeV) * std::exp(-energyMeV / temperatureMeV);
+        return 0.0;
     }
 
-    if (energyMeV <= barrierMeV)
+    const bool charged = particleKind == OverlayProton || particleKind == OverlayAlpha;
+    double phaseSpace = 0.0;
+    if (!charged)
+    {
+        phaseSpace = std::sqrt(std::max(energyMeV, 0.0));
+    }
+    else
+    {
+        phaseSpace = std::sqrt(std::max(energyMeV, 0.0));
+    }
+
+    const double penetrability =
+        charged
+            ? smoothCoulombPenetrability(energyMeV,
+                                         params.effectiveBarrierMeV,
+                                         params.barrierDiffusenessMeV)
+            : 1.0;
+
+    const double density =
+        phaseSpace * penetrability * safeExp(-energyMeV / params.coldTemperatureMeV);
+    return std::isfinite(density) && density >= 0.0 ? density : 0.0;
+}
+
+double integrateEvaporationDensity(double lowMeV,
+                                   double highMeV,
+                                   OverlayParticleKind particleKind,
+                                   const EvaporationModelParams &params)
+{
+    if (highMeV <= lowMeV)
         return 0.0;
 
-    const double shiftedEnergy = energyMeV - barrierMeV;
-    if (shiftedEnergy <= 0.0 || energyMeV <= 1.0e-12)
-        return 0.0;
+    static constexpr double nodes[8] =
+        {
+            -0.9602898564975363,
+            -0.7966664774136267,
+            -0.5255324099163290,
+            -0.1834346424956498,
+             0.1834346424956498,
+             0.5255324099163290,
+             0.7966664774136267,
+             0.9602898564975363
+        };
+    static constexpr double weights[8] =
+        {
+            0.1012285362903763,
+            0.2223810344533745,
+            0.3137066458778873,
+            0.3626837833783620,
+            0.3626837833783620,
+            0.3137066458778873,
+            0.2223810344533745,
+            0.1012285362903763
+        };
 
-    return (std::pow(shiftedEnergy, 1.5) / energyMeV) *
-           std::exp(-shiftedEnergy / temperatureMeV);
+    const double center = 0.5 * (lowMeV + highMeV);
+    const double halfWidth = 0.5 * (highMeV - lowMeV);
+    double integral = 0.0;
+
+    for (int i = 0; i < 8; ++i)
+    {
+        const double energy = center + halfWidth * nodes[i];
+        integral += weights[i] * evaporationDensity(energy, particleKind, params);
+    }
+
+    integral *= halfWidth;
+    return std::isfinite(integral) && integral >= 0.0 ? integral : 0.0;
+}
+
+void fitRangeForHistogram(const std::vector<double> &yValues,
+                          int &firstBin,
+                          int &lastBin)
+{
+    firstBin = -1;
+    lastBin = -1;
+
+    double total = 0.0;
+    int populated = 0;
+    for (int i = 0; i < int(yValues.size()); ++i)
+    {
+        const double y = std::max(0.0, yValues[i]);
+        total += y;
+        if (y > 0.0)
+        {
+            populated++;
+            if (firstBin < 0)
+                firstBin = i;
+            lastBin = i;
+        }
+    }
+
+    if (firstBin < 0 || lastBin < 0)
+        return;
+
+    // With enough statistics, keep the evaporation fit focused on the populated
+    // spectral body and nearby empty bins. Isolated extreme tail counts are still
+    // shown in the histogram, but they should not determine the peak/barrier fit.
+    if (total >= 50.0 && populated >= 6)
+    {
+        const double lowCut = 0.005 * total;
+        const double highCut = 0.995 * total;
+        double cumulative = 0.0;
+        int coreFirst = firstBin;
+        int coreLast = lastBin;
+
+        for (int i = 0; i < int(yValues.size()); ++i)
+        {
+            cumulative += std::max(0.0, yValues[i]);
+            if (cumulative >= lowCut)
+            {
+                coreFirst = i;
+                break;
+            }
+        }
+
+        cumulative = 0.0;
+        for (int i = 0; i < int(yValues.size()); ++i)
+        {
+            cumulative += std::max(0.0, yValues[i]);
+            if (cumulative >= highCut)
+            {
+                coreLast = i;
+                break;
+            }
+        }
+
+        if (coreLast > coreFirst)
+        {
+            firstBin = coreFirst;
+            lastBin = coreLast;
+        }
+    }
+
+    if (firstBin > 0)
+        firstBin--;
+    if (lastBin + 1 < int(yValues.size()))
+        lastBin++;
 }
 
 BoltzmannFitResult fitBoltzmannToHistogram(const std::vector<double> &xCenters,
                                            const std::vector<double> &yValues,
                                            OverlayParticleKind particleKind,
-                                           double barrierMeV)
+                                           double energyBinWidthMeV,
+                                           const CoulombBarrierInfo &geometricBarrier)
 {
     // Boltzmann fitting is used only as a diagnostic for emitted neutron/proton/alpha spectra.
     // It is not applied to residual nuclei or IMF fragments. In GEMINI, IMFs are
@@ -1473,133 +1734,239 @@ BoltzmannFitResult fitBoltzmannToHistogram(const std::vector<double> &xCenters,
     // used here is an approximate plotting barrier, not the full GEMINI
     // transmission-coefficient treatment.
     //
-    // This is a hard Coulomb-barrier approximation using a simple touching-spheres
-    // Coulomb estimate. Sub-barrier tunneling, barrier distributions, and full GEMINI
-    // transmission coefficients are not included in this plotting fit.
+    // The Coulomb part is an effective smooth penetrability based on a simple
+    // touching-spheres geometric estimate. Full GEMINI transmission coefficients,
+    // emission-stage source evolution, and detailed barrier distributions are not
+    // included in this plotting fit.
     BoltzmannFitResult result;
 
-    if (xCenters.size() != yValues.size() || xCenters.empty() || particleKind == OverlayNone)
+    if (xCenters.size() != yValues.size() || xCenters.empty() ||
+        energyBinWidthMeV <= 0.0 || particleKind == OverlayNone)
     {
         result.unavailable = true;
         result.unavailableReason = "Boltzmann fit unavailable";
         return result;
     }
 
-    const bool charged = particleKind != OverlayNeutron;
-    const double barrier = charged ? barrierMeV : 0.0;
-    result.barrierMeV = barrier;
+    const bool charged = particleKind == OverlayProton || particleKind == OverlayAlpha;
 
-    std::vector<double> fitX;
-    std::vector<double> fitY;
+    int firstFitBin = -1;
+    int lastFitBin = -1;
+    fitRangeForHistogram(yValues, firstFitBin, lastFitBin);
 
-    for (int i = 0; i < int(yValues.size()); ++i)
-    {
-        const double y = yValues[i];
-        const double x = xCenters[i];
-        if (y <= 0.0) continue;
-        if (charged && x <= barrier) continue;
-
-        fitX.push_back(x);
-        fitY.push_back(y);
-    }
-
-    if (fitX.size() < 3)
+    if (firstFitBin < 0 || lastFitBin < firstFitBin)
     {
         result.unavailable = true;
         result.unavailableReason = "Boltzmann fit unavailable: too few points";
         return result;
     }
 
-    auto evaluateT = [&](double temperature,
-                         double &amplitude,
-                         double &objective,
-                         double &chiSquare,
-                         double &reducedChiSquare)
+    double totalObserved = 0.0;
+    for (int i = firstFitBin; i <= lastFitBin; ++i)
     {
-        double numerator = 0.0;
-        double denominator = 0.0;
-        std::vector<double> shapes;
-        shapes.reserve(fitX.size());
+        const double y = std::max(0.0, yValues[i]);
+        totalObserved += y;
+    }
 
-        for (double x : fitX)
+    if (totalObserved <= 0.0)
+    {
+        result.unavailable = true;
+        result.unavailableReason = "Boltzmann fit unavailable: no counts";
+        return result;
+    }
+
+    const int fittedBins = lastFitBin - firstFitBin + 1;
+
+    auto evaluateModel = [&](const EvaporationModelParams &params,
+                             double &normalization,
+                             double &deviance,
+                             double &pearsonReducedChi)
+    {
+        std::vector<double> integrals;
+        integrals.reserve(fittedBins);
+        double totalModel = 0.0;
+
+        for (int bin = firstFitBin; bin <= lastFitBin; ++bin)
         {
-            const double shape = boltzmannShape(x, temperature, barrier, charged);
-            shapes.push_back(shape);
-            numerator += fitY[shapes.size() - 1] * shape;
-            denominator += shape * shape;
+            const double low = std::max(0.0, xCenters[bin] - 0.5 * energyBinWidthMeV);
+            const double high = std::max(low, xCenters[bin] + 0.5 * energyBinWidthMeV);
+            const double integral = integrateEvaporationDensity(low, high, particleKind, params);
+            integrals.push_back(integral);
+            totalModel += integral;
         }
 
-        if (denominator <= 1.0e-18)
+        if (totalModel <= 1.0e-18 || !std::isfinite(totalModel))
             return false;
 
-        amplitude = numerator / denominator;
-        if (!std::isfinite(amplitude) || amplitude <= 0.0)
+        normalization = totalObserved / totalModel;
+        if (!std::isfinite(normalization) || normalization <= 0.0)
             return false;
 
-        objective = 0.0;
-        chiSquare = 0.0;
+        deviance = 0.0;
+        double pearsonChi = 0.0;
 
-        for (int i = 0; i < int(fitY.size()); ++i)
+        for (int j = 0; j < int(integrals.size()); ++j)
         {
-            const double expected = amplitude * shapes[i];
-            const double diff = fitY[i] - expected;
-            objective += diff * diff;
-            chiSquare += (diff * diff) / std::max(1.0, expected);
+            const int bin = firstFitBin + j;
+            const double expected = std::max(1.0e-12, normalization * integrals[j]);
+            const double observed = std::max(0.0, yValues[bin]);
+            const double diff = observed - expected;
+            deviance += poissonDevianceTerm(observed, expected);
+            pearsonChi += (diff * diff) / std::max(1.0, expected);
         }
 
-        reducedChiSquare = chiSquare / double(std::max(1, int(fitY.size()) - 2));
-        return std::isfinite(objective) && std::isfinite(chiSquare) && std::isfinite(reducedChiSquare);
+        int freeParameters = 2; // normalization plus temperature
+        if (charged)
+            freeParameters += 1; // effective Coulomb barrier
+
+        const int dof = std::max(1, fittedBins - freeParameters);
+        pearsonReducedChi = pearsonChi / double(dof);
+        return std::isfinite(deviance) && std::isfinite(pearsonReducedChi);
+    };
+
+    EvaporationModelParams bestParams;
+    double bestNormalization = 0.0;
+    double bestDeviance = 1.0e300;
+    double bestPearson = 0.0;
+
+    auto evaluateCandidate = [&](const EvaporationModelParams &params,
+                                 double &normalization,
+                                 double &deviance,
+                                 double &pearson)
+    {
+        if (params.coldTemperatureMeV <= 0.0 ||
+            params.effectiveBarrierMeV < 0.0 ||
+            params.barrierDiffusenessMeV <= 0.0)
+        {
+            return false;
+        }
+
+        return evaluateModel(params, normalization, deviance, pearson);
+    };
+
+    auto considerModel = [&](const EvaporationModelParams &params,
+                             double normalization,
+                             double deviance,
+                             double pearson)
+    {
+        if (deviance < bestDeviance)
+        {
+            bestParams = params;
+            bestNormalization = normalization;
+            bestDeviance = deviance;
+            bestPearson = pearson;
+        }
+    };
+
+    const double fixedDiffusenessMeV =
+        charged ? (particleKind == OverlayAlpha ? 1.5 : 1.0) : 1.0;
+
+    auto paramsForTemperatureAndBarrier = [&](double temperatureMeV,
+                                              double effectiveBarrierMeV)
+    {
+        EvaporationModelParams params;
+        params.coldTemperatureMeV = temperatureMeV;
+        params.effectiveBarrierMeV = charged ? effectiveBarrierMeV : 0.0;
+        params.barrierDiffusenessMeV = fixedDiffusenessMeV;
+        return params;
+    };
+
+    auto considerTemperatureAndBarrier = [&](double temperatureMeV,
+                                             double effectiveBarrierMeV)
+    {
+        double normalization = 0.0;
+        double deviance = 0.0;
+        double pearson = 0.0;
+        const EvaporationModelParams params =
+            paramsForTemperatureAndBarrier(temperatureMeV, effectiveBarrierMeV);
+        if (evaluateCandidate(params, normalization, deviance, pearson))
+            considerModel(params, normalization, deviance, pearson);
     };
 
     constexpr double tMin = 0.2;
     constexpr double tMax = 10.0;
-    constexpr int gridSteps = 800;
 
-    double bestA = 0.0;
-    double bestT = 0.0;
-    double bestObjective = 1.0e300;
-    double bestChi = 0.0;
-    double bestReducedChi = 0.0;
-
-    auto tryRange = [&](double rangeMin, double rangeMax, int steps)
+    double barrierMin = 0.0;
+    double barrierMax = 0.0;
+    if (charged)
     {
-        for (int i = 0; i <= steps; ++i)
+        const double geometricB = geometricBarrier.valueMeV;
+        const double lowerScale = particleKind == OverlayAlpha ? 0.50 : 0.55;
+        const double upperScale = particleKind == OverlayAlpha ? 1.60 : 1.55;
+        const double hardMax = particleKind == OverlayAlpha ? 60.0 : 30.0;
+        barrierMin = std::max(0.0, std::min(geometricB * lowerScale, geometricB - 4.0));
+        barrierMax = std::min(hardMax, std::max(geometricB * upperScale, geometricB + 4.0));
+        if (barrierMax < barrierMin + 0.5)
+            barrierMax = std::min(hardMax, barrierMin + 0.5);
+    }
+
+    auto scanGrid = [&](double tLow, double tHigh, int tSteps,
+                        double bLow, double bHigh, int bSteps,
+                        bool logTemperature)
+    {
+        tLow = std::clamp(tLow, tMin, tMax);
+        tHigh = std::clamp(tHigh, tMin, tMax);
+        if (tHigh < tLow)
+            std::swap(tLow, tHigh);
+
+        if (charged)
         {
-            const double frac = double(i) / double(steps);
-            const double temperature = rangeMin + frac * (rangeMax - rangeMin);
+            bLow = std::max(0.0, bLow);
+            bHigh = std::max(bLow, bHigh);
+        }
 
-            double amplitude = 0.0;
-            double objective = 0.0;
-            double chi = 0.0;
-            double reducedChi = 0.0;
-            if (!evaluateT(temperature, amplitude, objective, chi, reducedChi))
-                continue;
+        const double logLow = std::log(std::max(tMin, tLow));
+        const double logHigh = std::log(std::max(tMin, tHigh));
 
-            if (objective < bestObjective)
+        for (int ti = 0; ti <= tSteps; ++ti)
+        {
+            const double tFraction = double(ti) / double(std::max(1, tSteps));
+            const double temperature =
+                logTemperature
+                    ? std::exp(logLow + tFraction * (logHigh - logLow))
+                    : tLow + tFraction * (tHigh - tLow);
+
+            const int barrierCount = charged ? bSteps : 0;
+            for (int bi = 0; bi <= barrierCount; ++bi)
             {
-                bestObjective = objective;
-                bestA = amplitude;
-                bestT = temperature;
-                bestChi = chi;
-                bestReducedChi = reducedChi;
+                const double bFraction = double(bi) / double(std::max(1, barrierCount));
+                const double barrier =
+                    charged ? bLow + bFraction * (bHigh - bLow) : 0.0;
+                considerTemperatureAndBarrier(temperature, barrier);
             }
         }
     };
 
-    tryRange(tMin, tMax, gridSteps);
+    scanGrid(tMin, tMax, 360,
+             barrierMin, barrierMax, charged ? 90 : 0,
+             true);
 
-    if (bestT > 0.0)
+    if (bestNormalization > 0.0)
     {
-        const double coarseStep = (tMax - tMin) / double(gridSteps);
-        const double localMin = std::max(tMin, bestT - 8.0 * coarseStep);
-        const double localMax = std::min(tMax, bestT + 8.0 * coarseStep);
-        tryRange(localMin, localMax, 500);
+        double tHalfWindow = std::max(0.12, bestParams.coldTemperatureMeV * 0.18);
+        double bHalfWindow = charged ? std::max(0.15, (barrierMax - barrierMin) * 0.12) : 0.0;
+
+        for (int pass = 0; pass < 5; ++pass)
+        {
+            const double tLow = std::max(tMin, bestParams.coldTemperatureMeV - tHalfWindow);
+            const double tHigh = std::min(tMax, bestParams.coldTemperatureMeV + tHalfWindow);
+            const double bLow =
+                charged ? std::max(barrierMin, bestParams.effectiveBarrierMeV - bHalfWindow) : 0.0;
+            const double bHigh =
+                charged ? std::min(barrierMax, bestParams.effectiveBarrierMeV + bHalfWindow) : 0.0;
+
+            scanGrid(tLow, tHigh, 120,
+                     bLow, bHigh, charged ? 60 : 0,
+                     false);
+
+            tHalfWindow *= 0.35;
+            bHalfWindow *= 0.35;
+        }
     }
 
-    result.valid = bestT > 0.0 &&
-                   std::isfinite(bestA) &&
-                   std::isfinite(bestT) &&
-                   bestA > 0.0;
+    result.valid = bestNormalization > 0.0 &&
+                   std::isfinite(bestNormalization) &&
+                   std::isfinite(bestDeviance);
     if (!result.valid)
     {
         result.unavailable = true;
@@ -1607,10 +1974,11 @@ BoltzmannFitResult fitBoltzmannToHistogram(const std::vector<double> &xCenters,
         return result;
     }
 
-    result.amplitude = bestA;
-    result.temperatureMeV = bestT;
-    result.chiSquare = bestChi;
-    result.reducedChiSquare = bestReducedChi;
+    result.normalization = bestNormalization;
+    result.coldTemperatureMeV = bestParams.coldTemperatureMeV;
+    result.effectiveBarrierMeV = charged ? bestParams.effectiveBarrierMeV : 0.0;
+    result.barrierDiffusenessMeV = charged ? fixedDiffusenessMeV : 0.0;
+    result.pearsonReducedChiSquare = bestPearson;
     return result;
 }
 
@@ -1686,6 +2054,7 @@ protected:
         double minX = 0.0;
         double maxX = 1.0;
         int bins = 1;
+        double energyBinWidthMeV = 1.0;
 
         if (m_plotKind == PlotCountsVsTheta || m_plotKind == PlotCrossSectionVsTheta)
         {
@@ -1701,9 +2070,9 @@ protected:
             minX = 0.0;
             bins = std::max(1, int(maxX));
 
-            const double binWidth = (maxX - minX) / double(bins);
+            const double angularBinWidthDeg = (maxX - minX) / double(bins);
 
-            std::vector<int> counts(bins, 0);
+            std::vector<double> counts(bins, 0.0);
 
             for (int i = 0; i < n; ++i)
             {
@@ -1715,14 +2084,14 @@ protected:
                 int bin = int((theta - minX) / (maxX - minX) * bins);
 
                 if (bin >= bins) bin = bins - 1;
-                if (bin >= 0) counts[bin]++;
+                if (bin >= 0) counts[bin] += sampleWeightAt(m_entry, i);
             }
 
             values.resize(bins, 0.0);
             xCenters.resize(bins, 0.0);
 
             for (int i = 0; i < bins; ++i)
-                xCenters[i] = minX + (double(i) + 0.5) * binWidth;
+                xCenters[i] = minX + (double(i) + 0.5) * angularBinWidthDeg;
 
             for (int i = 0; i < bins; ++i)
             {
@@ -1733,7 +2102,7 @@ protected:
                 else
                 {
                     values[i] = m_sigmaTotal * double(counts[i]) /
-                                (double(m_nEvents) * binWidth);
+                                (double(m_nEvents) * angularBinWidthDeg);
                 }
             }
 
@@ -1754,7 +2123,7 @@ protected:
         {
             minX = 0.0;
             const bool useDataEnergyBins = useCmEnergy || m_allowBoltzmannEnergyFit;
-            double binWidth = 1.0;
+            energyBinWidthMeV = 1.0;
 
             if (useDataEnergyBins)
             {
@@ -1769,21 +2138,22 @@ protected:
                 if (maxX <= 0.0)
                     maxX = 1.0;
 
-                binWidth = (maxX <= 80.0) ? 1.0 : 2.0;
-                bins = int(std::ceil(maxX / binWidth));
+                energyBinWidthMeV = (maxX <= 80.0) ? 1.0 : 2.0;
+                bins = int(std::ceil(maxX / energyBinWidthMeV));
                 bins = std::clamp(bins, 20, 80);
-                binWidth = maxX / double(bins);
+                energyBinWidthMeV = maxX / double(bins);
 
                 values.assign(bins, 0.0);
                 xCenters.assign(bins, 0.0);
 
                 for (int i = 0; i < bins; ++i)
-                    xCenters[i] = minX + (double(i) + 0.5) * binWidth;
+                    xCenters[i] = minX + (double(i) + 0.5) * energyBinWidthMeV;
             }
             else
             {
                 maxX = m_acc.ELOW + 29.0 * m_acc.DELE;
                 bins = 31;
+                energyBinWidthMeV = m_acc.DELE;
                 values.assign(bins, 0.0);
                 xCenters.assign(bins, 0.0);
 
@@ -1806,14 +2176,14 @@ protected:
                 int bin = 0;
 
                 if (useDataEnergyBins)
-                    bin = int((energy - minX) / binWidth);
+                    bin = int((energy - minX) / energyBinWidthMeV);
                 else if (energy >= m_acc.ELOW)
                     bin = std::min(30, int((energy - m_acc.ELOW) / m_acc.DELE) + 1);
 
                 if (bin >= bins)
                     bin = bins - 1;
                 if (bin >= 0 && bin < bins)
-                    values[bin] += 1.0;
+                    values[bin] += sampleWeightAt(m_entry, i);
             }
 
             title = "N = f(E)";
@@ -1852,34 +2222,39 @@ protected:
             const CoulombBarrierInfo barrier =
                 coulombBarrierForParticle(m_boltzmannKind, m_sourceZ, m_sourceA);
             const BoltzmannFitResult fit =
-                fitBoltzmannToHistogram(xCenters, values, m_boltzmannKind, barrier.valueMeV);
+                fitBoltzmannToHistogram(xCenters, values, m_boltzmannKind,
+                                        energyBinWidthMeV, barrier);
 
             boltzmannCurve.drawBarrier = charged;
-            boltzmannCurve.barrierMeV = barrier.valueMeV;
-            boltzmannCurve.barrierEstimated = barrier.estimated;
+            boltzmannCurve.effectiveBarrierMeV = fit.valid ? fit.effectiveBarrierMeV : barrier.valueMeV;
             boltzmannCurve.unavailable = fit.unavailable;
             boltzmannCurve.unavailableReason = fit.unavailableReason;
 
             if (fit.valid)
             {
-                const double startX = charged ? std::max(minX, barrier.valueMeV + 1.0e-6) : minX;
-
-                boltzmannCurve.valid = startX < maxX;
-                boltzmannCurve.amplitude = fit.amplitude;
-                boltzmannCurve.temperatureMeV = fit.temperatureMeV;
-                boltzmannCurve.chiSquare = fit.chiSquare;
-                boltzmannCurve.reducedChiSquare = fit.reducedChiSquare;
+                boltzmannCurve.valid = minX < maxX;
+                boltzmannCurve.normalization = fit.normalization;
+                boltzmannCurve.coldTemperatureMeV = fit.coldTemperatureMeV;
+                boltzmannCurve.effectiveBarrierMeV = fit.effectiveBarrierMeV;
+                boltzmannCurve.barrierDiffusenessMeV = fit.barrierDiffusenessMeV;
+                boltzmannCurve.pearsonReducedChiSquare = fit.pearsonReducedChiSquare;
 
                 if (boltzmannCurve.valid)
                 {
                     const int samples = 700;
+                    EvaporationModelParams params;
+                    params.coldTemperatureMeV = fit.coldTemperatureMeV;
+                    params.effectiveBarrierMeV = fit.effectiveBarrierMeV;
+                    params.barrierDiffusenessMeV = fit.barrierDiffusenessMeV;
+
                     for (int i = 0; i <= samples; ++i)
                     {
                         const double frac = double(i) / double(samples);
-                        const double xValue = startX + frac * (maxX - startX);
+                        const double xValue = minX + frac * (maxX - minX);
                         const double yValue =
-                            fit.amplitude *
-                            boltzmannShape(xValue, fit.temperatureMeV, barrier.valueMeV, charged);
+                            fit.normalization *
+                            evaporationDensity(xValue, m_boltzmannKind, params) *
+                            energyBinWidthMeV;
                         boltzmannCurve.maxY = std::max(boltzmannCurve.maxY, yValue);
                         boltzmannCurve.points << QPointF(xValue, yValue);
                     }
@@ -2026,12 +2401,12 @@ protected:
 
             p.save();
 
-            const int legendW = (includeBoltzmann || includeBoltzmannUnavailable) ? 270 : 210;
+            const int legendW = (includeBoltzmann || includeBoltzmannUnavailable) ? 315 : 210;
             int legendH = 36;
             if (includeGaussian)
                 legendH += 105;
             if (includeBoltzmann)
-                legendH += boltzmannCurve.drawBarrier ? 100 : 85;
+                legendH += boltzmannCurve.drawBarrier ? 90 : 75;
             else if (includeBoltzmannUnavailable)
                 legendH += 35;
             const int legendX = plotRect.right() - legendW - 12;
@@ -2096,7 +2471,7 @@ protected:
                            legendW - 20,
                            14,
                            Qt::AlignLeft,
-                           "Chi^2 = " + formatGaussianNumber(gaussianStats.chiSquare));
+                           "Chi^2(red) = " + formatGaussianNumber(gaussianStats.reducedChiSquare));
 
                 p.drawText(legendX + 10,
                            cursorY + 75,
@@ -2133,14 +2508,15 @@ protected:
                            legendW - 20,
                            14,
                            Qt::AlignLeft,
-                           "A = " + formatGaussianNumber(boltzmannCurve.amplitude));
+                           "A = " + formatGaussianNumber(boltzmannCurve.normalization));
 
                 p.drawText(legendX + 10,
                            cursorY + 30,
                            legendW - 20,
                            14,
                            Qt::AlignLeft,
-                           "T_fit = " + QString::number(boltzmannCurve.temperatureMeV, 'g', 3) + " MeV");
+                           "T = " +
+                               QString::number(boltzmannCurve.coldTemperatureMeV, 'g', 3) + " MeV");
 
                 int infoY = cursorY + 45;
                 if (boltzmannCurve.drawBarrier)
@@ -2150,9 +2526,8 @@ protected:
                                legendW - 20,
                                14,
                                Qt::AlignLeft,
-                               "Coulomb barrier B = " +
-                                   QString::number(boltzmannCurve.barrierMeV, 'g', 3) + " MeV (" +
-                                   QString(boltzmannCurve.barrierEstimated ? "estimated" : "fallback") + ")");
+                               "B = " +
+                                   QString::number(boltzmannCurve.effectiveBarrierMeV, 'g', 3) + " MeV");
                     infoY += 15;
                 }
 
@@ -2161,8 +2536,8 @@ protected:
                            legendW - 20,
                            14,
                            Qt::AlignLeft,
-                           "Reduced Chi^2 = " +
-                               formatGaussianNumber(boltzmannCurve.reducedChiSquare));
+                           "Chi^2(red) = " +
+                               formatGaussianNumber(boltzmannCurve.pearsonReducedChiSquare));
             }
             else if (includeBoltzmannUnavailable)
             {
@@ -2213,10 +2588,10 @@ protected:
 
         if (showBoltzmann &&
             boltzmannCurve.drawBarrier &&
-            boltzmannCurve.barrierMeV >= minX &&
-            boltzmannCurve.barrierMeV <= maxX)
+            boltzmannCurve.effectiveBarrierMeV >= minX &&
+            boltzmannCurve.effectiveBarrierMeV <= maxX)
         {
-            const int barrierX = mapX(boltzmannCurve.barrierMeV);
+            const int barrierX = mapX(boltzmannCurve.effectiveBarrierMeV);
             p.setPen(barrierPen);
             p.drawLine(barrierX, plotRect.top(), barrierX, plotRect.bottom());
 
@@ -2230,7 +2605,7 @@ protected:
             p.drawText(QRect(-120, 0, 120, 16),
                        Qt::AlignRight | Qt::AlignVCenter,
                        "Coulomb barrier B = " +
-                           QString::number(boltzmannCurve.barrierMeV, 'g', 3) + " MeV");
+                           QString::number(boltzmannCurve.effectiveBarrierMeV, 'g', 3) + " MeV");
             p.restore();
         }
 
@@ -2516,11 +2891,23 @@ void addAngularSample(AngularDistEntry &entry,
                       float vxy,
                       float cmEnergy)
 {
+    addAngularSample(entry, kineticEnergy, thetaDeg, vz, vxy, cmEnergy, 1.0f);
+}
+
+void addAngularSample(AngularDistEntry &entry,
+                      float kineticEnergy,
+                      float thetaDeg,
+                      float vz,
+                      float vxy,
+                      float cmEnergy,
+                      float weight)
+{
     entry.kineticEnergy.push_back(kineticEnergy);
     entry.thetaDeg.push_back(thetaDeg);
     entry.vz.push_back(vz);
     entry.vxy.push_back(vxy);
     entry.cmEnergy.push_back(cmEnergy);
+    entry.weight.push_back(weight);
 }
 
 void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
@@ -2547,11 +2934,24 @@ void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
                       float vxy,
                       float cmEnergy)
 {
+    addAngularSample(entries, z, n, kineticEnergy, thetaDeg, vz, vxy, cmEnergy, 1.0f);
+}
+
+void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
+                      int z,
+                      int n,
+                      float kineticEnergy,
+                      float thetaDeg,
+                      float vz,
+                      float vxy,
+                      float cmEnergy,
+                      float weight)
+{
     const std::pair<int, int> key(z, n);
     AngularDistEntry &e = entries[key];
     e.z = z;
     e.n = n;
-    addAngularSample(e, kineticEnergy, thetaDeg, vz, vxy, cmEnergy);
+    addAngularSample(e, kineticEnergy, thetaDeg, vz, vxy, cmEnergy, weight);
 }
 
 QString buildEmittedParticleCMSpectraHtmlGemini(
@@ -2671,6 +3071,7 @@ QString buildAngularDistributionHtmlPACEStyle(
     const QString &title,
     int mdir,
     int inputMode,
+    double yieldSigmaTotalMb,
     const AngularDistEntry &neutronEntry,
     const AngularDistEntry &protonEntry,
     const AngularDistEntry &alphaEntry,
@@ -2681,6 +3082,11 @@ QString buildAngularDistributionHtmlPACEStyle(
     const QString fragmentKind = isImf ? "IMF fragment" : "residual nucleus";
     const QString fragmentKindPlural = isImf ? "IMF fragments" : "residual nuclei";
     const QString velocityLabel = isImf ? "Fragment velocity/c" : "Residual velocity/c";
+    const double imfSampleCount = isImf ? totalEntryWeight(entries) : 0.0;
+    const double paceSigmaTotalMb =
+        (isImf && yieldSigmaTotalMb >= 0.0 && imfSampleCount > 0)
+            ? yieldSigmaTotalMb * double(std::max(1, nCascades)) / double(imfSampleCount)
+            : sigmaTotalMb;
 
     html += "<!DOCTYPE html><html><head><meta charset=\"utf-8\">";
     html += "<style>"
@@ -2695,6 +3101,9 @@ QString buildAngularDistributionHtmlPACEStyle(
             ".cm-spectra{margin:24px auto; min-width:520px;}"
             ".cm-spectra th{background:#dfeaf7; color:#1d4f91;}"
             ".cm-spectra td,.cm-spectra th{padding:5px 10px; text-align:center;}"
+            ".yield-table{border-collapse:separate; border-spacing:0; margin:10px auto 24px auto;}"
+            ".yield-table th,.yield-table td{border:none; background:transparent; padding:8px 14px; text-align:left;}"
+            ".yield-table th{color:green; font-weight:bold;}"
             "</style></head><body>";
 
     html += "<p class=\"small\">" + title + "</p>";
@@ -2716,6 +3125,10 @@ QString buildAngularDistributionHtmlPACEStyle(
     html += isImf
                 ? "<p>&nbsp;</p><h2 align=\"center\">Angular distribution results(IMF)</h2>"
                 : "<p>&nbsp;</p><h2 align=\"center\">Angular distribution results</h2>";
+
+    if (isImf)
+        html += buildImfYieldTableHtml(entries, sigmaTotalMb, nCascades, yieldSigmaTotalMb);
+
     html += "<p>";
     html += "<a href=\"gemini://plot_all\">Plot All: E vs &theta;</a> &nbsp; ";
     html += "<a href=\"gemini://plot_all_ntheta\">Plot All: N vs &theta;</a> &nbsp; ";
@@ -2757,9 +3170,10 @@ QString buildAngularDistributionHtmlPACEStyle(
 
         for (int i = 0; i < m; ++i)
         {
-            addToPaceAccum(allAcc, e.kineticEnergy[i], e.thetaDeg[i]);
+            const double weight = sampleWeightAt(e, i);
+            addToPaceAccum(allAcc, e.kineticEnergy[i], e.thetaDeg[i], weight);
             if (selectedIndex >= 0)
-                addToPaceAccum(selectedAcc[selectedIndex].second, e.kineticEnergy[i], e.thetaDeg[i]);
+                addToPaceAccum(selectedAcc[selectedIndex].second, e.kineticEnergy[i], e.thetaDeg[i], weight);
         }
     }
 
@@ -2783,7 +3197,7 @@ QString buildAngularDistributionHtmlPACEStyle(
         if (totalAngularCount(acc) <= 0) continue;
 
         html += buildHeaderForResiduePACE(displayIndex, r.z, r.n, fragmentKind);
-        appendMainPaceTable(html, acc, r.a, sigmaTotalMb, nCascades, inputMode, false, plotIndex,
+        appendMainPaceTable(html, acc, r.a, paceSigmaTotalMb, nCascades, inputMode, false, plotIndex,
                             velocityLabel);
         appendSecondPaceTableIfNeeded(html, acc, plotIndex);
         displayIndex++;
@@ -2793,7 +3207,7 @@ QString buildAngularDistributionHtmlPACEStyle(
     if (totalAngularCount(allAcc) > 0)
     {
         html += buildHeaderAllPACE(displayIndex, fragmentKindPlural);
-        appendMainPaceTable(html, allAcc, compoundA, sigmaTotalMb, nCascades, inputMode, true, plotIndex,
+        appendMainPaceTable(html, allAcc, compoundA, paceSigmaTotalMb, nCascades, inputMode, true, plotIndex,
                             velocityLabel);
         appendSecondPaceTableIfNeeded(html, allAcc, plotIndex);
         displayIndex++;
@@ -2815,7 +3229,7 @@ QString buildAngularDistributionHtmlPACEStyle(
         if (totalAngularCount(acc) <= 0) return;
 
         html += buildHeaderForParticlePACE(displayIndex, particleLabel);
-        appendMainPaceTable(html, acc, particleA, sigmaTotalMb, nCascades,
+        appendMainPaceTable(html, acc, particleA, paceSigmaTotalMb, nCascades,
                             showVelocity ? inputMode : 0,
                             false, plotIndex, velocityLabel);
 
