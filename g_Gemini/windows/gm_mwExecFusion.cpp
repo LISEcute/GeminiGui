@@ -23,6 +23,14 @@ extern int  _optEvap;
 
 extern bool Residual_compare(Residual a, Residual b);
 extern FILE *mfopen(const QString& filename, const char* operand);
+extern QString buildMergedYieldTableHtml(const QString &title,
+                                         Residual *resid,
+                                         int length,
+                                         int countResidue,
+                                         double residualSigmaTotalMb,
+                                         const std::map<std::pair<int, int>, AngularDistEntry> &imfEntries,
+                                         double imfSigmaTotalMb,
+                                         FILE *file_cs);
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 void MainWindow::execute_fusion()
@@ -88,9 +96,6 @@ void MainWindow::execute_fusion()
     //cout << "cone printing parameters" << std::endl;
     //define and zero events parameters
 
-    float SIG = 0;
-    float SIG_ER = 0;
-
     float total = 0.;
     float Nfission = 0.;
     float Nimf = 0.;
@@ -114,11 +119,6 @@ void MainWindow::execute_fusion()
     float He3MultEv = 0.;
 
     float gammaEnergy = 0.;
-
-    float sum3 = 0.;
-    float sum4 = 0.;
-    float sum5 = 0.;
-    float sum6 = 0.;
 
     length = 101; // for hash;
     Residual resid[101];
@@ -388,11 +388,6 @@ void MainWindow::execute_fusion()
                 }
                 else if( products->iA == 3)  He3MultEv += weight;
             }
-
-            else if (products->iZ == 3) sum3 += weight;
-            else if (products->iZ == 4) sum4 += weight;
-            else if (products->iZ == 5) sum5 += weight;
-            else if (products->iZ == 6) sum6 += weight;
             // go to next particle
             products = CN.getProducts();
         }
@@ -467,33 +462,14 @@ void MainWindow::execute_fusion()
     results += "<tr><th align=\"left\">TOTAL</th><td align=\"center\"><b>" + QString::number(imf_total+sym_total+countResidue) + "<b></td></tr>";
     results += "</table>;";
     //------------------------------------------------------
-    results += "<h3 align=\"center\" style=\"color: blue\"> Yields of Residual Nuclei </h3>";
-    results += "<table cellpadding=\"5\" align=\"center\">";
-    results += "<tr style=\"color: green\"> <th>Z</th><th>Name</th><th>Events</th><th>Percent</th><th>x-section (mb)</th><th> err(mb)</th></tr>";
-
-    sort(resid,resid+length,Residual_compare);
-    for(int i=0;i<length;i++)
-    {
-        if(resid[i].count != 0)
-        {
-            SIG     = xfus *      (float)resid[i].count  / countResidue;
-            SIG_ER =  SIG /  sqrt((float)resid[i].count);
-            results += "<tr>"
-                       "<td>" + QString::number(resid[i].Z) + "</td>"
-                                                       "<td style=\"font-weight:bold\">" + QString::fromStdString(resid[i].name) + "</td>"
-                                                                 "<td>" + QString::number(resid[i].count) + "</td>"
-                                                           "<td>" + QString::number(100*(float)resid[i].count/countResidue,'f',1) +"%</td>"
-                                                                                                "<td>" + QString::number(SIG   ,'g',4) + "</td>"
-                                                        "<td>" + QString::number(SIG_ER,'g',4) + "</td>"
-                                                           "</tr>";
-
-            if(file_cs) fprintf(file_cs,"\n%d %d %10.3g %10.3g",resid[i].Z,resid[i].A-resid[i].Z,SIG,SIG_ER);
-        }
-    }
-
-    results += "<tr><td></td><td style=\"font-weight:bold; color:green;\">Total</td><td>"+ QString::number(countResidue) + "</td>"
-                                                                                                                            "<td> </td>" +           "<td style=\"font-weight:bold; color:green;\">"+ QString::number(xfus,'f',2) +  "</td><td></td></tr>"
-                                                                                                   "</table>";
+    results += buildMergedYieldTableHtml("Yields of Residual Nuclei and IMF Particles",
+                                         resid,
+                                         length,
+                                         countResidue,
+                                         xfus,
+                                         imfAngularByZN,
+                                         Nimf*Sconst,
+                                         file_cs);
 
     if(file_cs) fclose(file_cs);
 
@@ -530,12 +506,6 @@ void MainWindow::execute_fusion()
                    "<tr><td> IMF prob </td><td> " + QString::number(Nimf/total, 'g', 3) + "</td><td> </td></tr>";
         results += "<tr><td> Cross section </td><td>" + QString::number(Nimf*Sconst, 'g', 3) + "</td><td> mb </td></tr>";
         results += "</table><br>";
-
-        results += " <br><center><b>IMF yields: </b><br><table cellpadding=\"5\" align=\"center\">";
-        results += "<tr><td> xsection of Z=3</td><td>" + QString::number(sum3*Sconst, 'g', 3) + " mb </td></tr>";
-        results += "<tr><td> xsection of Z=4</td><td>" + QString::number(sum4*Sconst, 'g', 3) + " mb </td></tr>";
-        results += "<tr><td> xsection of Z=5</td><td>" + QString::number(sum5*Sconst, 'g', 3) + " mb </td></tr>";
-        results += "<tr><td> xsection of Z=6</td><td>" + QString::number(sum6*Sconst, 'g', 3) + " mb </td></tr></table></center>";
     }
     //------------------------------------------------------------------------
     printGeminiProperties(results);

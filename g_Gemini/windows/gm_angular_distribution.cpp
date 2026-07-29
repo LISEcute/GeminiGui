@@ -258,73 +258,6 @@ std::vector<PaceSelectedResidue> buildSelectedResiduesPACE(
     return selected;
 }
 
-QString buildImfYieldTableHtml(
-    const std::map<std::pair<int, int>, AngularDistEntry> &entries,
-    double sigmaTotalMb,
-    int nCascades,
-    double yieldSigmaTotalMb)
-{
-    std::vector<PaceSelectedResidue> imfs;
-    imfs.reserve(entries.size());
-
-    double totalCount = 0.0;
-    for (const auto &it : entries)
-    {
-        const AngularDistEntry &e = it.second;
-        const double count = entryWeightTotal(e);
-        if (count <= 0.0) continue;
-
-        PaceSelectedResidue r;
-        r.z = e.z;
-        r.n = e.n;
-        r.a = e.z + e.n;
-        r.count = count;
-        imfs.push_back(r);
-        totalCount += count;
-    }
-
-    if (totalCount <= 0.0) return QString();
-
-    std::sort(imfs.begin(), imfs.end(),
-              [](const PaceSelectedResidue &lhs, const PaceSelectedResidue &rhs)
-              {
-                  if (lhs.z != rhs.z) return lhs.z > rhs.z;
-                  return lhs.a > rhs.a;
-              });
-
-    const double tableSigmaTotal =
-        (yieldSigmaTotalMb >= 0.0)
-            ? yieldSigmaTotalMb
-            : sigmaTotalMb * double(totalCount) / double(std::max(1, nCascades));
-
-    QString html;
-    html += "<h3 align=\"center\" style=\"color: blue\"> Yields of IMF Particles </h3>";
-    html += "<table class=\"yield-table\" cellpadding=\"5\" align=\"center\">";
-    html += "<tr><th>Z</th><th>Name</th><th>Events</th><th>Percent</th><th>x-section (mb)</th><th> err(mb)</th></tr>";
-
-    for (const auto &r : imfs)
-    {
-        const double sigma = tableSigmaTotal * double(r.count) / double(totalCount);
-        const double sigmaErr = sigma / std::sqrt(double(r.count));
-
-        html += "<tr>"
-                "<td>" + QString::number(r.z) + "</td>"
-                "<td style=\"font-weight:bold\">" + nucleusLabelFromZNHtml(r.z, r.n) + "</td>"
-                "<td>" + fmtCount(r.count) + "</td>"
-                "<td>" + QString::number(100.0 * r.count / totalCount, 'f', 1) + "%</td>"
-                "<td>" + QString::number(sigma, 'g', 4) + "</td>"
-                "<td>" + QString::number(sigmaErr, 'g', 4) + "</td>"
-                "</tr>";
-    }
-
-    html += "<tr><td></td><td style=\"font-weight:bold; color:green;\">Total</td><td>"
-            + fmtCount(totalCount) + "</td><td></td><td style=\"font-weight:bold; color:green;\">"
-            + QString::number(tableSigmaTotal, 'f', 2) + "</td><td></td></tr>";
-    html += "</table>";
-
-    return html;
-}
-
 QString buildVelocityLinePACE(const PaceAngularAccum &acc,
                               int particleA,
                               int inputMode,
@@ -3101,9 +3034,6 @@ QString buildAngularDistributionHtmlPACEStyle(
             ".cm-spectra{margin:24px auto; min-width:520px;}"
             ".cm-spectra th{background:#dfeaf7; color:#1d4f91;}"
             ".cm-spectra td,.cm-spectra th{padding:5px 10px; text-align:center;}"
-            ".yield-table{border-collapse:separate; border-spacing:0; margin:10px auto 24px auto;}"
-            ".yield-table th,.yield-table td{border:none; background:transparent; padding:8px 14px; text-align:left;}"
-            ".yield-table th{color:green; font-weight:bold;}"
             "</style></head><body>";
 
     html += "<p class=\"small\">" + title + "</p>";
@@ -3125,9 +3055,6 @@ QString buildAngularDistributionHtmlPACEStyle(
     html += isImf
                 ? "<p>&nbsp;</p><h2 align=\"center\">Angular distribution results(IMF)</h2>"
                 : "<p>&nbsp;</p><h2 align=\"center\">Angular distribution results</h2>";
-
-    if (isImf)
-        html += buildImfYieldTableHtml(entries, sigmaTotalMb, nCascades, yieldSigmaTotalMb);
 
     html += "<p>";
     html += "<a href=\"gemini://plot_all\">Plot All: E vs &theta;</a> &nbsp; ";

@@ -22,6 +22,11 @@
     <height>500</height>
    </size>
   </property>
+  <property name="font">
+   <font>
+    <family>.AppleSystemUIFont</family>
+   </font>
+  </property>
   <property name="windowTitle">
    <string>About GEMINI++</string>
   </property>
@@ -88,9 +93,6 @@ margin-bottom:0;</string>
        <property name="text">
         <string>GEMINI++</string>
        </property>
-       <property name="alignment">
-        <set>Qt::AlignmentFlag::AlignCenter</set>
-       </property>
       </widget>
      </item>
      <item>
@@ -156,9 +158,6 @@ margin: 0px;</string>
      <property name="text">
       <string>statistical decay code</string>
      </property>
-     <property name="alignment">
-      <set>Qt::AlignmentFlag::AlignCenter</set>
-     </property>
     </widget>
    </item>
    <item>
@@ -178,13 +177,10 @@ margin: 0px;</string>
       <string notr="true">color: rgb(222, 226, 197); background-color: rgb(0, 90, 255);</string>
      </property>
      <property name="frameShape">
-      <enum>QFrame::Shape::StyledPanel</enum>
+      <enum>QFrame::NoFrame</enum>
      </property>
      <property name="text">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;&lt;br/&gt;&lt;/span&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;R. J. Charity&lt;/span&gt;&lt;/p&gt;&lt;hr/&gt;&lt;p&gt;R.J. Charity, Phys. Rev. C 82 (2010) 014610&lt;/p&gt;&lt;p&gt;D. Mancusi, R. J. Charity, J. Cugnon,&lt;br/&gt;Physics Review C 82 (2010) 044610&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
      <property name="indent">
       <number>5</number>
@@ -206,9 +202,6 @@ margin: 0px;</string>
      <property name="text">
       <string>Version 1.5</string>
      </property>
-     <property name="alignment">
-      <set>Qt::AlignmentFlag::AlignCenter</set>
-     </property>
     </widget>
    </item>
    <item>
@@ -225,9 +218,6 @@ margin: 0px;</string>
      </property>
      <property name="text">
       <string>28-April-2015</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignmentFlag::AlignCenter</set>
      </property>
     </widget>
    </item>
@@ -246,9 +236,6 @@ color: rgb(210, 210, 210);</string>
      <property name="text">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;GEMINI++ has been ported to a GUI application using Qt &lt;br/&gt;within the LISE&lt;span style=&quot; vertical-align:super;&quot;&gt;++&lt;/span&gt; framework by M.P. Kuchera, and updated &lt;br/&gt;by O.B. Tarasov. A.Ray implemented angular distribution plots.&lt;/p&gt;&lt;p&gt;The GUI-version is currently maintained by O.B. Tarasov&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
-     <property name="alignment">
-      <set>Qt::AlignmentFlag::AlignCenter</set>
-     </property>
      <property name="wordWrap">
       <bool>true</bool>
      </property>
@@ -260,7 +247,7 @@ color: rgb(210, 210, 210);</string>
       <string notr="true">background-color: rgb(0, 90, 255);</string>
      </property>
      <property name="frameShape">
-      <enum>QFrame::Shape::StyledPanel</enum>
+      <enum>QFrame::NoFrame</enum>
      </property>
      <layout class="QGridLayout" name="gridLayout">
       <property name="leftMargin">
@@ -318,7 +305,7 @@ color: rgb(210, 210, 210);</string>
          <string>http://lise.nscl.msu.edu/gemini.html</string>
         </property>
         <property name="textFormat">
-         <enum>Qt::TextFormat::AutoText</enum>
+         <enum>Qt::PlainText</enum>
         </property>
         <property name="openExternalLinks">
          <bool>true</bool>
@@ -362,7 +349,7 @@ color: rgb(210, 210, 210);</string>
          <string>http://lise.nscl.msu.edu</string>
         </property>
         <property name="textFormat">
-         <enum>Qt::TextFormat::AutoText</enum>
+         <enum>Qt::PlainText</enum>
         </property>
         <property name="openExternalLinks">
          <bool>true</bool>
@@ -385,9 +372,6 @@ color: rgb(210, 210, 210);</string>
         </property>
         <property name="scaledContents">
          <bool>false</bool>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
         </property>
        </widget>
       </item>

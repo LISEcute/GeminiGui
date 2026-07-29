@@ -9,8 +9,12 @@
 #include <QFileDialog>
 #include <QGuiApplication>
 #include <QScreen>
+#include <algorithm>
 #include <array>
+#include <cmath>
+#include <functional>
 #include <map>
+#include <vector>
 
 #include "g_Gemini/source/CNucleus.h"
 #include "g_Gemini/source/CFus.h"
@@ -27,6 +31,195 @@ double _LowLimit  = 0.0;
 double _HighLimit = 100.0;
 extern FILE *mfopen(const QString& filename, const char* operand);
 bool Residual_compare(Residual a, Residual b) {return a.index() > b.index();};
+
+namespace {
+
+struct YieldRow
+{
+    int z = 0;
+    int a = 0;
+    QString name;
+    double events = 0.0;
+    double percent = 0.0;
+    double sigma = 0.0;
+    double err = 0.0;
+};
+
+QString formatYieldCount(double value)
+{
+    if (std::abs(value - std::round(value)) < 1.0e-6)
+        return QString::number(value, 'f', 0);
+    return QString::number(value, 'g', 4);
+}
+
+QString yieldCells(const YieldRow *row)
+{
+    if (!row)
+        return "<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>";
+
+    return "<td style=\"font-weight:bold\">" + row->name + "</td>"
+           "<td>" + formatYieldCount(row->events) + "</td>"
+           "<td>" + QString::number(row->percent, 'f', 1) + "%</td>"
+           "<td>" + QString::number(row->sigma, 'g', 4) + "</td>"
+           "<td>" + QString::number(row->err, 'g', 4) + "</td>";
+}
+
+double angularEntryWeightTotal(const AngularDistEntry &entry)
+{
+    double total = 0.0;
+    for (int i = 0; i < int(entry.kineticEnergy.size()); ++i)
+    {
+        const double weight =
+            (i < int(entry.weight.size()))
+                ? std::max(0.0, double(entry.weight[i]))
+                : 1.0;
+        total += weight;
+    }
+    return total;
+}
+
+double angularEntryWeightTotalForMap(const std::map<std::pair<int, int>, AngularDistEntry> &entries)
+{
+    double total = 0.0;
+    for (const auto &it : entries)
+        total += angularEntryWeightTotal(it.second);
+    return total;
+}
+
+std::map<int, std::vector<YieldRow>> buildImfYieldRowsByZ(
+    const std::map<std::pair<int, int>, AngularDistEntry> &imfEntries,
+    double imfSigmaTotalMb)
+{
+    const double imfTotal = angularEntryWeightTotalForMap(imfEntries);
+
+    std::map<int, std::vector<YieldRow>> rowsByZ;
+    if (imfTotal <= 0.0) return rowsByZ;
+
+    for (const auto &it : imfEntries)
+    {
+        const AngularDistEntry &entry = it.second;
+        const double events = angularEntryWeightTotal(entry);
+        if (events <= 0.0) continue;
+
+        CNucleus nuc(entry.z, entry.z + entry.n);
+
+        YieldRow row;
+        row.z = entry.z;
+        row.a = entry.z + entry.n;
+        row.name = nuc.getGName();
+        row.events = events;
+        row.percent = 100.0 * events / imfTotal;
+        row.sigma = imfSigmaTotalMb * events / imfTotal;
+        row.err = row.sigma / std::sqrt(events);
+        rowsByZ[row.z].push_back(row);
+    }
+
+    for (auto &it : rowsByZ)
+    {
+        std::sort(it.second.begin(), it.second.end(),
+                  [](const YieldRow &lhs, const YieldRow &rhs)
+                  {
+                      if (lhs.a != rhs.a) return lhs.a > rhs.a;
+                      return lhs.z > rhs.z;
+                  });
+    }
+
+    return rowsByZ;
+}
+
+}
+
+QString buildMergedYieldTableHtml(const QString &title,
+                                  Residual *resid,
+                                  int length,
+                                  int countResidue,
+                                  double residualSigmaTotalMb,
+                                  const std::map<std::pair<int, int>, AngularDistEntry> &imfEntries,
+                                  double imfSigmaTotalMb,
+                                  FILE *file_cs)
+{
+    std::map<int, std::vector<YieldRow>> residueRowsByZ;
+
+    std::sort(resid, resid+length, Residual_compare);
+    for(int i=0;i<length;i++)
+    {
+        if(resid[i].count != 0)
+        {
+            YieldRow row;
+            row.z = resid[i].Z;
+            row.a = resid[i].A;
+            row.name = QString::fromStdString(resid[i].name);
+            row.events = resid[i].count;
+            row.percent = countResidue > 0 ? 100.0 * double(resid[i].count) / double(countResidue) : 0.0;
+            row.sigma = countResidue > 0 ? residualSigmaTotalMb * double(resid[i].count) / double(countResidue) : 0.0;
+            row.err = row.sigma / std::sqrt(double(resid[i].count));
+            residueRowsByZ[row.z].push_back(row);
+
+            if(file_cs) fprintf(file_cs,"\n%d %d %10.3g %10.3g",resid[i].Z,resid[i].A-resid[i].Z,row.sigma,row.err);
+        }
+    }
+
+    const std::map<int, std::vector<YieldRow>> imfRowsByZ =
+        buildImfYieldRowsByZ(imfEntries, imfSigmaTotalMb);
+
+    std::vector<int> zValues;
+    for (const auto &it : residueRowsByZ)
+        zValues.push_back(it.first);
+    for (const auto &it : imfRowsByZ)
+    {
+        if (residueRowsByZ.find(it.first) == residueRowsByZ.end())
+            zValues.push_back(it.first);
+    }
+    std::sort(zValues.begin(), zValues.end(), std::greater<int>());
+
+    QString results;
+    results += "<h3 align=\"center\" style=\"color: blue\"> " + title + " </h3>";
+    results += "<table cellpadding=\"5\" align=\"center\">";
+    results += "<tr style=\"color: green\">"
+               "<th rowspan=\"2\">Z</th>"
+               "<th colspan=\"5\">Residual Nuclei</th>"
+               "<th colspan=\"5\">IMF Particles</th>"
+               "</tr>";
+    results += "<tr style=\"color: green\">"
+               "<th>Name</th><th>Events</th><th>Percent</th><th>x-section (mb)</th><th>err(mb)</th>"
+               "<th>Name</th><th>Events</th><th>Percent</th><th>x-section (mb)</th><th>err(mb)</th>"
+               "</tr>";
+
+    for (int z : zValues)
+    {
+        const auto resIt = residueRowsByZ.find(z);
+        const auto imfIt = imfRowsByZ.find(z);
+        const std::vector<YieldRow> empty;
+        const std::vector<YieldRow> &resRows = resIt != residueRowsByZ.end() ? resIt->second : empty;
+        const std::vector<YieldRow> &imfRows = imfIt != imfRowsByZ.end() ? imfIt->second : empty;
+        const int rowCount = int(std::max(resRows.size(), imfRows.size()));
+
+        for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex)
+        {
+            const YieldRow *resRow = rowIndex < int(resRows.size()) ? &resRows[rowIndex] : nullptr;
+            const YieldRow *imfRow = rowIndex < int(imfRows.size()) ? &imfRows[rowIndex] : nullptr;
+
+            results += "<tr>";
+            results += rowIndex == 0
+                           ? "<td>" + QString::number(z) + "</td>"
+                           : "<td></td>";
+            results += yieldCells(resRow);
+            results += yieldCells(imfRow);
+            results += "</tr>";
+        }
+    }
+
+    results += "<tr>"
+               "<td></td>"
+               "<td style=\"font-weight:bold; color:green;\">Total</td><td>" + QString::number(countResidue) + "</td>"
+               "<td></td><td style=\"font-weight:bold; color:green;\">" + QString::number(residualSigmaTotalMb,'f',2) + "</td><td></td>"
+               "<td style=\"font-weight:bold; color:green;\">Total</td><td>" + formatYieldCount(angularEntryWeightTotalForMap(imfEntries)) + "</td>"
+               "<td></td><td style=\"font-weight:bold; color:green;\">" + QString::number(imfSigmaTotalMb,'f',2) + "</td><td></td>"
+               "</tr>";
+    results += "</table>";
+
+    return results;
+}
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 void MainWindow::execute_compound()
 {
@@ -57,10 +250,6 @@ void MainWindow::execute_compound()
     for(int i=0;i<length;i++) {  resid[i].count = 0;}
 
     int countResidue = 0;
-    float SIG = 0;
-    float SIG_ER = 0;
-
-
     CN.setEvapMode(_optEvap);
 
     float total = 0.;
@@ -86,11 +275,6 @@ void MainWindow::execute_compound()
     float H3MultEv = 0.;
     float He3MultEv = 0.;
     float gammaEnergy = 0.;
-    float sum3 = 0.;
-    float sum4 = 0.;
-    float sum5 = 0.;
-    float sum6 = 0.;
-
     int counter=0;
     std::map<std::pair<int, int>, AngularDistEntry> angularDistByZN;
     std::map<std::pair<int, int>, AngularDistEntry> imfAngularByZN;
@@ -310,11 +494,6 @@ void MainWindow::execute_compound()
                 }
                 else if( products->iA == 3)  He3MultEv += weight;
             }
-
-            else if (products->iZ == 3) sum3 += weight;
-            else if (products->iZ == 4) sum4 += weight;
-            else if (products->iZ == 5) sum5 += weight;
-            else if (products->iZ == 6) sum6 += weight;
             // go to next particle
             products = CN.getProducts();
         }
@@ -360,34 +539,14 @@ void MainWindow::execute_compound()
     results += "</table>;";
     //--------------------------------------------------------------
 
-    results += "<h3 align=\"center\" style=\"color: blue\"> Yields of Decay Products </h3>";
-    results += "<table cellpadding=\"5\" align=\"center\">";
-    results += "<tr style=\"color: green\"> <th>Z</th><th>Name</th><th>Events</th><th>Percent</th><th>x-section (mb)</th><th> err(mb)</th></tr>";
-
-    sort(resid, resid+length, Residual_compare);
-
-    for(int i=0;i<length;i++)
-    {
-        if(resid[i].count != 0)
-        {
-            SIG     = _SIGMA *      (float)resid[i].count  / countResidue;
-            SIG_ER =  SIG /  sqrt((float)resid[i].count);
-            results += "<tr>"
-                       "<td>" + QString::number(resid[i].Z) + "</td>"
-                                                       "<td style=\"font-weight:bold\">" + QString::fromStdString(resid[i].name) + "</td>"
-                                                                 "<td>" + QString::number(resid[i].count) + "</td>"
-                                                           "<td>" + QString::number(100*(float)resid[i].count/countResidue,'f',1) +"%</td>"
-                                                                                                "<td>" + QString::number(SIG   ,'g',4) + "</td>"
-                                                        "<td>" + QString::number(SIG_ER,'g',4) + "</td>"
-                                                           "</tr>";
-
-            if(file_cs) fprintf(file_cs,"\n%d %d %10.3g %10.3g",resid[i].Z,resid[i].A-resid[i].Z,SIG,SIG_ER);
-        }
-    }
-
-    results += "<tr><td></td><td style=\"font-weight:bold; color:green;\">Total</td><td>"+ QString::number(countResidue) + "</td>"
-                                                                                                                            "<td> </td>" +           "<td style=\"font-weight:bold; color:green;\">"+ QString::number(_SIGMA,'f',2) +  "</td><td></td></tr>"
-                                                                                                     "</table>";
+    results += buildMergedYieldTableHtml("Yields of Decay Products",
+                                         resid,
+                                         length,
+                                         countResidue,
+                                         _SIGMA,
+                                         imfAngularByZN,
+                                         Nimf*Sconst,
+                                         file_cs);
 
     if(file_cs) fclose(file_cs);
     //------------------------------------------------------------------------
@@ -423,12 +582,6 @@ void MainWindow::execute_compound()
                    "<tr><td> IMF prob </td><td> " + QString::number(Nimf/total, 'g', 3) + "</td><td> </td></tr>";
         results += "<tr><td> Cross section </td><td>" + QString::number(Nimf*Sconst, 'g', 3) + "</td><td> mb </td></tr>";
         results += "</table><br>";
-
-        results += " <br><center><b>IMF yields: </b><br><table cellpadding=\"5\" align=\"center\">";
-        results += "<tr><td> xsection of Z=3</td><td>" + QString::number(sum3*Sconst, 'g', 3) + " mb </td></tr>";
-        results += "<tr><td> xsection of Z=4</td><td>" + QString::number(sum4*Sconst, 'g', 3) + " mb </td></tr>";
-        results += "<tr><td> xsection of Z=5</td><td>" + QString::number(sum5*Sconst, 'g', 3) + " mb </td></tr>";
-        results += "<tr><td> xsection of Z=6</td><td>" + QString::number(sum6*Sconst, 'g', 3) + " mb </td></tr></table></center>";
     }
     //------------------------------------------------------------------------
     printGeminiProperties(results);
