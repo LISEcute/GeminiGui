@@ -86,7 +86,6 @@ QString buildAngularDistributionHtmlPACEStyle(
     double recoilBetaCN,
     const QString &title,
     int mdir = 0,
-    int inputMode = 1,
     double yieldSigmaTotalMb = -1.0,
     const AngularDistEntry &neutronEntry = AngularDistEntry(),
     const AngularDistEntry &protonEntry = AngularDistEntry(),
@@ -118,8 +117,6 @@ public:
         QWidget *parent = nullptr);
 
 private slots:
-    void save_clicked();
-    void print_clicked();
     void link_clicked(const QUrl &url);
 
 private:

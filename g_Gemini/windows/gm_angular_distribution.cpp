@@ -1,10 +1,8 @@
 // gm_angular_distribution.cpp
 #include "gm_angular_distribution.h"
 
-#include <QAction>
 #include <QBoxLayout>
 #include <QDesktopServices>
-#include <QFile>
 #include <QFileDialog>
 #include <QHBoxLayout>
 #include <QIcon>
@@ -13,14 +11,10 @@
 #include <QPen>
 #include <QPixmap>
 #include <QPolygonF>
-#include <QPrintDialog>
-#include <QPrinter>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QTextBrowser>
-#include <QTextDocument>
-#include <QTextStream>
-#include <QToolBar>
+#include <QTextEdit>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -260,11 +254,11 @@ std::vector<PaceSelectedResidue> buildSelectedResiduesPACE(
 
 QString buildVelocityLinePACE(const PaceAngularAccum &acc,
                               int particleA,
-                              int inputMode,
+                              bool showVelocity,
                               bool isAll,
                               const QString &velocityLabel)
 {
-    if (inputMode != 1 || isAll) return QString();
+    if (!showVelocity || isAll) return QString();
 
     const double globSum = isum(acc, 32, 1, 37);
     if (globSum <= 2.0) return QString();
@@ -339,10 +333,12 @@ QString buildVelocityLinePACE(const PaceAngularAccum &acc,
     return line;
 }
 
-void appendAngleHeader18(QString &html, const PaceAngularAccum &acc, int l1, int l2, bool includeAboveLabel)
+void appendAngleHeader(QString &html, const PaceAngularAccum &acc, int l1, int l2, bool includeAboveLabel)
 {
     html += "<table border=\"1\" cellspacing=\"0\">";
-    html += "<tr><th>Energy Range</th><th colspan=\"18\">Angular range (deg)</th></tr>";
+    const int angleColumns = l2 - l1 + 1 + (includeAboveLabel ? 1 : 0);
+    html += "<tr><th>Energy Range</th><th colspan=\"" + QString::number(angleColumns) +
+            "\">Angular range (deg)</th></tr>";
     html += "<tr><th>(MeV)</th>";
 
     for (int k = l1; k <= l2; ++k)
@@ -367,21 +363,21 @@ void appendMainPaceTable(QString &html,
                          int particleA,
                          double sigmaTotalMb,
                          int nCascades,
-                         int inputMode,
+                         bool showVelocity,
                          bool isAll,
                          int plotIndex,
                          const QString &velocityLabel)
 {
-    html += buildVelocityLinePACE(acc, particleA, inputMode, isAll, velocityLabel);
+    html += buildVelocityLinePACE(acc, particleA, showVelocity, isAll, velocityLabel);
 
-    appendAngleHeader18(html, acc, 1, 18, false);
+    appendAngleHeader(html, acc, 1, 36, true);
 
     double E2 = 0.0;
     if (acc.ELOW >= 0.01)
     {
         E2 = acc.ELOW;
         html += "<tr><td>Below " + fmt0(E2) + "</td>";
-        for (int k = 1; k <= 18; ++k)
+        for (int k = 1; k <= 37; ++k)
             html += (acc.NR[1][k] > 0) ? "<td align=\"center\">" + fmtCount(acc.NR[1][k]) + "</td>" : "<td></td>";
         html += "</tr>";
     }
@@ -391,21 +387,21 @@ void appendMainPaceTable(QString &html,
         const double E1 = (double(K) - 2.0) * acc.DELE + acc.ELOW;
         E2 = E1 + acc.DELE;
 
-        if (isum(acc, K, 1, 18) > 0)
+        if (isum(acc, K, 1, 37) > 0)
         {
             html += "<tr><td>" + fmt1(E1) + " - " + fmt1(E2) + "</td>";
-            for (int k = 1; k <= 18; ++k)
+            for (int k = 1; k <= 37; ++k)
                 html += (acc.NR[K][k] > 0) ? "<td align=\"center\">" + fmtCount(acc.NR[K][k]) + "</td>" : "<td></td>";
             html += "</tr>";
         }
     }
 
     html += "<tr><td>Above " + fmt0(E2) + "</td>";
-    for (int k = 1; k <= 18; ++k)
+    for (int k = 1; k <= 37; ++k)
         html += (acc.NR[31][k] > 0) ? "<td align=\"center\">" + fmtCount(acc.NR[31][k]) + "</td>" : "<td></td>";
     html += "</tr>";
 
-    std::array<double, 37> DSIG{};
+    std::array<double, 38> DSIG{};
     const double FAC = sigmaTotalMb / (kTwoPiPACE * double(std::max(1, nCascades)));
     for (int i = 1; i <= 36; ++i)
     {
@@ -414,13 +410,14 @@ void appendMainPaceTable(QString &html,
     }
 
     html += "<tr class=\"total-row\"><th>Total</th>";
-    for (int k = 1; k <= 18; ++k)
+    for (int k = 1; k <= 37; ++k)
         html += (acc.NR[32][k] > 0) ? "<th align=\"center\">" + fmtCount(acc.NR[32][k]) + "</th>" : "<th></th>";
     html += "</tr>";
 
     html += "<tr><td>d&sigma;/d&Omega;</td>";
-    for (int k = 1; k <= 18; ++k)
+    for (int k = 1; k <= 36; ++k)
         html += (DSIG[k] > 0.0) ? "<td>" + QString::number(DSIG[k], 'g', 2) + "</td>" : "<td>0.00</td>";
+    html += "<td></td>";
     html += "</tr>";
 
     for (int i = 1; i <= 4; ++i)
@@ -429,7 +426,7 @@ void appendMainPaceTable(QString &html,
                     ? "<tr><td>" + fmt0(acc.EWR1[i]) + " - " + fmt0(acc.EWR2[i]) + "</td>"
                     : "<tr><td>Above " + fmt0(acc.EWR1[4]) + "</td>";
 
-        for (int k = 1; k <= 18; ++k)
+        for (int k = 1; k <= 37; ++k)
             html += (acc.NRW[i][k] > 0) ? "<td align=\"center\">" + fmtCount(acc.NRW[i][k]) + "</td>" : "<td></td>";
         html += "</tr>";
     }
@@ -439,83 +436,6 @@ void appendMainPaceTable(QString &html,
     html += "<a href=\"gemini://plot_table/" + QString::number(plotIndex) + "\">Plot E vs &theta;</a> &nbsp; ";
     html += "<a href=\"gemini://plot_ntheta/" + QString::number(plotIndex) + "\">Plot N vs &theta;</a> &nbsp; ";
     html += "<a href=\"gemini://plot_ne/" + QString::number(plotIndex) + "\">Plot N vs Energy</a> &nbsp; ";
-    html += "<a href=\"gemini://plot_dcsdtheta/" + QString::number(plotIndex) + "\">Plot d&sigma;/d&theta; vs &theta;</a>";
-    html += "</p>";
-    html += "<p>&nbsp;</p>";
-}
-
-void appendSecondPaceTableIfNeeded(QString &html,
-                                   const PaceAngularAccum &acc,
-                                   int plotIndex)
-{
-    int IS = 0;
-    for (int IJ = 1; IJ <= 32; ++IJ)
-        for (int LQ = 19; LQ <= 37; ++LQ)
-            IS += acc.NR[IJ][LQ];
-
-    if (IS == 0) return;
-
-    appendAngleHeader18(html, acc, 19, 36, true);
-
-    double E2 = 0.0;
-    if (acc.ELOW >= 0.01)
-    {
-        E2 = acc.ELOW;
-        html += "<tr><td>Below " + fmt0(E2) + "</td>";
-        for (int k = 19; k <= 36; ++k)
-            html += (acc.NR[1][k] > 0) ? "<td align=\"center\">" + fmtCount(acc.NR[1][k]) + "</td>" : "<td></td>";
-        html += "<td></td></tr>";
-    }
-
-    for (int K = 2; K <= 30; ++K)
-    {
-        const double E1 = (double(K) - 2.0) * acc.DELE + acc.ELOW;
-        E2 = E1 + acc.DELE;
-
-        if (isum(acc, K, 19, 37) > 0)
-        {
-            html += "<tr><td>" + fmt1(E1) + " - " + fmt1(E2) + "</td>";
-            for (int k = 19; k <= 36; ++k)
-                html += (acc.NR[K][k] > 0) ? "<td align=\"center\">" + fmtCount(acc.NR[K][k]) + "</td>" : "<td></td>";
-            html += "<td></td></tr>";
-        }
-    }
-
-    html += "<tr><td>Above " + fmt0(E2) + "</td>";
-    for (int k = 19; k <= 36; ++k)
-        html += (acc.NR[31][k] > 0) ? "<td align=\"center\">" + fmtCount(acc.NR[31][k]) + "</td>" : "<td></td>";
-    html += "<td></td></tr>";
-
-    html += "<tr class=\"total-row\"><th>Total</th>";
-    for (int k = 19; k <= 36; ++k)
-        html += (acc.NR[32][k] > 0) ? "<th>" + fmtCount(acc.NR[32][k]) + "</th>" : "<th></th>";
-    html += "<th></th></tr>";
-
-    html += "<tr><td>d&sigma;/d&Omega;</td>";
-    for (int k = 19; k <= 36; ++k)
-    {
-        const double TET = (double(k) - 0.5) * kDegToRad;
-        const double DS = (std::sin(TET) > 0.0) ? double(acc.NR[32][k]) / (std::sin(TET) * kDegToRad) : 0.0;
-        html += (DS > 0.0) ? "<td align=\"center\">" + QString::number(DS, 'g', 2) + "</td>" : "<td></td>";
-    }
-    html += "<td></td></tr>";
-
-    for (int i = 1; i <= 3; ++i)
-    {
-        html += "<tr><td>" + fmt0(acc.EWR1[i]) + " - " + fmt0(acc.EWR2[i]) + "</td>";
-        for (int k = 19; k <= 36; ++k)
-            html += (acc.NRW[i][k] > 0) ? "<td align=\"center\">" + fmtCount(acc.NRW[i][k]) + "</td>" : "<td></td>";
-        html += "<td></td></tr>";
-    }
-
-    html += "<tr><td>Above " + fmt0(acc.EWR1[4]) + "</td>";
-    for (int k = 19; k <= 36; ++k)
-        html += (acc.NRW[4][k] > 0) ? "<td>" + fmtCount(acc.NRW[4][k]) + "</td>" : "<td></td>";
-    html += "<td></td></tr></table>";
-    html += "<p>";
-    html += "<a href=\"gemini://plot_table/" + QString::number(plotIndex) + "\">Plot E vs &theta;</a> &nbsp; ";
-    html += "<a href=\"gemini://plot_ntheta/" + QString::number(plotIndex) + "\">Plot N vs &theta;</a> &nbsp; ";
-    html += "<a href=\"gemini://plot_ne/" + QString::number(plotIndex) + "\">Plot N vs E</a> &nbsp; ";
     html += "<a href=\"gemini://plot_dcsdtheta/" + QString::number(plotIndex) + "\">Plot d&sigma;/d&theta; vs &theta;</a>";
     html += "</p>";
     html += "<p>&nbsp;</p>";
@@ -3003,7 +2923,6 @@ QString buildAngularDistributionHtmlPACEStyle(
     double recoilBetaCN,
     const QString &title,
     int mdir,
-    int inputMode,
     double yieldSigmaTotalMb,
     const AngularDistEntry &neutronEntry,
     const AngularDistEntry &protonEntry,
@@ -3025,18 +2944,17 @@ QString buildAngularDistributionHtmlPACEStyle(
     html += "<style>"
             "body{font-family:Sans-Serif;}"
             "table{border-collapse:collapse; margin:10px 0;}"
-            "th,td{border:1px solid #909090; padding:4px 6px;}"
+            "th,td{border:1px solid #909090; padding:4px 6px; white-space:nowrap;}"
             "th{background:#ececec;}"
             ".total-row th,.total-row td{background:#ececec; font-weight:bold;}"
-            "h2{color:#1d4f91;}"
+            "h2{color:#1d4f91; text-align:center;}"
             "h3{margin-top:25px;}"
-            ".small{font-size:12px; color:#666;}"
+            ".angular-content{display:inline-block; width:fit-content; text-align:left;}"
             ".cm-spectra{margin:24px auto; min-width:520px;}"
             ".cm-spectra th{background:#dfeaf7; color:#1d4f91;}"
             ".cm-spectra td,.cm-spectra th{padding:5px 10px; text-align:center;}"
             "</style></head><body>";
-
-    html += "<p class=\"small\">" + title + "</p>";
+    html += "<div class=\"angular-content\">";
 
     if ((!hasAngularSamples(entries)
          && !hasAngularSamples(neutronEntry)
@@ -3045,16 +2963,19 @@ QString buildAngularDistributionHtmlPACEStyle(
          && !hasAngularSamples(gammaEntry))
         || nCascades <= 0)
     {
-        html += "<p>No angular-distribution events were found for output.</p></body></html>";
+        html += "<p>No angular-distribution events were found for output.</p></div></body></html>";
         return html;
     }
 
     const std::vector<PaceSelectedResidue> selected =
         buildSelectedResiduesPACE(entries, nCascades, lowLimitPercent, highLimitPercent);
 
-    html += isImf
-                ? "<p>&nbsp;</p><h2 align=\"center\">Angular distribution results(IMF)</h2>"
-                : "<p>&nbsp;</p><h2 align=\"center\">Angular distribution results</h2>";
+    const QString tabHeader =
+        isImf ? "IMF Angular Distributions" : "Residual Angular Distributions";
+
+    html += "<h2 align=center style=\"color:#1f5b9e;\">"
+            + tabHeader +
+            "</h2>";
 
     html += "<p>";
     html += "<a href=\"gemini://plot_all\">Plot All: E vs &theta;</a> &nbsp; ";
@@ -3110,7 +3031,7 @@ QString buildAngularDistributionHtmlPACEStyle(
         && !hasAngularSamples(alphaEntry)
         && !hasAngularSamples(gammaEntry))
     {
-        html += "<p>No angular-distribution events were found for output.</p></body></html>";
+        html += "<p>No angular-distribution events were found for output.</p></div></body></html>";
         return html;
     }
 
@@ -3124,9 +3045,8 @@ QString buildAngularDistributionHtmlPACEStyle(
         if (totalAngularCount(acc) <= 0) continue;
 
         html += buildHeaderForResiduePACE(displayIndex, r.z, r.n, fragmentKind);
-        appendMainPaceTable(html, acc, r.a, paceSigmaTotalMb, nCascades, inputMode, false, plotIndex,
+        appendMainPaceTable(html, acc, r.a, paceSigmaTotalMb, nCascades, true, false, plotIndex,
                             velocityLabel);
-        appendSecondPaceTableIfNeeded(html, acc, plotIndex);
         displayIndex++;
         plotIndex++;
     }
@@ -3134,9 +3054,8 @@ QString buildAngularDistributionHtmlPACEStyle(
     if (totalAngularCount(allAcc) > 0)
     {
         html += buildHeaderAllPACE(displayIndex, fragmentKindPlural);
-        appendMainPaceTable(html, allAcc, compoundA, paceSigmaTotalMb, nCascades, inputMode, true, plotIndex,
+        appendMainPaceTable(html, allAcc, compoundA, paceSigmaTotalMb, nCascades, true, true, plotIndex,
                             velocityLabel);
-        appendSecondPaceTableIfNeeded(html, allAcc, plotIndex);
         displayIndex++;
         plotIndex++;
     }
@@ -3157,10 +3076,8 @@ QString buildAngularDistributionHtmlPACEStyle(
 
         html += buildHeaderForParticlePACE(displayIndex, particleLabel);
         appendMainPaceTable(html, acc, particleA, paceSigmaTotalMb, nCascades,
-                            showVelocity ? inputMode : 0,
-                            false, plotIndex, velocityLabel);
+                            showVelocity, false, plotIndex, velocityLabel);
 
-        appendSecondPaceTableIfNeeded(html, acc, plotIndex);
         displayIndex++;
         plotIndex++;
     };
@@ -3175,7 +3092,7 @@ QString buildAngularDistributionHtmlPACEStyle(
                                                     alphaEntry,
                                                     gammaEntry);
 
-    html += "</body></html>";
+    html += "</div></body></html>";
     return html;
 }
 
@@ -3222,21 +3139,10 @@ AngularDistributionWidget::AngularDistributionWidget(const QString &htmlContent,
 
     QVBoxLayout *layout = new QVBoxLayout;
 
-    QToolBar *toolbar = new QToolBar;
-    toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-
-    QAction *saveAction = new QAction(QIcon(":/save29.png"), "&Save", this);
-    toolbar->addAction(saveAction);
-    connect(saveAction, SIGNAL(triggered()), this, SLOT(save_clicked()));
-
-    QAction *printAction = new QAction(QIcon(":/printer70.png"), "&Print", this);
-    toolbar->addAction(printAction);
-    connect(printAction, SIGNAL(triggered()), this, SLOT(print_clicked()));
-
-    layout->addWidget(toolbar);
-
     QTextBrowser *text = new QTextBrowser;
     text->setOpenLinks(false);
+    text->setLineWrapMode(QTextEdit::NoWrap);
+    text->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     text->setHtml(htmlContent);
     connect(text, SIGNAL(anchorClicked(QUrl)), this, SLOT(link_clicked(QUrl)));
     layout->addWidget(text);
@@ -3497,34 +3403,4 @@ void AngularDistributionWidget::openPlotWindow(bool plotAllTables, int tableInde
 
     dlg->resize(dialogWidth, dialogHeight);
     dlg->show();
-}
-
-void AngularDistributionWidget::save_clicked()
-{
-    const QString fileName = QFileDialog::getSaveFileName(this,
-                                                          tr("Save File"),
-                                                          QString(),
-                                                          tr("Gemini angular distribution (*.html)"));
-    if (fileName.isEmpty()) return;
-
-    QFile file(fileName);
-    if (!file.open(QIODevice::WriteOnly)) return;
-
-    QTextStream stream(&file);
-    stream << html;
-    file.close();
-}
-
-void AngularDistributionWidget::print_clicked()
-{
-    QPrinter printer;
-    QPrintDialog printDialog(&printer, this);
-    printDialog.setWindowTitle(tr("Print Angular Distribution"));
-
-    if (printDialog.exec() != QDialog::Accepted) return;
-
-    printer.setFullPage(true);
-    QTextDocument textDoc;
-    textDoc.setHtml(html);
-    textDoc.print(&printer);
 }

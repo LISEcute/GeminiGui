@@ -1,18 +1,9 @@
 #include "gm_mainwindow.h"
 #include "ui_gm_mainwindow.h"
 
-#include <QFile>
-#include <QDir>
-#include <QDebug>
-#include <QMessageBox>
 #include <QProgressDialog>
-#include <QFileDialog>
-#include <QGuiApplication>
-#include <QScreen>
 #include <algorithm>
-#include <array>
 #include <cmath>
-#include <functional>
 #include <map>
 #include <vector>
 
@@ -45,6 +36,8 @@ struct YieldRow
     double err = 0.0;
 };
 
+using ImfYieldCounts = std::map<std::pair<int, int>, double>;
+
 QString formatYieldCount(double value)
 {
     if (std::abs(value - std::round(value)) < 1.0e-6)
@@ -52,16 +45,34 @@ QString formatYieldCount(double value)
     return QString::number(value, 'g', 4);
 }
 
-QString yieldCells(const YieldRow *row)
+QString cellStyleForYield(bool zSeparator, bool imfSeparator, bool bold = false)
 {
-    if (!row)
-        return "<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>";
+    QStringList styles;
+    if (bold) styles << "font-weight:bold";
+    if (zSeparator) styles << "border-top:1px dotted #b0b0b0";
+    if (imfSeparator) styles << "border-left:1px dotted #b0b0b0";
+    return styles.isEmpty()
+               ? QString()
+               : " style=\"" + styles.join("; ") + ";\"";
+}
 
-    return "<td style=\"font-weight:bold\">" + row->name + "</td>"
-           "<td>" + formatYieldCount(row->events) + "</td>"
-           "<td>" + QString::number(row->percent, 'f', 1) + "%</td>"
-           "<td>" + QString::number(row->sigma, 'g', 4) + "</td>"
-           "<td>" + QString::number(row->err, 'g', 4) + "</td>";
+QString yieldCells(const YieldRow *row, bool zSeparator = false, bool imfSeparator = false)
+{
+    const QString firstCellStyle = cellStyleForYield(zSeparator, imfSeparator, row != nullptr);
+    const QString cellStyle = cellStyleForYield(zSeparator, false);
+
+    if (!row)
+        return "<td" + firstCellStyle + ">-</td>"
+               "<td" + cellStyle + ">-</td>"
+               "<td" + cellStyle + ">-</td>"
+               "<td" + cellStyle + ">-</td>"
+               "<td" + cellStyle + ">-</td>";
+
+    return "<td" + firstCellStyle + ">" + row->name + "</td>"
+           "<td" + cellStyle + ">" + formatYieldCount(row->events) + "</td>"
+           "<td" + cellStyle + ">" + QString::number(row->percent, 'f', 1) + "%</td>"
+           "<td" + cellStyle + ">" + QString::number(row->sigma, 'g', 4) + "</td>"
+           "<td" + cellStyle + ">" + QString::number(row->err, 'g', 4) + "</td>";
 }
 
 double angularEntryWeightTotal(const AngularDistEntry &entry)
@@ -84,6 +95,69 @@ double angularEntryWeightTotalForMap(const std::map<std::pair<int, int>, Angular
     for (const auto &it : entries)
         total += angularEntryWeightTotal(it.second);
     return total;
+}
+
+double imfYieldCountTotal(const ImfYieldCounts &imfYields)
+{
+    double total = 0.0;
+    for (const auto &it : imfYields)
+        total += it.second;
+    return total;
+}
+
+std::map<int, double> residualYieldCountsByZ(Residual *resid, int length)
+{
+    std::map<int, double> countsByZ;
+    for (int i = 0; i < length; i++)
+    {
+        if (resid[i].count != 0)
+            countsByZ[resid[i].Z] += resid[i].count;
+    }
+    return countsByZ;
+}
+
+YieldPlotData buildYieldPlotDataFromCounts(const std::map<int, double> &residualByZ,
+                                           const std::map<int, double> &imfByZ)
+{
+    std::vector<int> zValues;
+    for (const auto &it : residualByZ)
+        zValues.push_back(it.first);
+    for (const auto &it : imfByZ)
+    {
+        if (residualByZ.find(it.first) == residualByZ.end())
+            zValues.push_back(it.first);
+    }
+    std::sort(zValues.begin(), zValues.end());
+
+    YieldPlotData plotData;
+    for (int z : zValues)
+    {
+        YieldPlotPoint point;
+        point.z = z;
+
+        const auto resIt = residualByZ.find(z);
+        if (resIt != residualByZ.end())
+            point.residualEvents = resIt->second;
+
+        const auto imfIt = imfByZ.find(z);
+        if (imfIt != imfByZ.end())
+            point.imfEvents = imfIt->second;
+
+        plotData.points.push_back(point);
+    }
+
+    return plotData;
+}
+
+YieldPlotData buildYieldPlotDataFromImfCounts(Residual *resid,
+                                              int length,
+                                              const ImfYieldCounts &imfYields)
+{
+    std::map<int, double> imfByZ;
+    for (const auto &it : imfYields)
+        imfByZ[it.first.first] += it.second;
+
+    return buildYieldPlotDataFromCounts(residualYieldCountsByZ(resid, length), imfByZ);
 }
 
 std::map<int, std::vector<YieldRow>> buildImfYieldRowsByZ(
@@ -127,16 +201,57 @@ std::map<int, std::vector<YieldRow>> buildImfYieldRowsByZ(
     return rowsByZ;
 }
 
+std::map<int, std::vector<YieldRow>> buildImfYieldRowsByZ(
+    const ImfYieldCounts &imfYields,
+    double imfSigmaTotalMb)
+{
+    const double imfTotal = imfYieldCountTotal(imfYields);
+
+    std::map<int, std::vector<YieldRow>> rowsByZ;
+    if (imfTotal <= 0.0) return rowsByZ;
+
+    for (const auto &it : imfYields)
+    {
+        const int z = it.first.first;
+        const int n = it.first.second;
+        const double events = it.second;
+        if (events <= 0.0) continue;
+
+        CNucleus nuc(z, z + n);
+
+        YieldRow row;
+        row.z = z;
+        row.a = z + n;
+        row.name = nuc.getGName();
+        row.events = events;
+        row.percent = 100.0 * events / imfTotal;
+        row.sigma = imfSigmaTotalMb * events / imfTotal;
+        row.err = row.sigma / std::sqrt(events);
+        rowsByZ[row.z].push_back(row);
+    }
+
+    for (auto &it : rowsByZ)
+    {
+        std::sort(it.second.begin(), it.second.end(),
+                  [](const YieldRow &lhs, const YieldRow &rhs)
+                  {
+                      if (lhs.a != rhs.a) return lhs.a > rhs.a;
+                      return lhs.z > rhs.z;
+                  });
+    }
+
+    return rowsByZ;
 }
 
-QString buildMergedYieldTableHtml(const QString &title,
-                                  Residual *resid,
-                                  int length,
-                                  int countResidue,
-                                  double residualSigmaTotalMb,
-                                  const std::map<std::pair<int, int>, AngularDistEntry> &imfEntries,
-                                  double imfSigmaTotalMb,
-                                  FILE *file_cs)
+QString buildMergedYieldTableHtmlFromImfRows(const QString &title,
+                                             Residual *resid,
+                                             int length,
+                                             int countResidue,
+                                             double residualSigmaTotalMb,
+                                             const std::map<int, std::vector<YieldRow>> &imfRowsByZ,
+                                             double imfTotal,
+                                             double imfSigmaTotalMb,
+                                             FILE *file_cs)
 {
     std::map<int, std::vector<YieldRow>> residueRowsByZ;
 
@@ -148,7 +263,8 @@ QString buildMergedYieldTableHtml(const QString &title,
             YieldRow row;
             row.z = resid[i].Z;
             row.a = resid[i].A;
-            row.name = QString::fromStdString(resid[i].name);
+            CNucleus nuc(row.z, row.a);
+            row.name = nuc.getGName();
             row.events = resid[i].count;
             row.percent = countResidue > 0 ? 100.0 * double(resid[i].count) / double(countResidue) : 0.0;
             row.sigma = countResidue > 0 ? residualSigmaTotalMb * double(resid[i].count) / double(countResidue) : 0.0;
@@ -158,9 +274,6 @@ QString buildMergedYieldTableHtml(const QString &title,
             if(file_cs) fprintf(file_cs,"\n%d %d %10.3g %10.3g",resid[i].Z,resid[i].A-resid[i].Z,row.sigma,row.err);
         }
     }
-
-    const std::map<int, std::vector<YieldRow>> imfRowsByZ =
-        buildImfYieldRowsByZ(imfEntries, imfSigmaTotalMb);
 
     std::vector<int> zValues;
     for (const auto &it : residueRowsByZ)
@@ -173,18 +286,20 @@ QString buildMergedYieldTableHtml(const QString &title,
     std::sort(zValues.begin(), zValues.end(), std::greater<int>());
 
     QString results;
-    results += "<h3 align=\"center\" style=\"color: blue\"> " + title + " </h3>";
+    results += "<h3 align=\"center\" style=\"color: blue\"> " + title +
+               "(<a href=\"gemini://yield_plot\">plot</a>) </h3><br>";
     results += "<table cellpadding=\"5\" align=\"center\">";
     results += "<tr style=\"color: green\">"
                "<th rowspan=\"2\">Z</th>"
                "<th colspan=\"5\">Residual Nuclei</th>"
-               "<th colspan=\"5\">IMF Particles</th>"
+               "<th colspan=\"5\" style=\"border-left:1px dotted #b0b0b0;\">IMF Particles</th>"
                "</tr>";
     results += "<tr style=\"color: green\">"
                "<th>Name</th><th>Events</th><th>Percent</th><th>x-section (mb)</th><th>err(mb)</th>"
-               "<th>Name</th><th>Events</th><th>Percent</th><th>x-section (mb)</th><th>err(mb)</th>"
+               "<th style=\"border-left:1px dotted #b0b0b0;\">Name</th><th>Events</th><th>Percent</th><th>x-section (mb)</th><th>err(mb)</th>"
                "</tr>";
 
+    bool firstZGroup = true;
     for (int z : zValues)
     {
         const auto resIt = residueRowsByZ.find(z);
@@ -198,27 +313,64 @@ QString buildMergedYieldTableHtml(const QString &title,
         {
             const YieldRow *resRow = rowIndex < int(resRows.size()) ? &resRows[rowIndex] : nullptr;
             const YieldRow *imfRow = rowIndex < int(imfRows.size()) ? &imfRows[rowIndex] : nullptr;
+            const bool zSeparator = !firstZGroup && rowIndex == 0;
 
             results += "<tr>";
             results += rowIndex == 0
-                           ? "<td>" + QString::number(z) + "</td>"
+                           ? "<td" + cellStyleForYield(zSeparator, false) + ">" + QString::number(z) + "</td>"
                            : "<td></td>";
-            results += yieldCells(resRow);
-            results += yieldCells(imfRow);
+            results += yieldCells(resRow, zSeparator);
+            results += yieldCells(imfRow, zSeparator, true);
             results += "</tr>";
         }
+        firstZGroup = false;
     }
 
     results += "<tr>"
                "<td></td>"
                "<td style=\"font-weight:bold; color:green;\">Total</td><td>" + QString::number(countResidue) + "</td>"
                "<td></td><td style=\"font-weight:bold; color:green;\">" + QString::number(residualSigmaTotalMb,'f',2) + "</td><td></td>"
-               "<td style=\"font-weight:bold; color:green;\">Total</td><td>" + formatYieldCount(angularEntryWeightTotalForMap(imfEntries)) + "</td>"
+               "<td style=\"font-weight:bold; color:green; border-left:1px dotted #b0b0b0;\">Total</td><td>" + formatYieldCount(imfTotal) + "</td>"
                "<td></td><td style=\"font-weight:bold; color:green;\">" + QString::number(imfSigmaTotalMb,'f',2) + "</td><td></td>"
                "</tr>";
-    results += "</table>";
+    results += "</table><br>";
 
     return results;
+}
+
+}
+
+QString buildMergedYieldTableHtml(const QString &title,
+                                  Residual *resid,
+                                  int length,
+                                  int countResidue,
+                                  double residualSigmaTotalMb,
+                                  const std::map<std::pair<int, int>, AngularDistEntry> &imfEntries,
+                                  double imfSigmaTotalMb,
+                                  FILE *file_cs)
+{
+    const std::map<int, std::vector<YieldRow>> imfRowsByZ =
+        buildImfYieldRowsByZ(imfEntries, imfSigmaTotalMb);
+    return buildMergedYieldTableHtmlFromImfRows(title,
+                                                resid,
+                                                length,
+                                                countResidue,
+                                                residualSigmaTotalMb,
+                                                imfRowsByZ,
+                                                angularEntryWeightTotalForMap(imfEntries),
+                                                imfSigmaTotalMb,
+                                                file_cs);
+}
+
+YieldPlotData buildYieldPlotData(Residual *resid,
+                                 int length,
+                                 const std::map<std::pair<int, int>, AngularDistEntry> &imfEntries)
+{
+    std::map<int, double> imfByZ;
+    for (const auto &it : imfEntries)
+        imfByZ[it.first.first] += angularEntryWeightTotal(it.second);
+
+    return buildYieldPlotDataFromCounts(residualYieldCountsByZ(resid, length), imfByZ);
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 void MainWindow::execute_compound()
@@ -256,7 +408,6 @@ void MainWindow::execute_compound()
     float Nfission = 0.;
     float Nimf = 0.;
     float neutPreSad = 0.;
-    float hell = 0.;
     float neutSaddleToScission = 0.;
     float neutHeavy = 0.;
     float neutLight = 0.;
@@ -271,68 +422,15 @@ void MainWindow::execute_compound()
     float neutMultEv = 0.;
     float protMultEv = 0.;
     float alpMultEv = 0.;
-    float H2MultEv = 0.;
-    float H3MultEv = 0.;
-    float He3MultEv = 0.;
     float gammaEnergy = 0.;
     int counter=0;
-    std::map<std::pair<int, int>, AngularDistEntry> angularDistByZN;
-    std::map<std::pair<int, int>, AngularDistEntry> imfAngularByZN;
-    AngularDistEntry neutronAngular;
-    neutronAngular.z = 0;
-    neutronAngular.n = 1;
-    AngularDistEntry protonAngular;
-    protonAngular.z = 1;
-    protonAngular.n = 0;
-    AngularDistEntry alphaAngular;
-    alphaAngular.z = 2;
-    alphaAngular.n = 2;
-    const bool showAngDist = _showangdist;
-    const bool showAngDistimf = _showangdistimf;
-
-    auto computeLabKinematics = [&](CNucleus *particle,
-                                    float &keLab,
-                                    float &thetaLabDeg,
-                                    float &vzLab,
-                                    float &vxy)
-    {
-        float *vel = particle->getVelocityVector();
-
-        const float vx = vel[0] / 30.f;
-        const float vy = vel[1] / 30.f;
-        vzLab = vel[2] / 30.f;
-        vxy = std::sqrt(vx * vx + vy * vy);
-
-        const float betaTot = std::sqrt(vx * vx + vy * vy + vzLab * vzLab);
-        thetaLabDeg = 0.f;
-        if (betaTot > 0.f)
-        {
-            float c = vzLab / betaTot;
-            if (c > 1.f) c = 1.f;
-            if (c < -1.f) c = -1.f;
-            thetaLabDeg = static_cast<float>(std::acos(c) * 57.29577951308232);
-        }
-
-        keLab = 0.5f * (particle->iA * 931.49432f) *
-                (vx * vx + vy * vy + vzLab * vzLab);
-    };
-
-    auto computeCMKineticEnergy = [](CNucleus *particle)
-    {
-        float *vel = particle->getVelocityVector();
-
-        const float vx = vel[0] / 30.f;
-        const float vy = vel[1] / 30.f;
-        const float vz = vel[2] / 30.f;
-
-        return 0.5f * (particle->iA * 931.49432f) *
-               (vx * vx + vy * vy + vz * vz);
-    };
+    ImfYieldCounts imfYieldByZN;
     //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW  cascade BEGIN
+    const int progressStep = std::max(1, num_casc / 1000);
     for (int i=0;i<num_casc;i++)
     {
         if(progress.wasCanceled()){break;}
-        if (i % 10 == 0 || i == num_casc - 1) {
+        if (i % progressStep == 0 || i == num_casc - 1) {
             progress.setValue(i);
             qApp->processEvents();
         }
@@ -369,8 +467,11 @@ void MainWindow::execute_compound()
         // the weight will be unity unless setWeightIMF is called
         float weight = products->getWeightFactor();
 
+        const bool isSymmetricFission = CN.isSymmetricFission();
+        const bool isAsymmetricFission = CN.isAsymmetricFission();
+        const bool isResidue = CN.isResidue();
 
-        if (CN.isSymmetricFission())
+        if (isSymmetricFission)
         {
             sym_total++;
             Nfission += weight;  //fission event
@@ -380,7 +481,6 @@ void MainWindow::execute_compound()
                 if (products->iZ == 0 && products->iA == 1) // look for neutrons
                 {
                     if (products->isSaddleToScission()) neutSaddleToScission += weight;
-                    else if (products->origin == 1) hell += weight; // cout << "hell " << std::endl;
                     else if (products->origin == 0) neutPreSad += weight;
                     else if (products->origin == 2) neutLight += weight;
                     else if (products->origin == 3) neutHeavy += weight;
@@ -391,30 +491,19 @@ void MainWindow::execute_compound()
         }
 
         //intermediate mass fragment
-        if (CN.isAsymmetricFission())
+        if (isAsymmetricFission)
         {
             Nimf += weight;
             imf_total++;
+            const int zMaxEvap = CN.getZmaxEvap();
 
             CNucleus *imfProducts = CN.getProducts(0);
             for (int j = 0; j < Nfrag && imfProducts; j++)
             {
-                if (imfProducts->iZ > CN.getZmaxEvap())
+                if (imfProducts->iZ > zMaxEvap)
                 {
-                    float keLab = 0.f;
-                    float thetaLabDeg = 0.f;
-                    float vzLab = 0.f;
-                    float vxy = 0.f;
-                    computeLabKinematics(imfProducts, keLab, thetaLabDeg, vzLab, vxy);
-                    addAngularSample(imfAngularByZN,
-                                     imfProducts->iZ,
-                                     imfProducts->iA - imfProducts->iZ,
-                                     keLab,
-                                     thetaLabDeg,
-                                     vzLab,
-                                     vxy,
-                                     computeCMKineticEnergy(imfProducts),
-                                     weight);
+                    imfYieldByZN[std::make_pair(imfProducts->iZ,
+                                                imfProducts->iA - imfProducts->iZ)] += weight;
                 }
                 imfProducts = CN.getProducts();
             }
@@ -422,77 +511,44 @@ void MainWindow::execute_compound()
 
         total += weight;
 
-        if (CN.isResidue())
+        if (isResidue)
         {
-            resid[hash(products->getName())].count++;
+            const std::string productName = products->getName();
+            const int residueIndex = hash(productName);
+            Residual &residue = resid[residueIndex];
+
+            residue.count++;
             countResidue++;
-            resid[hash(products->getName())].name = products->getName();
-            resid[hash(products->getName())].Z = products->iZ;
-            resid[hash(products->getName())].A = products->iA;
+            residue.name = productName;
+            residue.Z = products->iZ;
+            residue.A = products->iA;
             Ares += products->iA;
             Zres += products->iZ;
             resTotal += weight;
             gammaEnergy += weight*products->getSumGammaEnergy();
-
-            float keLab = 0.f;
-            float thetaLabDeg = 0.f;
-            float vzLab = 0.f;
-            float vxy = 0.f;
-            computeLabKinematics(products, keLab, thetaLabDeg, vzLab, vxy);
-            addAngularSample(angularDistByZN,
-                             products->iZ,
-                             products->iA - products->iZ,
-                             keLab,
-                             thetaLabDeg,
-                             vzLab,
-                             vxy);
         }
         //============================================================= analysis BEGIN
         products = CN.getProducts(0);  // go to first evaporated particle
 
         for (int i=0;i<Nfrag-1;i++)
         {
-            if (products->iZ == 0 && products->iA == 1 && CN.isResidue())  //neutrons
+            if (products->iZ == 0 && products->iA == 1 && isResidue)  //neutrons
             {
                 neutMultEv += weight;
-                float keLab = 0.f;
-                float thetaLabDeg = 0.f;
-                float vzLab = 0.f;
-                float vxy = 0.f;
-                computeLabKinematics(products, keLab, thetaLabDeg, vzLab, vxy);
-                addAngularSample(neutronAngular, keLab, thetaLabDeg, vzLab, vxy,
-                                 computeCMKineticEnergy(products));
             }
-            else if (products->iZ == 1 && CN.isResidue()) //protons
+            else if (products->iZ == 1 && isResidue) //protons
             {
                 if(products->iA == 1 )
                 {
                     protMultEv += weight;
-                    float keLab = 0.f;
-                    float thetaLabDeg = 0.f;
-                    float vzLab = 0.f;
-                    float vxy = 0.f;
-                    computeLabKinematics(products, keLab, thetaLabDeg, vzLab, vxy);
-                    addAngularSample(protonAngular, keLab, thetaLabDeg, vzLab, vxy,
-                                     computeCMKineticEnergy(products));
                 }
-                else if(products->iA == 2 ) H2MultEv   += weight;
-                else if(products->iA == 3 ) H3MultEv   += weight;
             }
-            else if (products->iZ == 2  && CN.isResidue())//alpha particles
+            else if (products->iZ == 2  && isResidue)//alpha particles
             {
                 if( products->iA == 4)
                 {
                     alpMultEv += weight;
-                    float keLab = 0.f;
-                    float thetaLabDeg = 0.f;
-                    float vzLab = 0.f;
-                    float vxy = 0.f;
-                    computeLabKinematics(products, keLab, thetaLabDeg, vzLab, vxy);
-                    addAngularSample(alphaAngular, keLab, thetaLabDeg, vzLab, vxy,
-                                     computeCMKineticEnergy(products));
                 }
-                else if( products->iA == 3)  He3MultEv += weight;
             }
             // go to next particle
             products = CN.getProducts();
@@ -539,14 +595,15 @@ void MainWindow::execute_compound()
     results += "</table>;";
     //--------------------------------------------------------------
 
-    results += buildMergedYieldTableHtml("Yields of Decay Products",
-                                         resid,
-                                         length,
-                                         countResidue,
-                                         _SIGMA,
-                                         imfAngularByZN,
-                                         Nimf*Sconst,
-                                         file_cs);
+    results += buildMergedYieldTableHtmlFromImfRows("Yields of Residual Nuclei and IMF Particles",
+                                                    resid,
+                                                    length,
+                                                    countResidue,
+                                                    _SIGMA,
+                                                    buildImfYieldRowsByZ(imfYieldByZN, Nimf*Sconst),
+                                                    imfYieldCountTotal(imfYieldByZN),
+                                                    Nimf*Sconst,
+                                                    file_cs);
 
     if(file_cs) fclose(file_cs);
     //------------------------------------------------------------------------
@@ -587,111 +644,12 @@ void MainWindow::execute_compound()
     printGeminiProperties(results);
     //------------------------------------------------------------------------
     qApp->processEvents();
-    Result_Widget *ress = new Result_Widget(results);
+
+    const YieldPlotData yieldPlot =
+        buildYieldPlotDataFromImfCounts(resid, length, imfYieldByZN);
+
+    Result_Widget *ress = new Result_Widget(results, yieldPlot);
     ress->show();
-
-    if (showAngDist)
-    {
-        const QString angularHtml = buildAngularDistributionHtmlPACEStyle(
-            angularDistByZN,
-            _SIGMA,
-            qMax(1, counter),
-            _LowLimit,
-            _HighLimit,
-            fEx,
-            iACN,
-            0.0,
-            "Compound mode",
-            0,
-            2,
-            -1.0,
-            neutronAngular,
-            protonAngular,
-            alphaAngular
-            );
-
-        AngularDistributionWidget *angularWindow =
-            new AngularDistributionWidget(
-                angularHtml,
-                angularDistByZN,
-                _SIGMA,
-                qMax(1, counter),
-                _LowLimit,
-                _HighLimit,
-                "Compound mode",
-                neutronAngular,
-                protonAngular,
-                alphaAngular,
-                AngularDistEntry(),
-                fEx,
-                iACN,
-                iZCN,
-                0.0,
-                0,
-                this
-                );
-        QScreen *screen = QGuiApplication::screenAt(ress->geometry().center());
-        if (!screen) screen = QGuiApplication::primaryScreen();
-        if (screen)
-        {
-            const QRect available = screen->availableGeometry();
-            const int gap = 12;
-            const int pairWidth = available.width() - gap;
-            const int resultWidth = pairWidth / 2;
-            const int angularWidth = pairWidth - resultWidth;
-            const int pairHeight = qMin(760, available.height());
-            const int top = available.top() + (available.height() - pairHeight) / 2;
-
-            ress->setMinimumSize(qMin(640, resultWidth), qMin(560, pairHeight));
-            angularWindow->setMinimumSize(qMin(640, angularWidth), qMin(560, pairHeight));
-            ress->setGeometry(available.left(), top, resultWidth, pairHeight);
-            angularWindow->setGeometry(available.left() + resultWidth + gap, top, angularWidth, pairHeight);
-        }
-
-        angularWindow->show();
-    }
-
-    if (showAngDistimf)
-    {
-        const double imfYieldSigmaMb = double(Nimf*Sconst);
-
-        const QString imfAngularHtml = buildAngularDistributionHtmlPACEStyle(
-            imfAngularByZN,
-            _SIGMA,
-            qMax(1, counter),
-            _LowLimit,
-            _HighLimit,
-            fEx,
-            iACN,
-            0.0,
-            "Compound mode - IMF",
-            0,
-            2,
-            _useIMFenh ? imfYieldSigmaMb : -1.0
-            );
-
-        AngularDistributionWidget *imfAngularWindow =
-            new AngularDistributionWidget(
-                imfAngularHtml,
-                imfAngularByZN,
-                _SIGMA,
-                qMax(1, counter),
-                _LowLimit,
-                _HighLimit,
-                "Compound mode - IMF",
-                AngularDistEntry(),
-                AngularDistEntry(),
-                AngularDistEntry(),
-                AngularDistEntry(),
-                fEx,
-                iACN,
-                iZCN,
-                0.0,
-                0,
-                this
-                );
-        imfAngularWindow->show();
-    }
 
     CN.reset();
 }

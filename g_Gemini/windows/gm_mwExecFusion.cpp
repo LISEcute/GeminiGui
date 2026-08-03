@@ -1,13 +1,9 @@
 #include "gm_mainwindow.h"
 #include "ui_gm_mainwindow.h"
 
-#include <QFile>
-#include <QDir>
 #include <QDateTime>
-#include <QDebug>
-#include <QMessageBox>
+#include <QFileInfo>
 #include <QProgressDialog>
-#include <QFileDialog>
 #include <map>
 #include "g_Gemini/source/CNucleus.h"
 #include "g_Gemini/source/CFus.h"
@@ -31,6 +27,9 @@ extern QString buildMergedYieldTableHtml(const QString &title,
                                          const std::map<std::pair<int, int>, AngularDistEntry> &imfEntries,
                                          double imfSigmaTotalMb,
                                          FILE *file_cs);
+extern YieldPlotData buildYieldPlotData(Residual *resid,
+                                        int length,
+                                        const std::map<std::pair<int, int>, AngularDistEntry> &imfEntries);
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 void MainWindow::execute_fusion()
@@ -99,7 +98,6 @@ void MainWindow::execute_fusion()
     float total = 0.;
     float Nfission = 0.;
     float Nimf = 0.;
-    float hell = 0.;
     float neutPreSad = 0.;
     float neutSaddleToScission = 0.;
     float neutHeavy = 0.;
@@ -114,9 +112,6 @@ void MainWindow::execute_fusion()
     float neutMultEv = 0.;
     float protMultEv = 0.;
     float alpMultEv = 0.;
-    float H2MultEv = 0.;
-    float H3MultEv = 0.;
-    float He3MultEv = 0.;
 
     float gammaEnergy = 0.;
 
@@ -145,11 +140,12 @@ void MainWindow::execute_fusion()
         2.0f * (Elab * Ap / (Ap + At)) / (931.49432f * (Ap + At))
         );
 
-    auto computeLabKinematics = [&](CNucleus *particle,
-                                    float &keLab,
-                                    float &thetaLabDeg,
-                                    float &vzLab,
-                                    float &vxy)
+    auto computeKinematics = [&](CNucleus *particle,
+                                 float &keLab,
+                                 float &thetaLabDeg,
+                                 float &vzLab,
+                                 float &vxy,
+                                 float &cmEnergy)
     {
         float *vel = particle->getVelocityVector();
 
@@ -158,6 +154,7 @@ void MainWindow::execute_fusion()
         const float vzLocal = vel[2] / 30.f;
         vzLab = vzLocal + betaCN;
         vxy = std::sqrt(vx * vx + vy * vy);
+        const float massMeV = particle->iA * 931.49432f;
 
         const float betaTot = std::sqrt(vx * vx + vy * vy + vzLab * vzLab);
         thetaLabDeg = 0.f;
@@ -169,27 +166,16 @@ void MainWindow::execute_fusion()
             thetaLabDeg = static_cast<float>(std::acos(c) * 57.29577951308232);
         }
 
-        keLab = 0.5f * (particle->iA * 931.49432f) *
-                (vx * vx + vy * vy + vzLab * vzLab);
-    };
-
-    auto computeCMKineticEnergy = [](CNucleus *particle)
-    {
-        float *vel = particle->getVelocityVector();
-
-        const float vx = vel[0] / 30.f;
-        const float vy = vel[1] / 30.f;
-        const float vz = vel[2] / 30.f;
-
-        return 0.5f * (particle->iA * 931.49432f) *
-               (vx * vx + vy * vy + vz * vz);
+        keLab = 0.5f * massMeV * (vx * vx + vy * vy + vzLab * vzLab);
+        cmEnergy = 0.5f * massMeV * (vx * vx + vy * vy + vzLocal * vzLocal);
     };
 
     //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW  cascade BEGIN
+    const int progressStep = std::max(1, num_events / 1000);
     for (int i=0;i<num_events;i++)
     {
         if(progress.wasCanceled()){break;}
-        if (i % 10 == 0 || i == num_events - 1) {
+        if (i % progressStep == 0 || i == num_events - 1) {
             progress.setValue(i);
             qApp->processEvents();
         }
@@ -238,8 +224,11 @@ void MainWindow::execute_fusion()
         // the weight will be unity unless setWeightIMF is called
         float weight = products->getWeightFactor();
 
+        const bool isSymmetricFission = CN.isSymmetricFission();
+        const bool isAsymmetricFission = CN.isAsymmetricFission();
+        const bool isResidue = CN.isResidue();
 
-        if (CN.isSymmetricFission())
+        if (isSymmetricFission)
         {
             sym_total++;
             Nfission += weight;             //fission event
@@ -249,7 +238,6 @@ void MainWindow::execute_fusion()
                 if (products->iZ == 0 && products->iA == 1) // look for neutrons
                 {
                     if (products->isSaddleToScission()) neutSaddleToScission += weight;
-                    else if (products->origin == 1) hell += weight; // cout << "hell " << std::endl;
                     else if (products->origin == 0) neutPreSad += weight;
                     else if (products->origin == 2) neutLight += weight;
                     else if (products->origin == 3) neutHeavy += weight;
@@ -260,21 +248,23 @@ void MainWindow::execute_fusion()
         }
 
         //intermediate mass fragment
-        if (CN.isAsymmetricFission())
+        if (isAsymmetricFission)
         {
             Nimf += weight;
             imf_total++;
+            const int zMaxEvap = CN.getZmaxEvap();
 
             CNucleus *imfProducts = CN.getProducts(0);
             for (int j = 0; j < Nfrag && imfProducts; j++)
             {
-                if (imfProducts->iZ > CN.getZmaxEvap())
+                if (imfProducts->iZ > zMaxEvap)
                 {
                     float keLab = 0.f;
                     float thetaLabDeg = 0.f;
                     float vzLab = 0.f;
                     float vxy = 0.f;
-                    computeLabKinematics(imfProducts, keLab, thetaLabDeg, vzLab, vxy);
+                    float cmEnergy = 0.f;
+                    computeKinematics(imfProducts, keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
                     addAngularSample(imfAngularByZN,
                                      imfProducts->iZ,
                                      imfProducts->iA - imfProducts->iZ,
@@ -282,7 +272,7 @@ void MainWindow::execute_fusion()
                                      thetaLabDeg,
                                      vzLab,
                                      vxy,
-                                     computeCMKineticEnergy(imfProducts),
+                                     cmEnergy,
                                      weight);
                 }
                 imfProducts = CN.getProducts();
@@ -299,13 +289,17 @@ void MainWindow::execute_fusion()
 
         //evaporation resiudes
 
-        if (CN.isResidue())
+        if (isResidue)
         {
-            resid[hash(products->getName())].count++;
+            const std::string productName = products->getName();
+            const int residueIndex = hash(productName);
+            Residual &residue = resid[residueIndex];
+
+            residue.count++;
             countResidue++;
-            resid[hash(products->getName())].name = products->getName();
-            resid[hash(products->getName())].Z = products->iZ;
-            resid[hash(products->getName())].A = products->iA;
+            residue.name = productName;
+            residue.Z = products->iZ;
+            residue.A = products->iA;
             Ares += products->iA;
             Zres += products->iZ;
             resTotal += weight;
@@ -316,8 +310,9 @@ void MainWindow::execute_fusion()
             float thetaLabDeg = 0.f;
             float vzLab = 0.f;
             float vxy = 0.f;
+            float cmEnergy = 0.f;
 
-            computeLabKinematics(products, keLab, thetaLabDeg, vzLab, vxy);
+            computeKinematics(products, keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
 
             addAngularSample(angularDistByZN,
                              products->iZ,
@@ -346,18 +341,19 @@ void MainWindow::execute_fusion()
 
         for (int i=0;i<Nfrag-1;i++)
         {
-            if (products->iZ == 0 && products->iA == 1 && CN.isResidue())  //neutrons
+            if (products->iZ == 0 && products->iA == 1 && isResidue)  //neutrons
             {
                 neutMultEv += weight;
                 float keLab = 0.f;
                 float thetaLabDeg = 0.f;
                 float vzLab = 0.f;
                 float vxy = 0.f;
-                computeLabKinematics(products, keLab, thetaLabDeg, vzLab, vxy);
+                float cmEnergy = 0.f;
+                computeKinematics(products, keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
                 addAngularSample(neutronAngular, keLab, thetaLabDeg, vzLab, vxy,
-                                 computeCMKineticEnergy(products));
+                                 cmEnergy);
             }
-            else if (products->iZ == 1 && CN.isResidue()) //protons
+            else if (products->iZ == 1 && isResidue) //protons
             {
                 if(products->iA == 1 )
                 {
@@ -366,14 +362,13 @@ void MainWindow::execute_fusion()
                     float thetaLabDeg = 0.f;
                     float vzLab = 0.f;
                     float vxy = 0.f;
-                    computeLabKinematics(products, keLab, thetaLabDeg, vzLab, vxy);
+                    float cmEnergy = 0.f;
+                    computeKinematics(products, keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
                     addAngularSample(protonAngular, keLab, thetaLabDeg, vzLab, vxy,
-                                     computeCMKineticEnergy(products));
+                                      cmEnergy);
                 }
-                else if(products->iA == 2 ) H2MultEv   += weight;
-                else if(products->iA == 3 ) H3MultEv   += weight;
             }
-            else if (products->iZ == 2  && CN.isResidue())//alpha particles
+            else if (products->iZ == 2  && isResidue)//alpha particles
             {
                 if( products->iA == 4)
                 {
@@ -382,11 +377,11 @@ void MainWindow::execute_fusion()
                     float thetaLabDeg = 0.f;
                     float vzLab = 0.f;
                     float vxy = 0.f;
-                    computeLabKinematics(products, keLab, thetaLabDeg, vzLab, vxy);
+                    float cmEnergy = 0.f;
+                    computeKinematics(products, keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
                     addAngularSample(alphaAngular, keLab, thetaLabDeg, vzLab, vxy,
-                                     computeCMKineticEnergy(products));
+                                     cmEnergy);
                 }
-                else if( products->iA == 3)  He3MultEv += weight;
             }
             // go to next particle
             products = CN.getProducts();
@@ -512,102 +507,80 @@ void MainWindow::execute_fusion()
     //------------------------------------------------------------------------
 
     qApp->processEvents();
-    Result_Widget *ress = new Result_Widget(results);
-    ress->show();
     extern double _LowLimit, _HighLimit;
 
-    if (ui->DistAng->isChecked())
-    {
-        const double recoilBetaCN =
-            std::sqrt(2.0 * (Elab * Ap / (Ap + At)) /
-                      (931.49432 * (Ap + At)));
+    const double recoilBetaCN =
+        std::sqrt(2.0 * (Elab * Ap / (Ap + At)) /
+                  (931.49432 * (Ap + At)));
+    const double imfYieldSigmaMb = double(Nimf*Sconst);
 
-        const QString angularHtml = buildAngularDistributionHtmlPACEStyle(
-            angularDistByZN,
-            xfus,
-            qMax(1, counter),
-            _LowLimit,
-            _HighLimit,
-            fus.Ex,
-            fus.iAcn,
-            recoilBetaCN,
-            "Fusion mode",
-            0,
-            1,
-            -1.0,
-            neutronAngular,
-            protonAngular,
-            alphaAngular,
-            gammaAngular
-            );
+    AngularResultTab residualAngular;
+    residualAngular.label = "Residual Angular Distributions";
+    residualAngular.html = buildAngularDistributionHtmlPACEStyle(
+        angularDistByZN,
+        xfus,
+        qMax(1, counter),
+        _LowLimit,
+        _HighLimit,
+        fus.Ex,
+        fus.iAcn,
+        recoilBetaCN,
+        "Fusion mode",
+        0,
+        -1.0,
+        neutronAngular,
+        protonAngular,
+        alphaAngular,
+        gammaAngular
+        );
+    residualAngular.entries = angularDistByZN;
+    residualAngular.sigmaTotal = xfus;
+    residualAngular.nEvents = qMax(1, counter);
+    residualAngular.lowLimitPercent = _LowLimit;
+    residualAngular.highLimitPercent = _HighLimit;
+    residualAngular.title = "Fusion mode";
+    residualAngular.neutronEntry = neutronAngular;
+    residualAngular.protonEntry = protonAngular;
+    residualAngular.alphaEntry = alphaAngular;
+    residualAngular.gammaEntry = gammaAngular;
+    residualAngular.compoundExcitationMeV = fus.Ex;
+    residualAngular.compoundA = fus.iAcn;
+    residualAngular.compoundZ = fus.iZcn;
+    residualAngular.recoilBetaCN = recoilBetaCN;
+    residualAngular.mdir = 0;
 
-        AngularDistributionWidget *angularWindow =
-            new AngularDistributionWidget(
-                angularHtml,
-                angularDistByZN,
-                xfus,
-                qMax(1, counter),
-                _LowLimit,
-                _HighLimit,
-                "Fusion mode",
-                neutronAngular,
-                protonAngular,
-                alphaAngular,
-                gammaAngular,
-                fus.Ex,
-                fus.iAcn,
-                fus.iZcn,
-                recoilBetaCN,
-                0,
-                this
-                );
-        angularWindow->show();
-    }
+    AngularResultTab imfAngular;
+    imfAngular.label = "IMF Angular Distributions";
+    imfAngular.html = buildAngularDistributionHtmlPACEStyle(
+        imfAngularByZN,
+        xfus,
+        qMax(1, counter),
+        _LowLimit,
+        _HighLimit,
+        fus.Ex,
+        fus.iAcn,
+        recoilBetaCN,
+        "Fusion mode - IMF",
+        0,
+        _useIMFenh ? imfYieldSigmaMb : -1.0
+        );
+    imfAngular.entries = imfAngularByZN;
+    imfAngular.sigmaTotal = xfus;
+    imfAngular.nEvents = qMax(1, counter);
+    imfAngular.lowLimitPercent = _LowLimit;
+    imfAngular.highLimitPercent = _HighLimit;
+    imfAngular.title = "Fusion mode - IMF";
+    imfAngular.compoundExcitationMeV = fus.Ex;
+    imfAngular.compoundA = fus.iAcn;
+    imfAngular.compoundZ = fus.iZcn;
+    imfAngular.recoilBetaCN = recoilBetaCN;
+    imfAngular.mdir = 0;
 
-    if (ui->AngDistImf->isChecked())
-    {
-        const double recoilBetaCN =
-            std::sqrt(2.0 * (Elab * Ap / (Ap + At)) /
-                      (931.49432 * (Ap + At)));
-        const double imfYieldSigmaMb = double(Nimf*Sconst);
+    const YieldPlotData yieldPlot =
+        buildYieldPlotData(resid, length, imfAngularByZN);
 
-        const QString imfAngularHtml = buildAngularDistributionHtmlPACEStyle(
-            imfAngularByZN,
-            xfus,
-            qMax(1, counter),
-            _LowLimit,
-            _HighLimit,
-            fus.Ex,
-            fus.iAcn,
-            recoilBetaCN,
-            "Fusion mode - IMF",
-            0,
-            1,
-            _useIMFenh ? imfYieldSigmaMb : -1.0
-            );
-
-        AngularDistributionWidget *imfAngularWindow =
-            new AngularDistributionWidget(
-                imfAngularHtml,
-                imfAngularByZN,
-                xfus,
-                qMax(1, counter),
-                _LowLimit,
-                _HighLimit,
-                "Fusion mode - IMF",
-                AngularDistEntry(),
-                AngularDistEntry(),
-                AngularDistEntry(),
-                AngularDistEntry(),
-                fus.Ex,
-                fus.iAcn,
-                fus.iZcn,
-                recoilBetaCN,
-                0,
-                this
-                );
-        imfAngularWindow->show();
-    }
+    Result_Widget *ress = new Result_Widget(results, residualAngular, imfAngular, yieldPlot);
+    ress->show();
     CN.reset();
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW

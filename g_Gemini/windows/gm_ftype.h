@@ -82,6 +82,7 @@
 // 3.2.4   07/20/26  Added angular distribbution tables and plots for IMF
 // 3.2.5   07/20/26  Added Boltzmann distribution and columb barrier to plots
 // 3.2.5   07/23/26  Added Yields of IMF Particles; Changes to fit logic in Boltzmann distribution
+// 3.2.6   08/4/26   Changed Output windows, New comparison plot for IMF and Residual yield table
 
 
 
