@@ -30,6 +30,52 @@ extern QString buildMergedYieldTableHtml(const QString &title,
 extern YieldPlotData buildYieldPlotData(Residual *resid,
                                         int length,
                                         const std::map<std::pair<int, int>, AngularDistEntry> &imfEntries);
+
+namespace {
+
+QChar superscriptDigit(QChar digit)
+{
+    switch (digit.unicode())
+    {
+    case '0': return QChar(0x2070);
+    case '1': return QChar(0x00B9);
+    case '2': return QChar(0x00B2);
+    case '3': return QChar(0x00B3);
+    case '4': return QChar(0x2074);
+    case '5': return QChar(0x2075);
+    case '6': return QChar(0x2076);
+    case '7': return QChar(0x2077);
+    case '8': return QChar(0x2078);
+    case '9': return QChar(0x2079);
+    default: return digit;
+    }
+}
+
+QString superscriptLeadingMassNumber(const QString &nuclideName)
+{
+    QString displayName;
+    int index = 0;
+    while (index < nuclideName.size() && nuclideName.at(index).isDigit())
+    {
+        displayName += superscriptDigit(nuclideName.at(index));
+        index++;
+    }
+
+    displayName += nuclideName.mid(index);
+    return displayName;
+}
+
+QString resultWindowTitle(const QString &projectileName,
+                          const QString &targetName,
+                          double energyMeV)
+{
+    return "Gemini: Results ("
+           + superscriptLeadingMassNumber(projectileName) + "_"
+           + superscriptLeadingMassNumber(targetName) + "_"
+           + QString::number(energyMeV, 'f', 0) + ")";
+}
+
+}
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 void MainWindow::execute_fusion()
@@ -580,6 +626,9 @@ void MainWindow::execute_fusion()
         buildYieldPlotData(resid, length, imfAngularByZN);
 
     Result_Widget *ress = new Result_Widget(results, residualAngular, imfAngular, yieldPlot);
+    ress->setWindowTitle(resultWindowTitle(QString::fromStdString(fus.p.getName()),
+                                           QString::fromStdString(fus.t.getName()),
+                                           Elab));
     ress->show();
     CN.reset();
 }

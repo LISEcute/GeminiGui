@@ -509,6 +509,7 @@ struct PlotTableEntry
     bool allowGaussianEnergyOverlay = true;
     bool allowBoltzmannEnergyFit = false;
     OverlayParticleKind boltzmannKind = OverlayNone;
+    bool isParticlePlot = false;
 };
 
 std::vector<PlotTableEntry> buildPlotTableListPACE(
@@ -636,12 +637,14 @@ std::vector<PlotTableEntry> buildPlotTableListPACE(
                           .arg(idx)
                           .arg(particleLabel);
         table.entry = entry;
+        table.isParticlePlot = true;
         initPaceAccum(table.acc, compoundA, compoundExcitationMeV, recoilBetaCN, mdir);
         setParticleEnergyInterval(table.acc);
         appendEntryToAccum(table.acc, entry);
         if (totalAngularCount(table.acc) <= 0) return;
         if (overlayParticleKind != OverlayNone)
         {
+            table.allowGaussianEnergyOverlay = false;
             table.allowBoltzmannEnergyFit = true;
             table.boltzmannKind = overlayParticleKind;
         }
@@ -1324,6 +1327,15 @@ struct BoltzmannOverlayCurve
     QPolygonF points;
 };
 
+struct HistogramMomentStats
+{
+    bool valid = false;
+    double total = 0.0;
+    double mean = 0.0;
+    double median = 0.0;
+    double area = 0.0;
+};
+
 struct BoltzmannFitResult
 {
     bool valid = false;
@@ -1335,6 +1347,44 @@ struct BoltzmannFitResult
     double barrierDiffusenessMeV = 0.0;
     double pearsonReducedChiSquare = 0.0;
 };
+
+HistogramMomentStats computeHistogramMomentStats(const std::vector<double> &xCenters,
+                                                 const std::vector<double> &yValues,
+                                                 double binWidth)
+{
+    HistogramMomentStats stats;
+    if (xCenters.size() != yValues.size() || xCenters.empty())
+        return stats;
+
+    double weightedSum = 0.0;
+    for (int i = 0; i < int(yValues.size()); ++i)
+    {
+        const double y = std::max(0.0, yValues[i]);
+        stats.total += y;
+        weightedSum += y * xCenters[i];
+    }
+
+    if (stats.total <= 0.0)
+        return stats;
+
+    stats.valid = true;
+    stats.mean = weightedSum / stats.total;
+    stats.area = stats.total * std::max(0.0, binWidth);
+
+    const double halfTotal = 0.5 * stats.total;
+    double cumulative = 0.0;
+    for (int i = 0; i < int(yValues.size()); ++i)
+    {
+        cumulative += std::max(0.0, yValues[i]);
+        if (cumulative >= halfTotal)
+        {
+            stats.median = xCenters[i];
+            break;
+        }
+    }
+
+    return stats;
+}
 
 struct CoulombBarrierInfo
 {
@@ -1848,6 +1898,7 @@ public:
                    bool allowGaussianEnergyOverlay,
                    bool allowBoltzmannEnergyFit,
                    OverlayParticleKind boltzmannKind,
+                   bool isParticlePlot,
                    QWidget *parent = nullptr)
         : QWidget(parent),
         m_entry(entry),
@@ -1859,7 +1910,8 @@ public:
         m_sourceA(sourceA),
         m_allowGaussianEnergyOverlay(allowGaussianEnergyOverlay),
         m_allowBoltzmannEnergyFit(allowBoltzmannEnergyFit),
-        m_boltzmannKind(boltzmannKind)
+        m_boltzmannKind(boltzmannKind),
+        m_isParticlePlot(isParticlePlot)
     {
         setMinimumSize(980, 560);
         resize(980, 560);
@@ -1908,6 +1960,7 @@ protected:
         double maxX = 1.0;
         int bins = 1;
         double energyBinWidthMeV = 1.0;
+        double histogramBinWidth = 1.0;
 
         if (m_plotKind == PlotCountsVsTheta || m_plotKind == PlotCrossSectionVsTheta)
         {
@@ -1924,6 +1977,7 @@ protected:
             bins = std::max(1, int(maxX));
 
             const double angularBinWidthDeg = (maxX - minX) / double(bins);
+            histogramBinWidth = angularBinWidthDeg;
 
             std::vector<double> counts(bins, 0.0);
 
@@ -1995,6 +2049,7 @@ protected:
                 bins = int(std::ceil(maxX / energyBinWidthMeV));
                 bins = std::clamp(bins, 20, 80);
                 energyBinWidthMeV = maxX / double(bins);
+                histogramBinWidth = energyBinWidthMeV;
 
                 values.assign(bins, 0.0);
                 xCenters.assign(bins, 0.0);
@@ -2007,6 +2062,7 @@ protected:
                 maxX = m_acc.ELOW + 29.0 * m_acc.DELE;
                 bins = 31;
                 energyBinWidthMeV = m_acc.DELE;
+                histogramBinWidth = energyBinWidthMeV;
                 values.assign(bins, 0.0);
                 xCenters.assign(bins, 0.0);
 
@@ -2050,8 +2106,8 @@ protected:
             maxY = std::max(maxY, v);
 
         const bool showGaussian =
-            (m_plotKind == PlotCountsVsTheta ||
-             (m_plotKind == PlotCountsVsEnergy && m_allowGaussianEnergyOverlay));
+            m_allowGaussianEnergyOverlay &&
+            (m_plotKind == PlotCountsVsTheta || m_plotKind == PlotCountsVsEnergy);
 
         GaussianOverlayStats gaussianStats;
 
@@ -2062,6 +2118,9 @@ protected:
 
         if (gaussianStats.valid)
             maxY = std::max(maxY, gaussianStats.amplitude * 1.15);
+
+        const HistogramMomentStats histogramStats =
+            computeHistogramMomentStats(xCenters, values, histogramBinWidth);
 
         BoltzmannOverlayCurve boltzmannCurve;
         const bool showBoltzmann =
@@ -2251,11 +2310,19 @@ protected:
             const bool includeBoltzmann = boltzmannCurve.valid;
             const bool includeBoltzmannUnavailable =
                 showBoltzmann && boltzmannCurve.unavailable && !boltzmannCurve.unavailableReason.isEmpty();
+            const bool includeHistogramStats =
+                histogramStats.valid &&
+                !includeGaussian &&
+                (m_plotKind == PlotCountsVsEnergy ||
+                 m_plotKind == PlotCrossSectionVsTheta ||
+                 (m_isParticlePlot && m_plotKind == PlotCountsVsTheta));
 
             p.save();
 
             const int legendW = (includeBoltzmann || includeBoltzmannUnavailable) ? 315 : 210;
             int legendH = 36;
+            if (includeHistogramStats)
+                legendH += 45;
             if (includeGaussian)
                 legendH += 105;
             if (includeBoltzmann)
@@ -2284,13 +2351,39 @@ protected:
                        Qt::AlignLeft,
                        "N = " + QString::number(n));
 
+            int cursorY = legendY + 33;
+
+            if (includeHistogramStats)
+            {
+                p.drawText(legendX + 10,
+                           cursorY,
+                           legendW - 20,
+                           14,
+                           Qt::AlignLeft,
+                           "Mean = " + formatGaussianNumber(histogramStats.mean));
+
+                p.drawText(legendX + 10,
+                           cursorY + 15,
+                           legendW - 20,
+                           14,
+                           Qt::AlignLeft,
+                           "Median = " + formatGaussianNumber(histogramStats.median));
+
+                p.drawText(legendX + 10,
+                           cursorY + 30,
+                           legendW - 20,
+                           14,
+                           Qt::AlignLeft,
+                           "Area = " + formatGaussianNumber(histogramStats.area));
+
+                cursorY += 45;
+            }
+
             if (!includeGaussian && !includeBoltzmann && !includeBoltzmannUnavailable)
             {
                 p.restore();
                 return;
             }
-
-            int cursorY = legendY + 33;
 
             if (includeGaussian)
             {
@@ -2317,7 +2410,7 @@ protected:
                            legendW - 20,
                            14,
                            Qt::AlignLeft,
-                           "Sigma = " + formatGaussianNumber(gaussianStats.sigma));
+                           "Median = " + formatGaussianNumber(histogramStats.median));
 
                 p.drawText(legendX + 10,
                            cursorY + 60,
@@ -2506,6 +2599,7 @@ private:
     bool m_allowGaussianEnergyOverlay = true;
     bool m_allowBoltzmannEnergyFit = false;
     OverlayParticleKind m_boltzmannKind = OverlayNone;
+    bool m_isParticlePlot = false;
 };
 
 class CMSpectraPlotWidget : public QWidget
@@ -3366,7 +3460,8 @@ void AngularDistributionWidget::openPlotWindow(bool plotAllTables, int tableInde
                                       compoundAForPlots,
                                       tables[i].allowGaussianEnergyOverlay,
                                       tables[i].allowBoltzmannEnergyFit,
-                                      tables[i].boltzmannKind);
+                                      tables[i].boltzmannKind,
+                                      tables[i].isParticlePlot);
 
         plotsLayout->addWidget(plot);
 

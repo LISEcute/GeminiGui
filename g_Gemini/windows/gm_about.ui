@@ -33,7 +33,7 @@
   <property name="styleSheet">
    <string notr="true">background-color: rgb(85, 85, 225);</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="1,1,3,1,1,2,0">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="1,0,3,0,1,2,0">
    <property name="spacing">
     <number>9</number>
    </property>
@@ -92,6 +92,9 @@ margin-bottom:0;</string>
        </property>
        <property name="text">
         <string>GEMINI++</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
        </property>
       </widget>
      </item>
@@ -158,6 +161,9 @@ margin: 0px;</string>
      <property name="text">
       <string>statistical decay code</string>
      </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
     </widget>
    </item>
    <item>
@@ -180,7 +186,7 @@ margin: 0px;</string>
       <enum>QFrame::NoFrame</enum>
      </property>
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;&lt;br/&gt;&lt;/span&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;R. J. Charity&lt;/span&gt;&lt;/p&gt;&lt;hr/&gt;&lt;p&gt;R.J. Charity, Phys. Rev. C 82 (2010) 014610&lt;/p&gt;&lt;p&gt;D. Mancusi, R. J. Charity, J. Cugnon,&lt;br/&gt;Physics Review C 82 (2010) 044610&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;&lt;br/&gt;&lt;/span&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;R. J. Charity&lt;/span&gt;&lt;/p&gt;&lt;hr/&gt;&lt;p align=&quot;center&quot;&gt;R.J. Charity, Phys. Rev. C 82 (2010) 014610&lt;/p&gt;&lt;p align=&quot;center&quot;&gt;D. Mancusi, R. J. Charity, J. Cugnon,&lt;br/&gt;Physics Review C 82 (2010) 044610&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="indent">
       <number>5</number>
@@ -202,6 +208,9 @@ margin: 0px;</string>
      <property name="text">
       <string>Version 1.5</string>
      </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
     </widget>
    </item>
    <item>
@@ -219,6 +228,9 @@ margin: 0px;</string>
      <property name="text">
       <string>28-April-2015</string>
      </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
     </widget>
    </item>
    <item>
@@ -234,7 +246,7 @@ margin: 0px;</string>
 color: rgb(210, 210, 210);</string>
      </property>
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;GEMINI++ has been ported to a GUI application using Qt &lt;br/&gt;within the LISE&lt;span style=&quot; vertical-align:super;&quot;&gt;++&lt;/span&gt; framework by M.P. Kuchera, and updated &lt;br/&gt;by O.B. Tarasov. A.Ray implemented angular distribution plots.&lt;/p&gt;&lt;p&gt;The GUI-version is currently maintained by O.B. Tarasov&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;GEMINI++ has been ported to a GUI application using Qt &lt;br/&gt;within the LISE&lt;span style=&quot; vertical-align:super;&quot;&gt;++&lt;/span&gt; framework by M.P. Kuchera, and updated &lt;br/&gt;by O.B. Tarasov. A.Ray implemented angular distribution plots.&lt;/p&gt;&lt;p align=&quot;center&quot;&gt;The GUI-version is currently maintained by O.B. Tarasov&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>

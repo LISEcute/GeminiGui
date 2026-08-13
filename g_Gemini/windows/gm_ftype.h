@@ -1,9 +1,8 @@
 #ifndef FTYPE_H
 #define FTYPE_H
 
-#define Gemini_version "Version 3.2.0"
-#define Gemini_date    "23-MAY-2026"
-
+#define Gemini_version "Version 3.2.7"
+#define Gemini_date    "13-AUG-2026"
 
 #endif // FTYPE_H
 
@@ -83,6 +82,7 @@
 // 3.2.5   07/20/26  Added Boltzmann distribution and columb barrier to plots
 // 3.2.5   07/23/26  Added Yields of IMF Particles; Changes to fit logic in Boltzmann distribution
 // 3.2.6   08/4/26   Changed Output windows, New comparison plot for IMF and Residual yield table
+// 3.2.7   08/13/26  Plotting changes, Fixed about dialog
 
 
 

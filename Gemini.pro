@@ -16,8 +16,8 @@ win32-msvc {
 DESTDIR = c:/Gemini/_install_MSVC
 }
 
-win32:VERSION = 3.1.3.1 # major.minor.patch.build
-else:VERSION  = 3.1.3   # major.minor.patch
+win32:VERSION = 3.2.7.0 # major.minor.patch.build
+else:VERSION  = 3.2.7   # major.minor.patch
 
 win32 {
         QMAKE_TARGET_COPYRIGHT = "LISE group at FRIB/MSU"
