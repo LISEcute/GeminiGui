@@ -16,7 +16,7 @@ class CRun
 {
 
  public:
-CRun(int iZ, int iA, float fEx, float l0, float d0, int lmax, float plb,
-     int numTot,string title0,float vcm=0.,float thetaDetMin=0.,
-     float thetaDetMax = 360.);
+CRun(int iZ, int iA, double fEx, double l0, double d0, int lmax, double plb,
+     int numTot,string title0,double vcm=0.,double thetaDetMin=0.,
+     double thetaDetMax = 360.);
 };

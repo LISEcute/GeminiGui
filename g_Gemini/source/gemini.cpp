@@ -14,10 +14,10 @@ extern "C"
   {
     int z[m];
     int a[m]; 
-    float T[m];
-    float P[m];
-    float theta[m];
-    float phi[m];
+    double T[m];
+    double P[m];
+    double theta[m];
+    double phi[m];
   } gem_;
 
 
@@ -38,8 +38,8 @@ extern "C"
   \param fEx is the excitation energy of the compound nucleus
   \param fJ is the spin of the compound nucleus
    */
-  void decaywidth_(int* iZ, int* iA, float *fEx, float*fJ, float* width,
-     float* logleveldensity)
+  void decaywidth_(int* iZ, int* iA, double *fEx, double*fJ, double* width,
+     double* logleveldensity)
   {
     CNucleus CN(*iZ,*iA,*fEx,*fJ);
     *width = CN.getDecayWidth();
@@ -55,8 +55,8 @@ extern "C"
   */
 
 
-  int gemini_(int* iZ, int* iA, float *fEx, float *fJ, float* thetaJ, 
-	      float* phiJ,float *vx, float *vy, float *vz )
+  int gemini_(int* iZ, int* iA, double *fEx, double *fJ, double* thetaJ, 
+	      double* phiJ,double *vx, double *vy, double *vz )
   {
 
     CNucleus CN(*iZ,*iA,*fEx,*fJ);

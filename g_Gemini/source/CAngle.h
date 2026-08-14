@@ -19,10 +19,10 @@ class CAngle
 protected:
 
  public:
-  static float const pi; //!< 3.14159
-  float theta; //!< polar angle in radians
-  float phi; //!< azimuth angle in radians
-  CAngle(float,float);
+  static double const pi; //!< 3.14159
+  double theta; //!< polar angle in radians
+  double phi; //!< azimuth angle in radians
+  CAngle(double,double);
   CAngle(){};
   static CAngle transform(CAngle angle1,CAngle angle2);
 

@@ -1,6 +1,6 @@
 #include "CWeight.h"
 
-float const fact0=0.3;
+double const fact0=0.3;
 //****************************************************************************
 /**
  * Determines the degree of weighting for enhance IMF emission
@@ -10,8 +10,8 @@ float const fact0=0.3;
     \param gammaGamma Gamma-ray decay width
 
 */
-void CWeight::findFactor(float gammaLight, float gammaImf, float gammaFission,
-float gammaGamma)
+void CWeight::findFactor(double gammaLight, double gammaImf, double gammaFission,
+double gammaGamma)
 {
   if (gammaImf <= 0.) 
     {
@@ -26,7 +26,7 @@ float gammaGamma)
       return;
     }
 
-  float gammaTot = gammaLight+gammaImf+gammaFission+gammaGamma;
+  double gammaTot = gammaLight+gammaImf+gammaFission+gammaGamma;
   fact = fact0*(gammaTot-gammaImf)/(1.-fact0)/gammaImf;
   if (fact < 1.)fact = 1.; 
 }
@@ -42,22 +42,22 @@ float gammaGamma)
     \param xran Random number
   */
     
-int  CWeight::chooseChannel(float gammaLight, float gammaImf, 
-			    float gammaFission, float gammaGamma, float xran)
+int  CWeight::chooseChannel(double gammaLight, double gammaImf, 
+			    double gammaFission, double gammaGamma, double xran)
 {
 
   if (iWeight == 1) findFactor(gammaLight,gammaImf,gammaFission,gammaGamma);
 
-  float fact1 = 1.;
+  double fact1 = 1.;
   if (iWeight) fact1 = fact;  //weighting turned on
   
 
-  float Gamma_real = gammaLight + gammaImf + gammaFission + gammaGamma;
-  float Gamma_weight = gammaLight + gammaImf*fact1 + gammaFission + gammaGamma;
+  double Gamma_real = gammaLight + gammaImf + gammaFission + gammaGamma;
+  double Gamma_weight = gammaLight + gammaImf*fact1 + gammaFission + gammaGamma;
   
-  float probLight = gammaLight/Gamma_weight;
-  float probImf = gammaImf*fact1/Gamma_weight + probLight;
-  float probFission = gammaFission/Gamma_weight + probImf;
+  double probLight = gammaLight/Gamma_weight;
+  double probImf = gammaImf*fact1/Gamma_weight + probLight;
+  double probFission = gammaFission/Gamma_weight + probImf;
 
   //no need of weighting if only imf emission
   if (gammaLight + gammaFission + gammaGamma <=0.) Gamma_weight = Gamma_real;
@@ -106,7 +106,7 @@ void CWeight::setWeightIMF()
    * which should be used to increment all histograms. If weighting is turned
    * off, then unity is returned
    */
-float CWeight::getWeightFactor()
+double CWeight::getWeightFactor()
 {
   return runningWeight;
 }

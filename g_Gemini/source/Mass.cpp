@@ -18,14 +18,14 @@ CMass* CMass::fInstance = 0;  // mod-TU
 CMass::CMass()
 {
     chart = CChart::instance();
-    fExpMass = new float [chart->iMassDim];
-    fAMEMass = new float [chart->iMassDim];
-    fCalMass = new float [chart->iMassDim];
-    fFRM     = new float [chart->iMassDim];
-    fPair    = new float [chart->iMassDim];
-    fShell   = new float [chart->iMassDim];
-    fShell2  = new float [chart->iMassDim];
-    //fBeta2 = new float [chart->iMassDim];
+    fExpMass = new double [chart->iMassDim];
+    fAMEMass = new double [chart->iMassDim];
+    fCalMass = new double [chart->iMassDim];
+    fFRM     = new double [chart->iMassDim];
+    fPair    = new double [chart->iMassDim];
+    fShell   = new double [chart->iMassDim];
+    fShell2  = new double [chart->iMassDim];
+    //fBeta2 = new double [chart->iMassDim];
 
     ReadThomasFermiFile();
     ReadFRDMFile();
@@ -66,7 +66,7 @@ CMass::CMass()
         {
             int index = chart->getIndex(iZ, iZ + iN);
 
-            float fpairN = 0;
+            double fpairN = 0;
 
             if(iN%2 == 1) fpairN = 0.;
             else if (iN-1 >= iNmin && iN+1 <= iNmax)
@@ -80,7 +80,7 @@ CMass::CMass()
                          + getShellCorrection2(iZ,iZ+iN);
 
             //then proton pairing
-            float fpairZ = 0;
+            double fpairZ = 0;
 
             if(iZ%2 == 1) fpairZ = 0.;
             else if (iZ+1 <= iZmax) fpairZ =
@@ -117,7 +117,7 @@ CMass::~CMass()
 }
 
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-float CMass::getExpMass(int iZ, int iA)
+double CMass::getExpMass(int iZ, int iA)
 {
     int i = chart->getIndex(iZ,iA);
 
@@ -126,28 +126,28 @@ float CMass::getExpMass(int iZ, int iA)
 }
 
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-float CMass::getCalMass(int iZ, int iA)
+double CMass::getCalMass(int iZ, int iA)
 {
     int i = chart->getIndex(iZ,iA);
     return fCalMass[i];
 }
 
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-float CMass::getShellCorrection(int iZ, int iA)
+double CMass::getShellCorrection(int iZ, int iA)
 {
     int i = chart->getIndex(iZ,iA);
     return fShell[i];
 }
 
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-float CMass::getShellCorrection2(int iZ, int iA)
+double CMass::getShellCorrection2(int iZ, int iA)
 {
     int i = chart->getIndex(iZ,iA);
     return fShell2[i];
 }
 
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-float CMass::getLDM(int iZ, int iA)
+double CMass::getLDM(int iZ, int iA)
 {
     int i = chart->getIndex(iZ,iA);
     if ( i == -1)  { return -1000; }
@@ -156,135 +156,135 @@ float CMass::getLDM(int iZ, int iA)
 }
 
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-float CMass::getFRM(int iZ, int iA)
+double CMass::getFRM(int iZ, int iA)
 {
-    return getFRM((float)iZ,(float)iA);
+    return getFRM((double)iZ,(double)iA);
 }
 
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-float CMass::getFRM(float fZ, float fA)
+double CMass::getFRM(double fZ, double fA)
 {
-    float fN = fA - fZ;
-    float fA13 = pow(fA,(float)(1./3.));
-    float fA23 = fA13 * fA13;                 // pow(fA13,2)
+    double fN = fA - fZ;
+    double fA13 = pow(fA,(double)(1./3.));
+    double fA23 = fA13 * fA13;                 // pow(fA13,2)
 
     // relative neutron excess
-    float fI = (fN-fZ)/fA;
-    float fFiss = (fZ*fZ) / fA13;             // pow(fZ,2)/fA13
+    double fI = (fN-fZ)/fA;
+    double fFiss = (fZ*fZ) / fA13;             // pow(fZ,2)/fA13
 
     // neutron-proton terms
-    float const fMassN = 8.071431;
-    float const fMassH = 7.289034;
-    float fEnz = fMassN*fN + fMassH*fZ;
+    double const fMassN = 8.071431;
+    double const fMassH = 7.289034;
+    double fEnz = fMassN*fN + fMassH*fZ;
 
     //Volume energy
-    float const fAv = 15.9937;
-    float const fKv = 1.927;
-    float fEvol = -fAv*(1.-fKv*(fI*fI))*fA;   // pow(fI,2)
+    double const fAv = 15.9937;
+    double const fKv = 1.927;
+    double fEvol = -fAv*(1.-fKv*(fI*fI))*fA;   // pow(fI,2)
 
     // Surface energy
-    float const fa = 0.68;
-    float const fR0 = 1.16;
-    float const fAs = 21.13;
-    float const fKs = 2.3;
-    float fX = fa/(fR0*fA13);
-    float fact = 1.-3.*(fX*fX)                // pow(fX,2)
+    double const fa = 0.68;
+    double const fR0 = 1.16;
+    double const fAs = 21.13;
+    double const fKs = 2.3;
+    double fX = fa/(fR0*fA13);
+    double fact = 1.-3.*(fX*fX)                // pow(fX,2)
                  + (1.+1./fX)*(2.+3.*fX+3.*(fX*fX))*exp(-2./fX); // pow(fX,2)
-    float fEsurf = fAs*(1.-fKs*(fI*fI))*fA23*fact;      // pow(fI,2)
+    double fEsurf = fAs*(1.-fKs*(fI*fI))*fA23*fact;      // pow(fI,2)
 
     //Coulomb energy
-    float const e2 = 1.4399764;
-    fact = fFiss - 0.76361*pow(fZ,(float)(4./3.))/fA13; // fractional power: keep pow
-    float fECoul = 0.6*e2/fR0*fact;
+    double const e2 = 1.4399764;
+    fact = fFiss - 0.76361*pow(fZ,(double)(4./3.))/fA13; // fractional power: keep pow
+    double fECoul = 0.6*e2/fR0*fact;
 
     //Wigner term
-    float const fW = 36.;
-    float const ael = 1.433e-5;
-    float fEwigner = fW*fabs(fI) - ael*pow(fZ,(float)2.39); // non-integer: keep pow
+    double const fW = 36.;
+    double const ael = 1.433e-5;
+    double fEwigner = fW*fabs(fI) - ael*pow(fZ,(double)2.39); // non-integer: keep pow
 
     //correction to Coulomb energy for diffuse surface
     //see Davies & Nix Phys. Rev. C14 (1976) 1977
-    float const b = 0.99;
-    float ad = 0.7071*b;
+    double const b = 0.99;
+    double ad = 0.7071*b;
     fX = ad/(fR0*fA13);
     fact = 1 - 1.875*fX + 2.625*(fX*fX*fX)   // pow(fX,3)
            - .75*exp(-2./fX)*(1.+4.5*fX+7.*(fX*fX)+3.5*(fX*fX*fX)); // pow(fX,2), pow(fX,3)
-    float fEcd = -3.*(fZ*fZ)*e2*(ad*ad) /    // pow(fZ,2), pow(ad,2)
+    double fEcd = -3.*(fZ*fZ)*e2*(ad*ad) /    // pow(fZ,2), pow(ad,2)
                  ((fR0*fA13)*(fR0*fA13)*(fR0*fA13))   // pow(fR0*fA13,3)
                  * fact;
 
     // correction to coulomb energy due to proton form factor
-    float const rp = 0.8;
-    float akf = 1./fR0*pow(7.06858*fZ/fA,1./3.); // fractional: keep pow
+    double const rp = 0.8;
+    double akf = 1./fR0*pow(7.06858*fZ/fA,1./3.); // fractional: keep pow
     fX = (rp*akf)*(rp*akf);                      // pow(rp*akf,2)
-    float fEcpf = -0.125*(rp*rp)*e2/(fR0*fR0*fR0) // pow(rp,2), pow(fR0,3)
+    double fEcpf = -0.125*(rp*rp)*e2/(fR0*fR0*fR0) // pow(rp,2), pow(fR0,3)
                   *(3.0208-0.113541667*fX+0.0012624*(fX*fX)) // pow(fX,2)
                   * (fZ*fZ)/fA;                              // pow(fZ,2)
 
     //A0 term
-    float const c0 = 4.4;
-    float fEa0 = c0;
+    double const c0 = 4.4;
+    double fEa0 = c0;
 
     //Charge asymmetry term
-    float const ca = 0.212;
-    float fEca = ca*((fZ*fZ) - (fN*fN))/fA;       // pow(fZ,2)-pow(fN,2)
+    double const ca = 0.212;
+    double fEca = ca*((fZ*fZ) - (fN*fN))/fA;       // pow(fZ,2)-pow(fN,2)
 
     // pairing term for odd-odd nuclei
-    float deltau = 12./sqrt(fA);
-    float deltal = 20./fA;
-    float fEpair = deltau - 0.5 * deltal;
+    double deltau = 12./sqrt(fA);
+    double deltal = 20./fA;
+    double fEpair = deltau - 0.5 * deltal;
 
     // add all terms
     return fEnz+fEvol+fEsurf+fECoul+fEwigner+fEcd+fEcpf+fEa0+fEca+fEpair;
 }
 
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-float CMass::getPairing(int iZ, int iA)
+double CMass::getPairing(int iZ, int iA)
 {
     if(iZ==0 || iZ==iA) return 0.;
     return fPair[chart->getIndex(iZ,iA)];
 }
 
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-float CMass::getPairing2(int iZ, int iA)
+double CMass::getPairing2(int iZ, int iA)
 {
     if(iZ==0 || iZ==iA)
         return 0.;
 
-    float fZ = iZ;
-    float fA = iA;
-    float fN = fA - fZ;
+    double fZ = iZ;
+    double fA = iA;
+    double fN = fA - fZ;
     int   iN = iA - iZ;
     int  ioez = iZ%2;
     int  ioen = iN%2;
-    float fPairing;
+    double fPairing;
 
     // fractional powers: keep pow(...)
     if (iN == iZ && ioez ==1)
     {
-        fPairing = 4.8/pow(fN,(float)(1./3.))
-                   + 4.8/pow(fZ,(float)(1./3.)) - 6.6/pow(fA,(float)(2./3.))
+        fPairing = 4.8/pow(fN,(double)(1./3.))
+                   + 4.8/pow(fZ,(double)(1./3.)) - 6.6/pow(fA,(double)(2./3.))
                    + 30./fA;
     }
     else if (ioez == 1 && ioen == 1)
     {
-        fPairing = 4.8/pow(fN,(float)(1./3.))
-                   + 4.8/pow(fZ,(float)(1./3.)) - 6.6/pow(fA,(float)(2./3.));
+        fPairing = 4.8/pow(fN,(double)(1./3.))
+                   + 4.8/pow(fZ,(double)(1./3.)) - 6.6/pow(fA,(double)(2./3.));
     }
     else if (ioez == 1 && ioen == 0)
     {
-        fPairing = 4.8/pow(fZ,(float)(1./3.));
+        fPairing = 4.8/pow(fZ,(double)(1./3.));
     }
     else if (ioez == 0 && ioen == 1)
     {
-        fPairing = 4.8/pow(fN,(float)(1./3.));
+        fPairing = 4.8/pow(fN,(double)(1./3.));
     }
     else fPairing = 0.;
 
     //want to redefine odd-odd to have zero paring energy
-    fPairing -=   4.8/pow(fN,(float)(1./3.))
-                + 4.8/pow(fZ,(float)(1./3.))
-                - 6.6/pow(fA,(float)(2./3.));
+    fPairing -=   4.8/pow(fN,(double)(1./3.))
+                + 4.8/pow(fZ,(double)(1./3.))
+                - 6.6/pow(fA,(double)(2./3.));
 
     if (iN == iZ) fPairing -= 30./fA;
 
@@ -340,7 +340,7 @@ void CMass::ReadFRDMFile()
 
         if (index >= 0)
         {
-            float fPair = getPairing2(Z,A);
+            double fPair = getPairing2(Z,A);
 
             if (check)        fExpMass[index] = f3;
             else              fExpMass[index] = f2;
@@ -387,13 +387,13 @@ void CMass::ReadThomasFermiFile()
         QList temp = Array[i];
         int A = temp[1].toInt();
         int Z = temp[0].toInt();
-        float f1 = temp[3].toFloat();
-        float f2 = temp[2].toFloat();
-        float fshell = temp[4].toFloat();
+        double f1 = temp[3].toDouble();
+        double f2 = temp[2].toDouble();
+        double fshell = temp[4].toDouble();
 
         int index = chart->getIndex(Z,A);
 
-        float fPairing;
+        double fPairing;
 
         if (index >= 0)
         {
@@ -408,7 +408,7 @@ void CMass::ReadThomasFermiFile()
 }
 
 //========================================================================
-void CMass::AMEFinder(QMap<QString, float> &result)
+void CMass::AMEFinder(QMap<QString, double> &result)
 {
     QSqlQuery query(AmeDB);
     query.prepare("SELECT A, Z, MASS_EXCES FROM AME2016 ORDER BY [INDEX] ASC");
@@ -422,7 +422,7 @@ void CMass::AMEFinder(QMap<QString, float> &result)
     while (query.next())
     {
         QString key = query.value(0).toString() + query.value(1).toString();
-        float value = query.value(2).toFloat();
+        double value = query.value(2).toDouble();
         result.insert(key, value);
     }
 
@@ -432,7 +432,7 @@ void CMass::AMEFinder(QMap<QString, float> &result)
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 void CMass::ReadAMEDatabase()
 {
-    QMap<QString, float> AME;
+    QMap<QString, double> AME;
     AMEFinder(AME);
 
     for (int Z=0; Z<120; Z++)
@@ -443,7 +443,7 @@ void CMass::ReadAMEDatabase()
         for (int A = min; A <= max; ++A)
         {
             QString key = QString::number(A) + QString::number(Z);
-            float value = AME.contains(key) ? AME.value(key) : getCalMass(Z,A);
+            double value = AME.contains(key) ? AME.value(key) : getCalMass(Z,A);
 
             int index = chart->getIndex(Z,A);
             fAMEMass[index] = value;

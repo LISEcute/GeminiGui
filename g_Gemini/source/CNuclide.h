@@ -34,15 +34,15 @@ public:
     int iZ; //!< proton number
     int iN; //!< neutron number
     int iA; //!< mass number
-    float fJ; //!< spin [hbar]
-    float fExpMass; //!< mass excess [MeV]
-    float fEx; //!< excitation energy [MeV]
+    double fJ; //!< spin [hbar]
+    double fExpMass; //!< mass excess [MeV]
+    double fEx; //!< excitation energy [MeV]
     CNuclide(int iZ ,int iA);  
     CNuclide(int,int,string);
     void init(int,int);
     // mod-TU CNuclide(){};
     CNuclide(); // mod-TU
-    float getExcessMass(); 
+    double getExcessMass(); 
     const char* getSymbol();
     string getName();
     QString getGName();   // Oleg

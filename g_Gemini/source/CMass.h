@@ -22,13 +22,13 @@ protected:
   CMass();                  //!< constructor
   static  CMass* fInstance; //!< instance member to make tis a singleton
 
-  float * fExpMass;  //!<experimental mass array
-  float * fAMEMass; //!< AME mass array MPK
-  float * fCalMass;  //!<experimental mass array
-  float * fFRM;      //!<finite range mass array
-  float * fPair; //!< pairing correction
-  float * fShell;    //!< shell correction
-  float * fShell2;    //!< shell correction
+  double * fExpMass;  //!<experimental mass array
+  double * fAMEMass; //!< AME mass array MPK
+  double * fCalMass;  //!<experimental mass array
+  double * fFRM;      //!<finite range mass array
+  double * fPair; //!< pairing correction
+  double * fShell;    //!< shell correction
+  double * fShell2;    //!< shell correction
 
 public:
   // mod-TU CMass();
@@ -36,17 +36,17 @@ public:
   CChart *chart; //!< contains the considered region of the chart of nuclides
   static CMass* instance(); //!< instance member to make this a singleton
 
-  float getExpMass(int iZ, int iA);
-  float getCalMass(int iZ,int iA);
-  float getShellCorrection(int iZ, int iA);
-  float getShellCorrection2(int iZ, int iA);
+  double getExpMass(int iZ, int iA);
+  double getCalMass(int iZ,int iA);
+  double getShellCorrection(int iZ, int iA);
+  double getShellCorrection2(int iZ, int iA);
 
-  float getFRM(float fZ, float fA);
-  float getFRM(int iZ ,int iA);
-  float getLDM(int iZ ,int iA);
+  double getFRM(double fZ, double fA);
+  double getFRM(int iZ ,int iA);
+  double getLDM(int iZ ,int iA);
 
-  float getPairing(int iZ,int iA);
-  float getPairing2(int iZ,int iA);
+  double getPairing(int iZ,int iA);
+  double getPairing2(int iZ,int iA);
   bool useAME;
 
 private:
@@ -54,7 +54,7 @@ private:
   void ReadThomasFermiFile();
   void ReadAMEDatabase();
 
-  void AMEFinder(QMap<QString, float> &result);
+  void AMEFinder(QMap<QString, double> &result);
   void ThomasFinder(QVector<QVector<QVariant>> &result);
   void FRDMFinder(QVector<QVector<QVariant>> &result);
 };

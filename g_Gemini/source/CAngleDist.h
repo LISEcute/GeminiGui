@@ -14,7 +14,7 @@ class CAngleDist
 {
  protected:
   CRandom *ran; //!<random number generator
-  float ** dist; //!<array containing sampled distributions
+  double ** dist; //!<array containing sampled distributions
 
   static int const maxL; //!<maximum angular distribution for 
                          //!<which distributions are made
@@ -22,12 +22,12 @@ class CAngleDist
 
   static int const nAngle; //!< number of angular bins used 
                            //!<to sample distributions
-  static float const pi; //!< the mathematical constant 
+  static double const pi; //!< the mathematical constant 
  public:
 
   CAngleDist();
   ~CAngleDist();
 
 
-  float getTheta(int l);
+  double getTheta(int l);
 };

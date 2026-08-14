@@ -52,9 +52,9 @@ CGdr::CGdr()
    \param e is the gamma energy in MeV
    */
 
-float CGdr::getLineShape(float e)
+double CGdr::getLineShape(double e)
 {
-  float out = 0.;
+  double out = 0.;
   for (int i=0;i<N;i++)
     {
       out += lineShape[i].gamma * lineShape[i].strength * (e*e)*(e*e) /

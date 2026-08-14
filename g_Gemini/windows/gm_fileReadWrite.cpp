@@ -131,7 +131,7 @@ void MainWindow::readFile(const QString& file)
 
 
     myIni.beginGroup("Common");
-         tab_mode   = myIni.value("mode",0).toInt();
+         tab_mode   = myIni.value("mode",1).toInt();
         _useAME     = myIni.value("AME",true).toBool();
         _useIMF     = myIni.value("IMF",true).toBool();
         _useIMFenh  = myIni.value("IMFenh",false).toBool();
@@ -141,7 +141,7 @@ void MainWindow::readFile(const QString& file)
     myIni.beginGroup("Projectile");
         Ap    = myIni.value("A",16).toInt();
         Zp    = myIni.value("Z",8).toInt();
-        Elab  = myIni.value("E",200).toFloat();
+        Elab  = myIni.value("E",200).toDouble();
         num_events = myIni.value("num_events",50).toInt();
     myIni.endGroup();
 
@@ -153,14 +153,14 @@ void MainWindow::readFile(const QString& file)
     myIni.beginGroup("Spin");
         spinOption  = myIni.value("S",1).toInt();
         l0          = myIni.value("l0",23).toInt();
-        dif         = myIni.value("dif",2).toFloat();
+        dif         = myIni.value("dif",2).toDouble();
     myIni.endGroup();
 
     myIni.beginGroup("Compound");
         iACN    = myIni.value("A",198).toInt();
         iZCN    = myIni.value("Z",82).toInt();
-        fEx      = myIni.value("Ex",67).toFloat();
-        fJ       = myIni.value("J",40).toFloat();
+        fEx      = myIni.value("Ex",67).toDouble();
+        fJ       = myIni.value("J",40).toDouble();
         num_casc = myIni.value("num_casc",300).toInt();
     myIni.endGroup();
 

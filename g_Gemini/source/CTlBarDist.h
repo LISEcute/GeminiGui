@@ -20,19 +20,19 @@ class CTlBarDist
  private:
   CTlArray* tlArray[3]; //!< arrays for standard radii and +- width0
   bool one; //!< if true, no distribution, just standard radius is used
-  static float width; //!< width paramter determines shifted radii
-  static float const width0; //!< results readin from file for this shift
+  static double width; //!< width paramter determines shifted radii
+  static double const width0; //!< results readin from file for this shift
   int iZ; //!< calls to getTl refer to this residual proton number
 
  public:
   CTlBarDist(const QString &);
   ~CTlBarDist();
-  float getTl(int iL,float fEk, float temp);
-  float getTlLow(int iL,float fEk, float temp);
-  float getTlHigh(int iL,float fEk, float temp);
-  float getInverseXsec(float fEk, float temp);
-  static void setBarWidth(float width00);
-  static float getBarWidth();
+  double getTl(int iL,double fEk, double temp);
+  double getTlLow(int iL,double fEk, double temp);
+  double getTlHigh(int iL,double fEk, double temp);
+  double getInverseXsec(double fEk, double temp);
+  static void setBarWidth(double width00);
+  static double getBarWidth();
   static void printParameters();
   void prepare(int iZ0);
 };

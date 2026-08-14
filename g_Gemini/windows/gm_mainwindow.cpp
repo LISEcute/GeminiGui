@@ -21,7 +21,7 @@ extern QString basePATH;
 //statistical decay of a compound nucleus
 
 
-bool _useAME=false;
+bool _useAME=true;
 bool _useIMF=true;
 bool _useIMFenh=false;
 int  _optEvap=1;
@@ -53,7 +53,7 @@ MainWindow::MainWindow(QWidget *parent) :
   //--------------------------------------------------------
   connect(ui->rb_spinMax,  SIGNAL(toggled(bool)), this, SLOT(checked(bool)));
   //--------------------------------------------------------
-  tab_mode=0;
+  tab_mode=1;
   tabWidget = ui->tabWidget;
   tabWidget->setCurrentIndex(tab_mode);
  // qDebug() << tabWidget << tabWidget->count() << tabWidget->currentIndex();
@@ -231,7 +231,7 @@ void MainWindow::on_actionAbout_Gemini_triggered() { (new About())->show(); }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 void MainWindow::on_edit_EP_textChanged(const QString &arg1)
 {
-  Elab = arg1.toFloat();
+  Elab = arg1.toDouble();
   CFus fus(Zp,Ap,Zt,At,Elab,dif);
   ui->edit_ExP->setText(QString::number(fus.Ex));
   ui->edit_QCN->setText(QString::number(fus.Qval));
@@ -261,8 +261,8 @@ void MainWindow::readPage()
 
   iZCN = ui->edit_ZCN->text().toInt();
   iACN = ui->edit_ACN->text().toInt();
-  fEx = ui->edit_Ex->text().toFloat();
-  fJ =  ui->edit_J ->text().toFloat();
+  fEx = ui->edit_Ex->text().toDouble();
+  fJ =  ui->edit_J ->text().toDouble();
 
   num_casc   = ui->edit_numEvts->text().toInt();
   //---------------------------------------
@@ -271,8 +271,8 @@ void MainWindow::readPage()
   Zt = ui->edit_ZT->text().toInt();
   Ap = ui->edit_AP->text().toInt();
   At = ui->edit_AT->text().toInt();
-  Elab = ui->edit_EP->text().toFloat();
-  dif = ui->edit_dif->text().toFloat();
+  Elab = ui->edit_EP->text().toDouble();
+  dif = ui->edit_dif->text().toDouble();
 
   l0 = ui->edit_max_spin->text().toInt();
 

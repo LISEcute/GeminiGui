@@ -5,7 +5,7 @@ extern FILE *mfopen(const QString& filename, const char* operand);
 void MainWindow::write_cs_file(const QString & filename_cs)
 {
    // int II = 1;
-    float _SIGMA = 100;
+    double _SIGMA = 100;
     FILE *file_cs;
     file_cs=mfopen(filename_cs, "wt");
     int _INPUT = 2;

@@ -290,11 +290,12 @@ QString buildMergedYieldTableHtmlFromImfRows(const QString &title,
                "(<a href=\"gemini://yield_plot\">plot</a>) </h3><br>";
     results += "<table cellpadding=\"5\" align=\"center\">";
     results += "<tr style=\"color: green\">"
-               "<th rowspan=\"2\">Z</th>"
+               "<th></th>"
                "<th colspan=\"5\">Residual Nuclei</th>"
                "<th colspan=\"5\" style=\"border-left:1px dotted #b0b0b0;\">IMF Particles</th>"
                "</tr>";
     results += "<tr style=\"color: green\">"
+               "<th>Z</th>"
                "<th>Name</th><th>Events</th><th>Percent</th><th>x-section (mb)</th><th>err(mb)</th>"
                "<th style=\"border-left:1px dotted #b0b0b0;\">Name</th><th>Events</th><th>Percent</th><th>x-section (mb)</th><th>err(mb)</th>"
                "</tr>";
@@ -390,11 +391,11 @@ void MainWindow::execute_compound()
     CNucleus CN(iZCN,iACN); //constructor
     CN.setCompoundNucleus(fEx,fJ); //specify the excitation energy and spin
     CN.setVelocityCartesian(); // set initial CN velocity to zero
-    CAngle spin(CNucleus::pi/2,(float)0.);
+    CAngle spin(CNucleus::pi/2,(double)0.);
     CN.setSpinAxis(spin); //set the direction of the CN spin vector
     //--------------------------------------------------------------------
 
-    float _SIGMA = 100;
+    double _SIGMA = 100;
 
     length = 101; // for hash;
     Residual resid[101];
@@ -404,25 +405,25 @@ void MainWindow::execute_compound()
     int countResidue = 0;
     CN.setEvapMode(_optEvap);
 
-    float total = 0.;
-    float Nfission = 0.;
-    float Nimf = 0.;
-    float neutPreSad = 0.;
-    float neutSaddleToScission = 0.;
-    float neutHeavy = 0.;
-    float neutLight = 0.;
+    double total = 0.;
+    double Nfission = 0.;
+    double Nimf = 0.;
+    double neutPreSad = 0.;
+    double neutSaddleToScission = 0.;
+    double neutHeavy = 0.;
+    double neutLight = 0.;
 
-    float imf_total = 0;
-    float sym_total = 0;
+    double imf_total = 0;
+    double sym_total = 0;
 
-    float Ares = 0.;
-    float Zres = 0.;
+    double Ares = 0.;
+    double Zres = 0.;
 
-    float resTotal = 0.;
-    float neutMultEv = 0.;
-    float protMultEv = 0.;
-    float alpMultEv = 0.;
-    float gammaEnergy = 0.;
+    double resTotal = 0.;
+    double neutMultEv = 0.;
+    double protMultEv = 0.;
+    double alpMultEv = 0.;
+    double gammaEnergy = 0.;
     int counter=0;
     ImfYieldCounts imfYieldByZN;
     //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW  cascade BEGIN
@@ -465,7 +466,7 @@ void MainWindow::execute_compound()
         CNucleus *products = CN.getProducts(Nfrag-1);
 
         // the weight will be unity unless setWeightIMF is called
-        float weight = products->getWeightFactor();
+        double weight = products->getWeightFactor();
 
         const bool isSymmetricFission = CN.isSymmetricFission();
         const bool isAsymmetricFission = CN.isAsymmetricFission();
@@ -562,7 +563,7 @@ void MainWindow::execute_compound()
 
     //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW  cascade END
     int _INPUT = 2;
-    float Sconst = _SIGMA/float(qMax(1, counter));
+    double Sconst = _SIGMA/double(qMax(1, counter));
 
     if(file_cs) {
         fprintf(file_cs,"!-title- Zcomp  Ncomp  Energy  CSfus  Input _AJNUC\n");
@@ -595,7 +596,7 @@ void MainWindow::execute_compound()
     results += "</table>;";
     //--------------------------------------------------------------
 
-    results += buildMergedYieldTableHtmlFromImfRows("Yields of Residual Nuclei and IMF Particles",
+    results += buildMergedYieldTableHtmlFromImfRows("Yields of Residual Nuclei and IMF Particles ",
                                                     resid,
                                                     length,
                                                     countResidue,

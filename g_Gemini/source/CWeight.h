@@ -12,14 +12,14 @@ class CWeight
 {
  protected:
 
-  float fact;    //!< weighting factor
+  double fact;    //!< weighting factor
   int iWeight;  //!< ==0, no weighting
-  float runningWeight; //!< running weight of event
-  void findFactor(float Glight, float Gimf, float Gfission, float Ggamma);
+  double runningWeight; //!< running weight of event
+  void findFactor(double Glight, double Gimf, double Gfission, double Ggamma);
  public:
 
-  int  chooseChannel(float Glight, float Gimf, float Gfission, float Ggamma, 
-                                    float xran);
+  int  chooseChannel(double Glight, double Gimf, double Gfission, double Ggamma, 
+                                    double xran);
   void setWeightIMF();
-  float getWeightFactor();
+  double getWeightFactor();
 };

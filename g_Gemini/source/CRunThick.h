@@ -17,8 +17,8 @@ class CRunThick
 {
 
  public:
-  CRunThick(int iZ, int iA, float fEx_min,float fEx_max, float l0_min, 
-       float l0_Max,float d0, int lmax, float plb,int nBins,
-     int numTot,string title0,float vcm=0.,float thetaDetMin=0.,
-     float thetaDetMax = 360.);
+  CRunThick(int iZ, int iA, double fEx_min,double fEx_max, double l0_min, 
+       double l0_Max,double d0, int lmax, double plb,int nBins,
+     int numTot,string title0,double vcm=0.,double thetaDetMin=0.,
+     double thetaDetMax = 360.);
 };

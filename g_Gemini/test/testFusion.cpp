@@ -18,12 +18,12 @@ _useAME = false;
   int Ap = 16; // mass number of projectile
   int Zt = 6; // proton number of target
   int At = 12; //mass number of target
-  float Elab = 160.; // labe energy in MeV
-  float dif = 2; //diffuseness of fusion spin distribution in hbar
+  double Elab = 160.; // labe energy in MeV
+  double dif = 2; //diffuseness of fusion spin distribution in hbar
 
   CFus fus(Zp,Ap,Zt,At,Elab,dif);
-  //float l0 = fus.getBassL();  // get maximum spin from Bass model
-  float l0 = 23;  // get maximum spin from paper
+  //double l0 = fus.getBassL();  // get maximum spin from Bass model
+  double l0 = 23;  // get maximum spin from paper
 
 
   //construct fusion spin distribution
@@ -32,14 +32,14 @@ _useAME = false;
 
 
   // OT 06/30/2023
-  //float prob[lmax+1];
-  float prob[1000];
+  //double prob[lmax+1];
+  double prob[1000];
 
-  float sum = 0.;
+  double sum = 0.;
   for (int l=0;l<=lmax;l++)
     {
-      prob[l] =  (float)(2*l+1);
-      if (dif > 0.) prob[l] /= (1.+exp(((float)l-l0)/dif));
+      prob[l] =  (double)(2*l+1);
+      if (dif > 0.) prob[l] /= (1.+exp(((double)l-l0)/dif));
       else if ( l > l0) prob[l] = 0.;
       sum += prob[l];
     }
@@ -50,13 +50,13 @@ _useAME = false;
     }
 
   CNucleus CN(fus.iZcn,fus.iAcn); //constructor
-  float fEx = fus.Ex; //excitation energy of compound nucleus
+  double fEx = fus.Ex; //excitation energy of compound nucleus
 
 
   cout << " compound Nucleus is " << CN.getName() << endl;
   cout << " E* = " << fEx << " critical spin = " << l0 << endl;
   cout << " fusion xsection = " << sum*fus.plb << " mb" << endl;
-  float xfus = sum*fus.plb;
+  double xfus = sum*fus.plb;
 
   CN.setEvapMode(1);  // force a fully Hauser-Feshbach calculation
 
@@ -78,37 +78,37 @@ _useAME = false;
 
   //define and zero events parameters
 
-  float total = 0.;
-  float Nfission = 0.;
-  float Nimf = 0.;
-  float neutPreSad = 0.;
-  float neutSaddleToScission = 0.;
-  float neutHeavy = 0.;
-  float neutLight = 0.;
+  double total = 0.;
+  double Nfission = 0.;
+  double Nimf = 0.;
+  double neutPreSad = 0.;
+  double neutSaddleToScission = 0.;
+  double neutHeavy = 0.;
+  double neutLight = 0.;
 
 
-  float Ares = 0.;
-  float Zres = 0.;
-  float resTotal = 0.;
-  float neutMultEv = 0.;
-  float protMultEv = 0.;
-  float alpMultEv = 0.;
-  float gammaEnergy = 0.;
+  double Ares = 0.;
+  double Zres = 0.;
+  double resTotal = 0.;
+  double neutMultEv = 0.;
+  double protMultEv = 0.;
+  double alpMultEv = 0.;
+  double gammaEnergy = 0.;
 
 
-  float sum3 = 0.;
-  float sum4 = 0.;
-  float sum5 = 0.;
-  float sum6 = 0.;
+  double sum3 = 0.;
+  double sum4 = 0.;
+  double sum5 = 0.;
+  double sum6 = 0.;
 
 
   int Nevents = 500;
-  float Sconst = xfus/(float)Nevents;
+  double Sconst = xfus/(double)Nevents;
 
   for (int i=0;i<Nevents;i++)
     {
       //choose the spin of the CN from the determed spin distribution
-      float ran = CN.ran->Rndm();
+      double ran = CN.ran->Rndm();
       int l = 0;
       for (;;)
         {
@@ -117,7 +117,7 @@ _useAME = false;
         }
 
       //specify the excitation energy and spin
-      CN.setCompoundNucleus(fEx,(float)l);
+      CN.setCompoundNucleus(fEx,(double)l);
 
 
 
@@ -145,7 +145,7 @@ _useAME = false;
       CNucleus * products = CN.getProducts(Nfrag-1);
 
       // the weight will be unity unless setWeightIMF is called
-      float weight = products->getWeightFactor();
+      double weight = products->getWeightFactor();
 
 
 

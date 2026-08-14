@@ -10,14 +10,14 @@ OBJECTS_DIR = obj
 
 
 win32-g++ {
-DESTDIR = c:/Gemini/_install
+DESTDIR = $$PWD/_install
 }
 win32-msvc {
-DESTDIR = c:/Gemini/_install_MSVC
+DESTDIR = $$PWD/_install_MSVC
 }
 
-win32:VERSION = 3.2.7.0 # major.minor.patch.build
-else:VERSION  = 3.2.7   # major.minor.patch
+win32:VERSION = 3.3.0.0 # major.minor.patch.build
+else:VERSION  = 3.3.0   # major.minor.patch
 
 win32 {
         QMAKE_TARGET_COPYRIGHT = "LISE group at FRIB/MSU"
@@ -188,7 +188,6 @@ OTHER_FILES += \
 RESOURCES += \
     g_Gemini/gm_resources.qrc \
     g_Gemini/icons/gm_icons.qrc \
-    g_Gemini/icons/icons.qrc \
     lise.qrc
 
 

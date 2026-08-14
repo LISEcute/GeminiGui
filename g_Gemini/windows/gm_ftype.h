@@ -1,8 +1,8 @@
 #ifndef FTYPE_H
 #define FTYPE_H
 
-#define Gemini_version "Version 3.2.7"
-#define Gemini_date    "13-AUG-2026"
+#define Gemini_version "Version 3.3.0"
+#define Gemini_date    "14-AUG-2026"
 
 #endif // FTYPE_H
 
@@ -67,7 +67,7 @@
 // 3.1.08 08/16/23  Corrections with database path
 
 //--------------------------------
-// A.Ray Updates
+// A.Ray started Updates
 // 3.1.09 01/15/26  Optimized code project-wide for faster execution
 // 3.1.10 04/30/26  Created Angular Distribution tables for Residual nuclei
 // 3.1.11 05/21/26  Window to plot Angular distribution tables; Gaussian fit on 1D plots
@@ -75,6 +75,7 @@
 
 // 3.2.0   05/23/26  Oleg
 // updated About dialog and this file
+// Arjun's update
 // 3.2.1   06/12/26  Added Gamma angular Distribution Table; UI changes
 // 3.2.2   06/14/26  Added C.M Spectra for emmitted particles
 // 3.2.3   06/19/26  Added C.M Spectra plots for emmitted particles
@@ -82,7 +83,27 @@
 // 3.2.5   07/20/26  Added Boltzmann distribution and columb barrier to plots
 // 3.2.5   07/23/26  Added Yields of IMF Particles; Changes to fit logic in Boltzmann distribution
 // 3.2.6   08/4/26   Changed Output windows, New comparison plot for IMF and Residual yield table
-// 3.2.7   08/13/26  Plotting changes, Fixed about dialog
 
+// 3.2.7   08/13/26  Arjun:
+// Plotting changes, Fixed about dialog
+
+// 3.2.8   08/14/26  Oleg:
+// Startup defaults: AME2016 masses and Fusion reaction tab
+
+// 3.2.9   08/14/26  Oleg:
+// Double precision migration, fixed MinGW and MSVC warnings
+
+// 3.2.10  08/14/26  Oleg:
+// Added horizontal scrollbar for Residual and IMF angular distribution result tabs
+// Rebuilt MinGW and MSVC targets after table/result-window updates
+
+// 3.2.11  08/14/26  Oleg:
+// Updated About dialog contribution note
+// Kept Arjun's contribution visible in the About dialog text
+
+// 3.3.0  08/14/26  Oleg:
+// Middle version changed
+// Synchronized official version in gm_ftype.h with Gemini.pro resource version
+// Continued current Qt Creator layout defaults for Codex development builds
 
 

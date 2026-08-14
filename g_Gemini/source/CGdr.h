@@ -12,9 +12,9 @@ using namespace std;
  */
 struct Lshape
 {
-  float strength; //!< Lorentzian strength (fraction)
-  float energy;   //!< Centroid [MeV]
-  float gamma;    //!< Width [MeV]
+  double strength; //!< Lorentzian strength (fraction)
+  double energy;   //!< Centroid [MeV]
+  double gamma;    //!< Width [MeV]
 };
 
 
@@ -33,7 +33,7 @@ class CGdr
 {
  public: 
   static CGdr* instance(); //!< instance member to make this a singleton
-  float getLineShape(float e);
+  double getLineShape(double e);
 
  protected:
   static  CGdr* fInstance; //!< instance member to make this a singleton

@@ -22,7 +22,7 @@ CTlArray::CTlArray(const QString& sName0)
   QTextStream ifFile(&iff);
 
 
-  float fx[7];
+  double fx[7];
   // string line;
   //getline(ifFile,line);
   ifFile.readLine();
@@ -79,18 +79,18 @@ void CTlArray::prepare(int iZ)
  \param fEk is the kinetic energy of the evaporated particle
  */
 
-float CTlArray::getTermInExp(int iL, float fEk)
+double CTlArray::getTermInExp(int iL, double fEk)
 {
-  float fL = (float)(iL+1);
-  float fC1 = trans->coef[6];
-  float fC2 = trans->coef[0] + fL*(trans->coef[1] + fL*trans->coef[2]);
-  float fC3 = trans->coef[3] + fL*(trans->coef[4] + fL*trans->coef[5]);
+  double fL = (double)(iL+1);
+  double fC1 = trans->coef[6];
+  double fC2 = trans->coef[0] + fL*(trans->coef[1] + fL*trans->coef[2]);
+  double fC3 = trans->coef[3] + fL*(trans->coef[4] + fL*trans->coef[5]);
 
   fEk += shift;
 
   // the interpolation can have a maximum, must find
-  float emax; // energy of maximum or minimum
-  float d2e; //second derivative at stationary point
+  double emax; // energy of maximum or minimum
+  double d2e; //second derivative at stationary point
   
   if (fC1 == 0.0)
     {
@@ -111,7 +111,7 @@ float CTlArray::getTermInExp(int iL, float fEk)
           d2e = 0.0;
         }
     }
-  float fX;
+  double fX;
   if (fEk < emax && d2e < 0.0)
     {
       //fit has a maximum at positive ek, set tl=0 below this energy
@@ -137,9 +137,9 @@ float CTlArray::getTermInExp(int iL, float fEk)
  \param fEk is the kinetic energy of the evaporated particle
 */
 
-float CTlArray::getTl(int iL, float fEk)
+double CTlArray::getTl(int iL, double fEk)
 {
-  float fX = getTermInExp(iL,fEk);
+  double fX = getTermInExp(iL,fEk);
   return 1.0/(1.0+exp(fX));
 }
 //***********************************
@@ -150,14 +150,14 @@ float CTlArray::getTl(int iL, float fEk)
  * \f$S=\frac{\sigma_{inv}}{\pi\lambda^{2}}\f$
  \param fEk is the kinetic energy of the evaporated particle
  */
-float CTlArray::getInverseXsec(float fEk)
+double CTlArray::getInverseXsec(double fEk)
 {
-  float tot = 0.;
-  float xmax = 0.;
+  double tot = 0.;
+  double xmax = 0.;
   int iL = 0;
   for(;;)
     {
-      float x = (float)(2*iL+1)*getTl(iL,fEk);
+      double x = (double)(2*iL+1)*getTl(iL,fEk);
       xmax = max(x,xmax);
       tot += x;
       if (x < xmax*.01) break;

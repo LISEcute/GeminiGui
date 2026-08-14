@@ -13,13 +13,13 @@ _useAME = false;
 
   int iZCN = 82; // proton number of compound nucleus
   int iACN = 198; // mass number of compound nucleus
-  float fEx = 67.; //excitation energy of compound nucleus
-  float fJ = 40; // spin of compound nucleus
+  double fEx = 67.; //excitation energy of compound nucleus
+  double fJ = 40; // spin of compound nucleus
 /*
   int iZCN = 82; // proton number of compound nucleus
   int iACN = 198; // mass number of compound nucleus
-  float fEx = 67.; //excitation energy of compound nucleus
-  float fJ = 40; // spin of compound nucleus
+  double fEx = 67.; //excitation energy of compound nucleus
+  double fJ = 40; // spin of compound nucleus
 */
 
 
@@ -28,7 +28,7 @@ _useAME = false;
   CN.setCompoundNucleus(fEx,fJ); //specify the excitation energy and spin
 
   CN.setVelocityCartesian(); // set initial CN velocity to zero
-  CAngle spin(CNucleus::pi/2,(float)0.);
+  CAngle spin(CNucleus::pi/2,(double)0.);
   CN.setSpinAxis(spin); //set the direction of the CN spin vector
 
   for (int i=0;i<30;i++)

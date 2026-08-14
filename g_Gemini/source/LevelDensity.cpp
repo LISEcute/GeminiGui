@@ -10,19 +10,19 @@ CLevelDensity* CLevelDensity::fInstance = 0;
 
 bool  CLevelDensity::normal = true;
 
-float const CLevelDensity::pi = acos(-1.);
-float CLevelDensity::k0 = 7.3;
-float CLevelDensity::kInfinity = 12.;
-float CLevelDensity::aKappa = 0.00517;
-float CLevelDensity::cKappa = .0345;
-float CLevelDensity::af_an = 1.036;
-float CLevelDensity::aimf_an = 1.02;
-float CLevelDensity::eFade = 18.52;
-float CLevelDensity::jFade = 50.;
-float CLevelDensity::Ucrit0 = 9.;
-float CLevelDensity::Jcrit = 14;
-//float  CLevelDensity::Ucrit0 = 0.;
-//float  CLevelDensity::Jcrit = -1.;
+double const CLevelDensity::pi = acos(-1.);
+double CLevelDensity::k0 = 7.3;
+double CLevelDensity::kInfinity = 12.;
+double CLevelDensity::aKappa = 0.00517;
+double CLevelDensity::cKappa = .0345;
+double CLevelDensity::af_an = 1.036;
+double CLevelDensity::aimf_an = 1.02;
+double CLevelDensity::eFade = 18.52;
+double CLevelDensity::jFade = 50.;
+double CLevelDensity::Ucrit0 = 9.;
+double CLevelDensity::Jcrit = 14;
+//double  CLevelDensity::Ucrit0 = 0.;
+//double  CLevelDensity::Jcrit = -1.;
 
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 /**
@@ -76,7 +76,7 @@ CLevelDensity* CLevelDensity::instance() // mod-TU
      \param fShell is the shell correction in MeV
      \param fJ is the angular momentum in units of hbar
   */
-float CLevelDensity::getU(float fU0, float fPairing, float fShell, float fJ)
+double CLevelDensity::getU(double fU0, double fPairing, double fShell, double fJ)
 {
 
     fU = fU0;
@@ -86,8 +86,8 @@ float CLevelDensity::getU(float fU0, float fPairing, float fShell, float fJ)
         return fU;
     }
     //simple fade out of pairing
-    float shiftP;
-    float Ucrit = 0.;
+    double shiftP;
+    double Ucrit = 0.;
     if (fJ < Jcrit) Ucrit = Ucrit0 * (1.-fJ/Jcrit) * (1.-fJ/Jcrit);
     if (fU > Ucrit) shiftP = fPairing;
     else shiftP = fPairing * (1. - (1.-fU/Ucrit) * (1.-fU/Ucrit));
@@ -99,7 +99,7 @@ float CLevelDensity::getU(float fU0, float fPairing, float fShell, float fJ)
         return fU;
     }
     //fU += fShell*(1.0-exp(-fU/eFade-fJ/jFade));
-    float shiftS = fShell * tanh(fU/eFade + fJ/jFade);
+    double shiftS = fShell * tanh(fU/eFade + fJ/jFade);
 
     fU += shiftS;
 
@@ -118,7 +118,7 @@ float CLevelDensity::getU(float fU0, float fPairing, float fShell, float fJ)
 \param iFission is a short indicating we are detail with a saddle-point shape
  */
 
-float CLevelDensity::getLittleA(int iA, short iFission/*=0*/)
+double CLevelDensity::getLittleA(int iA, short iFission/*=0*/)
 {
     //calculates the level density parameter
     //iA is nucleus mass number
@@ -126,9 +126,9 @@ float CLevelDensity::getLittleA(int iA, short iFission/*=0*/)
     //fPairing is the pairing energy
     //fShell is the shell correction to the mass
 
-    float fA = (float)iA;
-    float kappa = 0.;
-    float daden_dU;
+    double fA = (double)iA;
+    double kappa = 0.;
+    double daden_dU;
 
     if ((normal && fU/fA < 3.) || aKappa == 0.)
     {
@@ -141,7 +141,7 @@ float CLevelDensity::getLittleA(int iA, short iFission/*=0*/)
         {
             if (aKappa > 0.) kappa = aKappa*exp(cKappa*fA);
             //kappa = 1.5+.1143*J;
-            float expTerm = exp(-kappa*fU/fA/(kInfinity-k0));
+            double expTerm = exp(-kappa*fU/fA/(kInfinity-k0));
             aden = fA/(kInfinity - (kInfinity-k0)*expTerm);
             daden_dU = -((aden/fA)*(aden/fA)) * kappa * expTerm;
         }
@@ -159,14 +159,14 @@ float CLevelDensity::getLittleA(int iA, short iFission/*=0*/)
     }
     else
     {
-        float r;
+        double r;
         if (iFission == 1) r = 1.0696;
         else if (iFission == 2) r = 1.05;
         else                    r = 1.0;
 
         if (aKappa > 0.) kappa = aKappa*exp(cKappa*fA);
-        float fofr = ( kInfinity - ( kInfinity - k0 ) * r ) / (k0*r);
-        float expTerm = exp(-fofr*kappa*fU/fA/(kInfinity-k0));
+        double fofr = ( kInfinity - ( kInfinity - k0 ) * r ) / (k0*r);
+        double expTerm = exp(-fofr*kappa*fU/fA/(kInfinity-k0));
         aden = fA/(kInfinity - (kInfinity-k0)*r*expTerm);
         daden_dU = -((aden/fA)*(aden/fA)) * kappa * expTerm * fofr;
     }
@@ -188,8 +188,8 @@ float CLevelDensity::getLittleA(int iA, short iFission/*=0*/)
 \param iFission is a short indicating we are detail with a saddle-point shape
  */
 
-float CLevelDensity::getLittleA(int iA, float fU0, float fPairing/*=0.*/,
-                                float fShell/*=0.*/, float fJ/*=0.*/, short iFission/*=0*/)
+double CLevelDensity::getLittleA(int iA, double fU0, double fPairing/*=0.*/,
+                                double fShell/*=0.*/, double fJ/*=0.*/, short iFission/*=0*/)
 {
     //calculates the level density parameter
     //iA is nucleus mass number
@@ -218,9 +218,9 @@ float CLevelDensity::getLittleA(int iA, float fU0, float fPairing/*=0.*/,
  */
 
 //spin dependent Fermi_gas level density
-float CLevelDensity::getLogLevelDensitySpherical
-    (int iA, float fU0, float fPairing,
-     float fShell, float fJ, float fMinertia, short iFission/*=0*/)
+double CLevelDensity::getLogLevelDensitySpherical
+    (int iA, double fU0, double fPairing,
+     double fShell, double fJ, double fMinertia, short iFission/*=0*/)
 {
     //calculates the level density
     //iA is nucleus mass number
@@ -231,11 +231,11 @@ float CLevelDensity::getLogLevelDensitySpherical
     if (getLittleA(iA,fU0,fPairing,fShell,fabs(fJ),iFission) == 0.) return 0.;
     if (fU <=0.) return 0.;
     if (fJ < 0.) fJ = 0.;
-    float sigma =  fMinertia*temp/40.848;
+    double sigma =  fMinertia*temp/40.848;
 
     // pow(fU,1.25), pow(sigma,1.5), pow(aden,0.25) cannot be expanded safely
-    float preExp = (2.*fJ+1.)/(1.+pow(fU,(float)(1.25))*pow(sigma,(float)1.5))
-                   /pow(aden,(float)0.25)/24./sqrt(2.);
+    double preExp = (2.*fJ+1.)/(1.+pow(fU,(double)(1.25))*pow(sigma,(double)1.5))
+                   /pow(aden,(double)0.25)/24./sqrt(2.);
     return entropy + log(preExp);
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
@@ -244,7 +244,7 @@ float CLevelDensity::getLogLevelDensitySpherical
  * Returns the temperature in MeV
  * getLittleA must be called first
  */
-float CLevelDensity::getTemp()
+double CLevelDensity::getTemp()
 {
     return temp;
 }
@@ -254,7 +254,7 @@ float CLevelDensity::getTemp()
    * Returns the entropy.
    * getLittleA must be called first
    */
-float CLevelDensity::getEntropy()
+double CLevelDensity::getEntropy()
 {
     return entropy;
 }
@@ -263,7 +263,7 @@ float CLevelDensity::getEntropy()
 /**
 * Returns the level-density parameter in MeV-1
  */
-float CLevelDensity::getAden()
+double CLevelDensity::getAden()
 {
     return aden;
 }
@@ -276,8 +276,8 @@ float CLevelDensity::getAden()
    \param fPairing is the pairing correction in MeV
    \param fShell is the shell correction in MeV
    */
-float CLevelDensity::getLogLevelDensitySpherical
-    (int iA, float fU0, float fPairing, float fShell)
+double CLevelDensity::getLogLevelDensitySpherical
+    (int iA, double fU0, double fPairing, double fShell)
 {
     //calculates the level density
     //iA is nucleus mass number
@@ -289,8 +289,8 @@ float CLevelDensity::getLogLevelDensitySpherical
     if (fU <=0.) return 0.;
 
     // pow(aden,0.25), pow(fU+temp,1.25) cannot be expanded safely
-    float preExp = sqrt(pi)/12./pow(aden,(float)0.25)/
-                   (1.+pow(fU+temp,(float)1.25));
+    double preExp = sqrt(pi)/12./pow(aden,(double)0.25)/
+                   (1.+pow(fU+temp,(double)1.25));
     return entropy + log(preExp);
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
@@ -305,8 +305,8 @@ float CLevelDensity::getLogLevelDensitySpherical
 \param cKappa0 is \f$c_{kappa}\f$
 \param kInfinity0 is \f$k_{\infty}\f$
 */
-void CLevelDensity::setLittleA(float k00, float aKappa0/*=0.*/,
-                               float cKappa0 /*=0.*/, float kInfinity0 /*=12.*/)
+void CLevelDensity::setLittleA(double k00, double aKappa0/*=0.*/,
+                               double cKappa0 /*=0.*/, double kInfinity0 /*=12.*/)
 {
     k0 = k00;
     aKappa = aKappa0;
@@ -319,7 +319,7 @@ void CLevelDensity::setLittleA(float k00, float aKappa0/*=0.*/,
 /**
  * returns the inverse level-density parameter at zero excitation energy
  */
-float CLevelDensity::getK0()
+double CLevelDensity::getK0()
 {
     return k0;
 }
@@ -329,7 +329,7 @@ float CLevelDensity::getK0()
  * returns the inverse level-density parameter at infinite excitation
  * energy
  */
-float CLevelDensity::getKInfinity()
+double CLevelDensity::getKInfinity()
 {
     return kInfinity;
 }
@@ -339,7 +339,7 @@ float CLevelDensity::getKInfinity()
  * returns one of the coefficients used to calculate kappa
  * \f$ \kappa = a_{\kappa} \exp\left(c_{\kappa} A\right) \f$
  */
-float CLevelDensity::getAKappa()
+double CLevelDensity::getAKappa()
 {
     return aKappa;
 }
@@ -350,7 +350,7 @@ float CLevelDensity::getAKappa()
  * \f$ \kappa = a_{\kappa} \exp\left(c_{\kappa} A\right) \f$
 
  */
-float CLevelDensity::getCKappa()
+double CLevelDensity::getCKappa()
 {
     return cKappa;
 }
@@ -360,7 +360,7 @@ float CLevelDensity::getCKappa()
  * returns the ration of saddle-point to equilibrium level-density parameter
  * for symmetyric fission
  */
-float CLevelDensity::getAfAn()
+double CLevelDensity::getAfAn()
 {
     return af_an;
 }
@@ -370,7 +370,7 @@ float CLevelDensity::getAfAn()
  * returns the ration of saddle-point to equilibrium level-density parameter
  * for asymmetric fission
  */
-float CLevelDensity::getAimfAn()
+double CLevelDensity::getAimfAn()
 {
     return aimf_an;
 }
@@ -380,7 +380,7 @@ float CLevelDensity::getAimfAn()
   * equilibrium shape for symmetric fission
   \param af_an0 is the level-density parameter ratio for saddle-point to equilibirum deformation
   */
-void CLevelDensity::setAfAn(float af_an0)
+void CLevelDensity::setAfAn(double af_an0)
 {
     af_an = af_an0;
 }
@@ -390,7 +390,7 @@ void CLevelDensity::setAfAn(float af_an0)
   * equilibrium shape for asymmetric fisison , ie. imf emission
   \param aimf_an0 is the level-density parameter ratio for saddle-point to equilibirum deformation
   */
-void CLevelDensity::setAimfAn(float aimf_an0)
+void CLevelDensity::setAimfAn(double aimf_an0)
 {
     aimf_an = aimf_an0;
 }
@@ -418,16 +418,16 @@ void CLevelDensity::printParameters()
 \param fU is thermal excitation of fission system
 \param adenInv in the inverse level-density paramter in MeV, is \f$a=A/adenInv\f$
   */
-float CLevelDensity::getLogLevelDensityScission(int iA, float fU,
-                                                float adenInv/*=8.*/ )
+double CLevelDensity::getLogLevelDensityScission(int iA, double fU,
+                                                double adenInv/*=8.*/ )
 {
-    aden = (float)iA/adenInv;
+    aden = (double)iA/adenInv;
     temp = sqrt(fU/aden);
     entropy = 2.*sqrt(aden*fU);
 
     // pow(aden,0.25), pow(fU+temp,1.25) cannot be expanded safely
-    float preExp = sqrt(pi)/12./pow(aden,(float)0.25)/
-                   (1.+pow(fU+temp,(float)1.25));
+    double preExp = sqrt(pi)/12./pow(aden,(double)0.25)/
+                   (1.+pow(fU+temp,(double)1.25));
     return entropy + log(preExp);
 }
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
@@ -437,7 +437,7 @@ float CLevelDensity::getLogLevelDensityScission(int iA, float fU,
   \param Ucrit0 is critical thermal excitaion energy in MeV
   \param Jcrit  is critical angular momentum where pairing vanishes
   */
-void CLevelDensity::setUcrit(float Ucrit00, float Jcrit0)
+void CLevelDensity::setUcrit(double Ucrit00, double Jcrit0)
 {
     Ucrit0 = Ucrit00;
     Jcrit = Jcrit0;

@@ -4,7 +4,7 @@
 #include <QDebug>
 
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-CSigCharged::CSigCharged(const QString& sName0, float Zp0, float Ap0)
+CSigCharged::CSigCharged(const QString& sName0, double Zp0, double Ap0)
 {
 
   Zp = Zp0;
@@ -36,7 +36,7 @@ CSigCharged::CSigCharged(const QString& sName0, float Zp0, float Ap0)
   iff.close();
 }
 //******************************************
-void CSigCharged::prepare(float Z, float A)
+void CSigCharged::prepare(double Z, double A)
 {
   if (neutron)
     {
@@ -47,12 +47,12 @@ void CSigCharged::prepare(float Z, float A)
      return;
     }
 
-  float A13 = pow(A,(float)(1./3.));
-  float rc = rc0/A13 + rc1 + rc2*A13;
+  double A13 = pow(A,(double)(1./3.));
+  double rc = rc0/A13 + rc1 + rc2*A13;
   barrier = Zp*Z*1.44/rc;
 
-  float rI = rc0/A13 + rI1 + rI2*A13;
-  float mu = A*Ap/(A+Ap);
+  double rI = rc0/A13 + rI1 + rI2*A13;
+  double mu = A*Ap/(A+Ap);
   InvInertia = 2.*mu*(rI*rI)/41.563;
   omega = omega0 + omega1*A + omega2*exp(-A/omega3);
 
@@ -62,24 +62,24 @@ void CSigCharged::prepare(float Z, float A)
   offset = barrier/2.;
 }
 //*****************************************
-float CSigCharged::getInverseXsec(float energy)
+double CSigCharged::getInverseXsec(double energy)
 {
 
   if (neutron) return  (n0+ n1*energy)*(1.-exp(-energy/n2));
-  float ddelta = sqrt((offset*offset)+(energy-barrier*energy-barrier)) - offset;
-  float delta;
+  double ddelta = sqrt((offset*offset)+(energy-barrier*energy-barrier)) - offset;
+  double delta;
 
   if (energy > barrier) delta = energy - barrier - a*ddelta;   // ???  error??
   else delta = energy - barrier - aa*ddelta;
 
 
-  float out = InvInertia*(delta + omega*log(1.+exp(-delta/omega)));
+  double out = InvInertia*(delta + omega*log(1.+exp(-delta/omega)));
   if (out < 0.) out = 0.;
   return out;
 }
 //******************************************
 
-float CSigCharged::getBarrier()
+double CSigCharged::getBarrier()
 {
   return  barrier;
 }

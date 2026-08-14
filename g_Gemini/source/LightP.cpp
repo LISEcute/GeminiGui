@@ -8,13 +8,13 @@
     \param fJ0 spin of particle
     \param name0 name of *.tl file containing transmission coefs.
    */
-CLightP::CLightP(int iZ0, int iA0, float fJ0, string name0) 
+CLightP::CLightP(int iZ0, int iA0, double fJ0, string name0) 
    : CNuclide(iZ0,iA0,name0)
 {
    fJ = fJ0;
    QString qName0(name0.c_str());
    tlArray = new CTlBarDist(qName0);
-   sigBarDist = new CSigBarDist(qName0,(float)iZ0,(float)iA0);
+   sigBarDist = new CSigBarDist(qName0,(double)iZ0,(double)iA0);
 
 }
 //******************************************************
@@ -28,7 +28,7 @@ CLightP::CLightP(int iZ0, int iA0, float fJ0, string name0)
     \param tlArray0 is the pointer to the object for transmission coefficients
     \param sigBarDist0 is the pointer to the object for inverse xsections
  */ 
-CLightP::CLightP(int iZ0, int iA0, float fJ0, CTlBarDist* tlArray0,
+CLightP::CLightP(int iZ0, int iA0, double fJ0, CTlBarDist* tlArray0,
    CSigBarDist * sigBarDist0) 
    : CNuclide(iZ0,iA0)
 {

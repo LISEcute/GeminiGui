@@ -11,11 +11,11 @@ bool const Isig  = 1;    //in weisskopf, use parametrized Inverse Section
 int  CNucleus::iHF = 2; //1=Hauser Feshback,0= Weisskopf,2=switches from 0 to 1
 bool const fissionMassScission = 0; //1=scission-point fission mass dist
 //0=saddle-point fission mass dist
-float const scaleImf = 1.;
+double const scaleImf = 1.;
 bool const Isaddle = 0;
 bool const Iscission = 1;
-//float const WignerScaled = 0.; //scaling factor for the Wigner Energy
-float const WignerAdd = 7.; //adding factor for the Wigner Energy
+//double const WignerScaled = 0.; //scaling factor for the Wigner Energy
+double const WignerAdd = 7.; //adding factor for the Wigner Energy
 //the following line needed in the ROOT version
 //ClassImp(CNucleus)
 
@@ -25,34 +25,34 @@ bool          CNucleus::BohrWheeler = 1;
 CYrast        *CNucleus::yrast;
 CLevelDensity *CNucleus::levelDensity;
 CAngleDist    CNucleus::angleDist;
-float         CNucleus::de = 1.0;
+double         CNucleus::de = 1.0;
 CGdr* CNucleus::GDR;
 
 vector<CNucleus*> CNucleus::allProducts;
 vector<CNucleus*> CNucleus::stableProducts;
 vector<CNucleus*> CNucleus::recycled;
-float const CNucleus::r0=1.16;
-float const CNucleus::sep=2.;
-float const CNucleus::pi=acos(-1.);
+double const CNucleus::r0=1.16;
+double const CNucleus::sep=2.;
+double const CNucleus::pi=acos(-1.);
 short unsigned CNucleus::Zshell = 2;
 short unsigned const CNucleus:: lMaxQuantum = 50;
 CEvap *CNucleus::evap;
-float const CNucleus::gammaInhibition[3]={0.,.025,9.};
-float const CNucleus::wue[3]={0.,6.8e-8,4.9e-14};//gives weisskopf units in MeV
-float const CNucleus::viscosity_scission = 1.;
-float const CNucleus::viscosity_saddle = 1.5;
-float CNucleus::timeTransient = 0.;
-//float CNucleus::fissionScaleFactor = 2.46;
-float CNucleus::fissionScaleFactor = 1.00;
-float CNucleus::sumGammaEnergy = 0.;
-float CNucleus::barAdd = 0.;
-float const CNucleus::kRotate = 41.563;
+double const CNucleus::gammaInhibition[3]={0.,.025,9.};
+double const CNucleus::wue[3]={0.,6.8e-8,4.9e-14};//gives weisskopf units in MeV
+double const CNucleus::viscosity_scission = 1.;
+double const CNucleus::viscosity_saddle = 1.5;
+double CNucleus::timeTransient = 0.;
+//double CNucleus::fissionScaleFactor = 2.46;
+double CNucleus::fissionScaleFactor = 1.00;
+double CNucleus::sumGammaEnergy = 0.;
+double CNucleus::barAdd = 0.;
+double const CNucleus::kRotate = 41.563;
 bool const CNucleus::noSymmetry = 1; // no symmetric fission calculated in
 // asyFissionWidth if there is a fission peak
 unsigned CNucleus::iPoint = -1;
-float CNucleus::threshold = .001;
+double CNucleus::threshold = .001;
 
-vector <float> CNucleus::GammaRayEnergy;
+vector <double> CNucleus::GammaRayEnergy;
 int CNucleus::nGammaRays = 0;
 bool CNucleus::GDRParam = false; // switch on GDR parametrized version
 
@@ -110,7 +110,7 @@ void CNucleus::initializeDefaults()
     velocity[0] = 0.;
     velocity[1] = 0.;
     velocity[2] = 0.;
-    spin = CAngle((float)0.,(float)0.);
+    spin = CAngle((double)0.,(double)0.);
     daughterLight = NULL;
     daughterHeavy = NULL;
     parent = NULL;
@@ -127,7 +127,7 @@ void CNucleus::initialize(int iZ0, int iA0)
     initializeDefaults();
 }
 
-void CNucleus::initialize(int iZ0, int iA0, float fEx0, float fJ0)
+void CNucleus::initialize(int iZ0, int iA0, double fEx0, double fJ0)
 {
     initialize(iZ0,iA0);
     setCompoundNucleus(fEx0,fJ0);
@@ -145,7 +145,7 @@ CNucleus* CNucleus::acquire(int iZ0, int iA0)
     return new CNucleus(iZ0,iA0);
 }
 
-CNucleus* CNucleus::acquire(int iZ0, int iA0, float fEx0, float fJ0)
+CNucleus* CNucleus::acquire(int iZ0, int iA0, double fEx0, double fJ0)
 {
     if (!recycled.empty())
     {
@@ -174,7 +174,7 @@ void CNucleus::release(CNucleus* nucleus)
 \param fEx0 is excitation energy in MeV
 \param fJ0 is spin in hbar
 */
-CNucleus::CNucleus(int iZ0, int iA0, float fEx0, float fJ0)
+CNucleus::CNucleus(int iZ0, int iA0, double fEx0, double fJ0)
     : CNuclide(iZ0,iA0)
 {
     //alternative constructor
@@ -259,7 +259,7 @@ void CNucleus::binaryDecay()
         daughterHeavy->parent = this;
 
 
-        float decayTime =
+        double decayTime =
             ran->expDecayTime(evap->decay[notStatisticalMode].gamma);
         daughterLight->timeSinceStart = timeSinceStart + decayTime;
         daughterHeavy->timeSinceStart = timeSinceStart + decayTime;
@@ -378,15 +378,15 @@ void CNucleus::binaryDecay()
 
 
             //randomise angle
-            float theta = acos(1.-2.*ran->Rndm());
-            float phi = 2.*pi*ran->Rndm();
-            float vrel = sqrt(2.*Ek*(float)iA/(((float)iA-ejectileA)*((float)ejectileA)))*0.9794;
-            float v1 = vrel*(float)(iA-ejectileA)/(float)iA;
+            double theta = acos(1.-2.*ran->Rndm());
+            double phi = 2.*pi*ran->Rndm();
+            double vrel = sqrt(2.*Ek*(double)iA/(((double)iA-ejectileA)*((double)ejectileA)))*0.9794;
+            double v1 = vrel*(double)(iA-ejectileA)/(double)iA;
             daughterLight->velocity[0] = v1*sin(theta)*cos(phi);
             daughterLight->velocity[1] = v1*sin(theta)*sin(phi);
             daughterLight->velocity[2] = v1*cos(theta);
 
-            float v2 = vrel - v1;
+            double v2 = vrel - v1;
             theta = pi - theta;
             phi += pi;
 
@@ -408,7 +408,7 @@ void CNucleus::binaryDecay()
 
     // start change
 
-    float widthAsyFission = 0.;
+    double widthAsyFission = 0.;
 
     needSymmetricFission = false;
     // don;t call asymmetric fission if all asymmetries are handled
@@ -423,16 +423,16 @@ void CNucleus::binaryDecay()
         else widthAsyFission = asyFissionWidthZA();
     }
 
-    float widthSymFission = 0.;
-    if (pow((float)iZ,2)/(float)iA < 20.) needSymmetricFission = false;
+    double widthSymFission = 0.;
+    if (pow((double)iZ,2)/(double)iA < 20.) needSymmetricFission = false;
 
     //end change
 
-    float widthEvaporation = evaporationWidth();
+    double widthEvaporation = evaporationWidth();
 
-    float widthGamma = gammaWidth();
-    float width = widthAsyFission + widthEvaporation + widthGamma; // non-used assignment -- see below
-    float decayTime = timeSinceStart;
+    double widthGamma = gammaWidth();
+    double width = widthAsyFission + widthEvaporation + widthGamma; // non-used assignment -- see below
+    double decayTime = timeSinceStart;
 
 
     width = widthEvaporation + widthGamma;
@@ -495,9 +495,9 @@ void CNucleus::binaryDecay()
     }
 */
 
-    float xran = ran->Rndm();
+    double xran = ran->Rndm();
 
-    if (fEx/(float)iA > 6.) widthSymFission = 0.;
+    if (fEx/(double)iA > 6.) widthSymFission = 0.;
     //  I switch off fission at excitation
     //  energies above 6 MeV.  Above
     //  this we get conceptable problems
@@ -512,11 +512,11 @@ void CNucleus::binaryDecay()
     {
 
         // choose light [particle channelchannel
-        float xran = ran->Rndm();
+        double xran = ran->Rndm();
         int i = 0;
         for (;;)
         {
-            float prob = evap->prob[i]/widthEvaporation;
+            double prob = evap->prob[i]/widthEvaporation;
             if (prob >= xran) break;
             if ( i == evap->nLight-1) break;
             i++;
@@ -535,15 +535,15 @@ void CNucleus::binaryDecay()
         getSpin((bool)0);
 
         // find the sum of L + S1
-        float lPlusSMin1 = fabs((float)EvapL-EvapS1);
-        float lPlusSMin2 = fabs(fJ-EvapS2);
-        float lPlusSMin = max(lPlusSMin1,lPlusSMin2);
-        float lPlusSMax1 = (float)EvapL+EvapS1;
-        float lPlusSMax2 = fJ + EvapS2;
-        float lPlusSMax = min(lPlusSMax1,lPlusSMax2);
+        double lPlusSMin1 = fabs((double)EvapL-EvapS1);
+        double lPlusSMin2 = fabs(fJ-EvapS2);
+        double lPlusSMin = max(lPlusSMin1,lPlusSMin2);
+        double lPlusSMax1 = (double)EvapL+EvapS1;
+        double lPlusSMax2 = fJ + EvapS2;
+        double lPlusSMax = min(lPlusSMax1,lPlusSMax2);
 
         //the following two lines makes sure random!=1.000
-        float random = 1.5;
+        double random = 1.5;
         while(floor(random) > 0.5)random = ran->Rndm();
         EvapLPlusS = lPlusSMin + floor(random*(lPlusSMax - lPlusSMin + 1));
 
@@ -622,19 +622,19 @@ void CNucleus::binaryDecay()
         // Coulomb part of kinetic energy
         scission.init(iZ,iA,fJ,iChan);
         scission.getFissionKineticEnergy(fissionZ,fissionA);
-        float Ek = scission.ekTot;
-        levelDensity->getLogLevelDensitySpherical(iA,fissionU,(float)0.,(float)0.,
+        double Ek = scission.ekTot;
+        levelDensity->getLogLevelDensitySpherical(iA,fissionU,(double)0.,(double)0.,
                                                   fJ,fMInertia,2);
         //add in fluctuations to Coulomb barrier
-        float sigma = Ek*sqrt(levelDensity->getTemp())*.1;
-        //float sigma = 0.;
+        double sigma = Ek*sqrt(levelDensity->getTemp())*.1;
+        //double sigma = 0.;
         // fluctuations are in Coulomb energy are gaussian, but make sure the
         //Coulomb energy is always positive
         // and thermal excitation energy is positive
 
 
 
-        float Qvalue = fExpMass
+        double Qvalue = fExpMass
                        - daughterLight->fExpMass - daughterHeavy->fExpMass
                        -  scission.Erotate1 - scission.Erotate2;  //Qvalue apart from EK
         qVal = Qvalue;
@@ -648,16 +648,16 @@ void CNucleus::binaryDecay()
 
         // add the thermal part of kinetic energy
         int const nE=200;
-        float sumE[nE];
+        double sumE[nE];
         int ie = 0;
-        float probStart = levelDensity->
-                          getLogLevelDensitySpherical(iA,fissionU,(float)0.,(float)0.,(float)0.,
+        double probStart = levelDensity->
+                          getLogLevelDensitySpherical(iA,fissionU,(double)0.,(double)0.,(double)0.,
                                                       fMInertia);
         for (;;)
         {
-            float de = (float)ie*0.5 + 0.25;
+            double de = (double)ie*0.5 + 0.25;
             if (de >= fissionU) break;
-            float prob = exp(levelDensity->
+            double prob = exp(levelDensity->
                              getLogLevelDensitySpherical(iA,fissionU-de,0.,0.,0.,fMInertia)
                              - probStart);
             sumE[ie] = prob;
@@ -667,7 +667,7 @@ void CNucleus::binaryDecay()
             if (ie >= nE) break;
 
         }
-        float de = 0.;
+        double de = 0.;
         if (ie > 0)
         {
             xran = ran->Rndm();
@@ -677,7 +677,7 @@ void CNucleus::binaryDecay()
                 if (xran <= sumE[iie]/sumE[ie-1]) break;
                 iie++;
             }
-            de = (float)iie*0.5 + 0.25;
+            de = (double)iie*0.5 + 0.25;
             Ek += de;
             fissionU -= de;
         }
@@ -698,10 +698,10 @@ void CNucleus::binaryDecay()
         com->bSymmetricFission = true;
 
         // start saddle to scission transition
-        float Esaddle = yrast->getSymmetricSaddleEnergy(iZ,iA,fJ);
+        double Esaddle = yrast->getSymmetricSaddleEnergy(iZ,iA,fJ);
         Esaddle -= fPairing + fShell;
         scission.init(iZ,iA,fJ,2);
-        float Escission = scission.getScissionEnergy() - fExpMass;
+        double Escission = scission.getScissionEnergy() - fExpMass;
 
 
         daughterHeavy = CNucleus::acquire(iZ,iA);
@@ -777,11 +777,11 @@ void CNucleus::binaryDecay()
 
         if (daughterHeavy->bStable == 1)//for Yrast transitions
         {
-            float GammaJ_temp = GammaJ;
+            double GammaJ_temp = GammaJ;
             while (GammaJ_temp> 2)
             {
                 nGammaRays +=1;
-                float Yrast_gamma = yrast->getYrast(iZ,iA,GammaJ_temp)
+                double Yrast_gamma = yrast->getYrast(iZ,iA,GammaJ_temp)
                                     - yrast->getYrast(iZ,iA,GammaJ_temp-2);
                 GammaRayEnergy.push_back(Yrast_gamma);
                 GammaJ_temp = GammaJ_temp -2;
@@ -822,23 +822,23 @@ void CNucleus::massAsymmetry(bool saddleOrScission)
     SStoreVector store;
     int iZ1,iZ2,iA1,iA2;
     iA1 = iA/2;
-    float Amax = 0.;
-    //float gammaAOld = 1e32;
+    double Amax = 0.;
+    //double gammaAOld = 1e32;
     double gammaTot = 0.;
     for (;;)
     {
 
         iA2 = iA - iA1;
 
-        int iZ1Start= (int)((float)iA1/(float)iA*(float)iZ);
+        int iZ1Start= (int)((double)iA1/(double)iA*(double)iZ);
         iZ1 = max(3,iZ1Start-8);
         iZ1 = max(iZ1_IMF_Max+1,iZ1); //do not overlap with IMF emission
-        float Zmax = 0.;
-        float gammaA = 0.;
+        double Zmax = 0.;
+        double gammaA = 0.;
         for (;;)
         {
             iZ2 = iZ - iZ1;
-            if (iZ2 <= (float)iZ/17.) break;
+            if (iZ2 <= (double)iZ/17.) break;
             if (iA1 == iA2 && iZ1 > iZ2) break;  //no double counting
             //see if fragments are listed in mass table
             if (mass->chart->getIndex(iZ1,iA1) < 0 ||
@@ -848,10 +848,10 @@ void CNucleus::massAsymmetry(bool saddleOrScission)
                 continue;
             }
 
-            float scissionE = scission.getScissionEnergy(iZ1,iA1);
+            double scissionE = scission.getScissionEnergy(iZ1,iA1);
             // fU0 has the asymmetric saddle or scission energy removed
 
-            float U = fU0 - scissionE + scission.Esymmetric;
+            double U = fU0 - scissionE + scission.Esymmetric;
             if (U <= 0.)
             {
                 if (iZ1 > iZ1Start) break;
@@ -859,7 +859,7 @@ void CNucleus::massAsymmetry(bool saddleOrScission)
                 continue;
             }
 
-            float logLevelDensitySciss =
+            double logLevelDensitySciss =
                 levelDensity->getLogLevelDensityScission(iA,U,10.);
 
 
@@ -869,7 +869,7 @@ void CNucleus::massAsymmetry(bool saddleOrScission)
                 iZ1++;
                 continue;
             }
-            float gamma= exp(logLevelDensitySciss-logLevelDensity);
+            double gamma= exp(logLevelDensitySciss-logLevelDensity);
             if (iA1 == iA2 && iZ1==iZ2 ) gamma /= 2.;
             gammaA += gamma;
 
@@ -887,11 +887,11 @@ void CNucleus::massAsymmetry(bool saddleOrScission)
         //with the widths from systematics
         if (gammaA > 0.)
         {
-            float prob = exp(-pow((float)(iA1-iA2)/2.,2)/2./sigma2);
+            double prob = exp(-pow((double)(iA1-iA2)/2.,2)/2./sigma2);
             if (iA1 == iA2) prob /= 2.;
 
             double scale = prob/gammaA;
-            int jj = store.size()-1;
+            int jj = static_cast<int>(store.size()) - 1;
             for (;;)
             {
                 if (jj < 0) break;
@@ -906,7 +906,7 @@ void CNucleus::massAsymmetry(bool saddleOrScission)
         }
         else break;
         iA1--;
-        if (iA1 < (float)iA/17.) break;
+        if (iA1 < (double)iA/17.) break;
     }
     if (store.empty())
     {
@@ -928,7 +928,7 @@ void CNucleus::massAsymmetry(bool saddleOrScission)
         SStoreIter selectedChannel = std::lower_bound(store.begin(),
                                                       store.end(),
                                                       xran*store.back().gamma,
-                                                      CompareGammaToX<SStore, float>());
+                                                      CompareGammaToX<SStore, double>());
         fissionZ = selectedChannel->iZ;
         fissionA = selectedChannel->iA;
     }
@@ -952,9 +952,9 @@ void CNucleus::saddleToScission()
 
 
     EvapEx2 = 0.;
-    float widthEvaporation = evaporationWidthSS();
-    float timeDecay = ran->expDecayTime(widthEvaporation);
-    float newTime;
+    double widthEvaporation = evaporationWidthSS();
+    double timeDecay = ran->expDecayTime(widthEvaporation);
+    double newTime;
     if (widthEvaporation == 0) newTime = 100000.;
     else newTime = timeSinceSaddle + timeDecay;
 
@@ -1014,18 +1014,18 @@ void CNucleus::saddleToScission()
         if(fissionMassScission)massAsymmetry(Iscission);
         else
         {
-            float Z = (float)fissionZ/(float)fissioningZ*(float)iZ;
-            float A = (float)fissionA/(float)fissioningA*(float)iA;
+            double Z = (double)fissionZ/(double)fissioningZ*(double)iZ;
+            double A = (double)fissionA/(double)fissioningA*(double)iA;
             fissionZ = (int)Z;
             fissionA = (int)A;
-            if (ran->Rndm() < Z - (float)fissionZ) fissionZ++;
-            if (ran->Rndm() < A - (float)fissionA) fissionA++;
+            if (ran->Rndm() < Z - (double)fissionZ) fissionZ++;
+            if (ran->Rndm() < A - (double)fissionA) fissionA++;
         }
 
         // go back to the separation that gives us the correct
         // fission kinetic energy
         scission.sep = scission.sep0;
-        float scissionE = scission.getScissionEnergy(fissionZ,fissionA);
+        double scissionE = scission.getScissionEnergy(fissionZ,fissionA);
         // for later us calculate fission kinetic energy and rotational
         // energy of each fragment
         scission.getFissionKineticEnergy(fissionZ,fissionA);
@@ -1033,7 +1033,7 @@ void CNucleus::saddleToScission()
 
         scissionE -= fExpMass;
         fissionU = fEx - scissionE;
-        fissionU = max((float)0.,fissionU);
+        fissionU = max((double)0.,fissionU);
 
 
 
@@ -1091,10 +1091,10 @@ void CNucleus::force8Be()
     daughterLight->bStable = 1;
     daughterHeavy->bStable = 1;
 
-    float width;
+    double width;
     if (fEx < 1.)width = 5e-6; // use ground state experimental width
     else width = 1.53; //use first excited state experimental width
-    float decayTime = timeSinceStart+ran->expDecayTime(width);
+    double decayTime = timeSinceStart+ran->expDecayTime(width);
     daughterLight->timeSinceStart = decayTime;
     daughterHeavy->timeSinceStart = decayTime;
 
@@ -1135,8 +1135,8 @@ void CNucleus::force5Li()
     daughterLight->bStable = 1;
     daughterHeavy->bStable = 1;
 
-    float const width = 1.23;
-    float decayTime = timeSinceStart+ran->expDecayTime(width);
+    double const width = 1.23;
+    double decayTime = timeSinceStart+ran->expDecayTime(width);
     daughterLight->timeSinceStart = decayTime;
     daughterHeavy->timeSinceStart = decayTime;
 
@@ -1177,8 +1177,8 @@ void CNucleus::force5He()
     daughterLight->bStable = 1;
     daughterHeavy->bStable = 1;
 
-    float const width = .648;
-    float decayTime = timeSinceStart+ran->expDecayTime(width);
+    double const width = .648;
+    double decayTime = timeSinceStart+ran->expDecayTime(width);
     daughterLight->timeSinceStart = decayTime;
     daughterHeavy->timeSinceStart = decayTime;
 
@@ -1219,8 +1219,8 @@ void CNucleus::force9B()
     daughterHeavy->notStatistical = false;
     daughterLight->notStatistical = false;
 
-    float const width = .54E-3;
-    float decayTime = timeSinceStart+ran->expDecayTime(width);
+    double const width = .54E-3;
+    double decayTime = timeSinceStart+ran->expDecayTime(width);
     daughterLight->timeSinceStart = decayTime;
     daughterHeavy->timeSinceStart = decayTime;
 
@@ -1368,43 +1368,13 @@ void CNucleus::printAllProducts()
         allProducts[i]->print();
     }
 }
-//****************************************************************
-/**
- * sets the excitation energy and spin of the compound nucleus.
- \param fEx0 is the excitation energy in MeV
- \param dJ0 is the spin in units of hbar
- */
-void CNucleus::excite(float fEx0, double dJ0)
-{
-    excite(fEx0,(float)dJ0);
-}
-//****************************************************************
-/**
- * sets the excitation energy and spin of the compound nucleus.
- \param dEx0 is the excitation energy in MeV
- \param dJ0 is the spin in units of hbar
- */
-void CNucleus::excite(double dEx0, double dJ0)
-{
-    excite((float)dEx0,(float)dJ0);
-}
-//****************************************************************
-/**
- * sets the excitation energy and spin of the compound nucleus.
- \param dEx0 is the excitation energy in MeV
- \param fJ0 is the spin in units of hbar
- */
-void CNucleus::excite(double dEx0, float fJ0)
-{
-    excite((float)dEx0,fJ0);
-}
 //*****************************************************************
 /**
  * sets the excitation energy and spin of the compound nucleus.
  \param fEx0 is the excitation energy in MeV
  \param fJ0 is the spin in units of hbar
  */
-void CNucleus::excite(float fEx0, float fJ0)
+void CNucleus::excite(double fEx0, double fJ0)
 {
     //initialized the excitation of the nucleus
     //calculates the level density
@@ -1441,7 +1411,7 @@ void CNucleus::excite(float fEx0, float fJ0)
     //Erot = spheroid.getRotatePlusDefEnergy(fJ);
     //end change
 
-    fMInertia =  0.4*pow(r0,2)*pow((float)iA,(float)(5./3.));
+    fMInertia =  0.4*pow(r0,2)*pow((double)iA,(double)(5./3.));
 
 
 
@@ -1483,7 +1453,7 @@ void CNucleus::excite(float fEx0, float fJ0)
  * for a Weisskopf calculation (Spin not considered).
  \param fEx0 is the excitation energy in MeV
  */
-void CNucleus::excite(float fEx0)
+void CNucleus::excite(double fEx0)
 {
     //initialized the excitation of the nucleus
     //calculates the level density
@@ -1537,7 +1507,7 @@ void CNucleus::excite(float fEx0)
  *  Initializes the excitation of the nucleus at its scission point
  * and calculates the level density
  */
-void CNucleus::exciteScission(float fEx0,float fJ0,bool sym/*=1*/)
+void CNucleus::exciteScission(double fEx0,double fJ0,bool sym/*=1*/)
 {
 
     saddleToSciss = true;
@@ -1556,8 +1526,8 @@ void CNucleus::exciteScission(float fEx0,float fJ0,bool sym/*=1*/)
     }
     else
     {
-        float Z1 = (float)fissionZ/(float)fissioningZ*(float)iZ;
-        float A1 = (float)fissionA/(float)fissioningA*(float)iA;
+        double Z1 = (double)fissionZ/(double)fissioningZ*(double)iZ;
+        double A1 = (double)fissionA/(double)fissioningA*(double)iA;
 
         scission.init(iZ,iA,fJ,2,Z1,A1);
 
@@ -1606,37 +1576,37 @@ void CNucleus::exciteScission(float fEx0,float fJ0,bool sym/*=1*/)
  \param iAfAn indicates that the saddle-point ld parameter is increased by afan
 */
 /*
-float CNucleus::getWidthZA(float saddlePoint,short iAfAn)
+double CNucleus::getWidthZA(double saddlePoint,short iAfAn)
 {
 
   if (saddlePoint > fEx) return 0.;
-  float U = fEx - saddlePoint;
-  float saddleLD = levelDensity->
-           getLogLevelDensitySpherical(iA,U,(float)0.,(float)0.,
+  double U = fEx - saddlePoint;
+  double saddleLD = levelDensity->
+           getLogLevelDensitySpherical(iA,U,(double)0.,(double)0.,
                                        fJ,fMInertia,iAfAn);
   if (saddleLD == 0.) return 0.;
   if (saddleLD - logLevelDensity < -65.) return 0.;
-  float gamma = exp(saddleLD-logLevelDensity)
+  double gamma = exp(saddleLD-logLevelDensity)
                     *levelDensity->getTemp()/2./pi;
   return gamma;
 }
 */
-float CNucleus::getWidthZA(float saddlePoint,short iAfAn)
+double CNucleus::getWidthZA(double saddlePoint,short iAfAn)
 {
 
     if (saddlePoint > fEx) return 0.;
-    float U = fEx - saddlePoint;
-    float const deltaEk = 0.2;
-    float gamma = 0.;
-    float gammaMax = 0.;
+    double U = fEx - saddlePoint;
+    double const deltaEk = 0.2;
+    double gamma = 0.;
+    double gammaMax = 0.;
     for(;;)
     {
-        float saddleLD = levelDensity->
-                         getLogLevelDensitySpherical(iA,U,(float)0.,(float)0.,
+        double saddleLD = levelDensity->
+                         getLogLevelDensitySpherical(iA,U,(double)0.,(double)0.,
                                                      fJ,fMInertia,iAfAn);
         if (saddleLD == 0.) break;
         if (saddleLD - logLevelDensity < -65.) break;
-        float gamma0 = exp(saddleLD-logLevelDensity)/2./pi;
+        double gamma0 = exp(saddleLD-logLevelDensity)/2./pi;
         gammaMax = max(gammaMax,gamma0);
         gamma += gamma0*deltaEk;
         if (gamma0 < gammaMax/200.) break;
@@ -1654,22 +1624,22 @@ float CNucleus::getWidthZA(float saddlePoint,short iAfAn)
  * if noSymmetry = 1 then it only includes channels outside of the fission peak
  */
 
-float CNucleus::asyFissionWidth()
+double CNucleus::asyFissionWidth()
 {
     short iAfAn = 2;
     SStoreVector store;
     needSymmetricFission = 0;
-    float gammaTot = 0;
-    float saddlePointOld = -10000.;
+    double gammaTot = 0;
+    double saddlePointOld = -10000.;
     yrast->prepareAsyBarrier(iZ,iA,fJ);
-    //float Wigner0 = yrast->WignerEnergy(iZ,iA);
+    //double Wigner0 = yrast->WignerEnergy(iZ,iA);
     scission.init(iZ,iA,fJ,1);
     iZ1_IMF_Max = 400;
     for (int iZ1=evap->maxZ+1;iZ1<=iZ/2;iZ1++)
     {
         int iZ2 = iZ - iZ1;
-        float A1 = (float)iZ1/(float)iZ*float(iA);
-        float saddlePoint = yrast->getSaddlePointEnergy(A1);
+        double A1 = (double)iZ1/(double)iZ*double(iA);
+        double saddlePoint = yrast->getSaddlePointEnergy(A1);
         saddlePoint = (saddlePoint-Erot)*scaleImf + Erot;
         //add on a Wigner energy
         //saddlePoint += WignerScaled*Wigner0 + WignerAdd;
@@ -1687,7 +1657,7 @@ float CNucleus::asyFissionWidth()
         }
         else saddlePointOld = saddlePoint;
 
-        float gammaZ0 = getWidthZA(saddlePoint,iAfAn);
+        double gammaZ0 = getWidthZA(saddlePoint,iAfAn);
         if (iZ1 == iZ - iZ1) gammaZ0 /= 2.;
         if (gammaZ0 <= 0.) continue;
         int iaMin1 = mass->chart->getAmin(iZ1);
@@ -1697,35 +1667,35 @@ float CNucleus::asyFissionWidth()
         int iaMax2 = iA - mass->chart->getAmin(iZ-iZ1);
         int iaMax = min(iaMax1,iaMax2);
         if (iZ1 == iZ - iZ1) iaMax = min(iA/2,iaMax);
-        float gammaZ = 0;
-        int iStart = store.size();
+        double gammaZ = 0;
+        unsigned int iStart = static_cast<unsigned int>(store.size());
         for (int iA1 = iaMin;iA1<=iaMax;iA1++)
         {
             int iA2 = iA - iA1;
             //make sure I can conserve energy later
-            float mass1 = mass->getExpMass(iZ1,iA1);
-            float mass2 = mass->getExpMass(iZ2,iA2);
+            double mass1 = mass->getExpMass(iZ1,iA1);
+            double mass2 = mass->getExpMass(iZ2,iA2);
 
             scission.getFissionKineticEnergy(iZ1,iA1);
-            float Qvalue = fExpMass - mass1 - mass2 - scission.ekTot
+            double Qvalue = fExpMass - mass1 - mass2 - scission.ekTot
                            - scission.Erotate1 - scission.Erotate2;
             qVal = Qvalue;
             if( fEx + Qvalue <= 0.) continue;
 
-            float saddlePoint = yrast->getSaddlePointEnergy(iZ1,iA1);
+            double saddlePoint = yrast->getSaddlePointEnergy(iZ1,iA1);
             saddlePoint = (saddlePoint-Erot)*scaleImf + Erot;
             //add on a congruence energy
 
 
-            //float Wigner1 = yrast->WignerEnergy(iZ1,iA1);
-            //float Wigner2 = yrast->WignerEnergy(iZ2,iA2);
+            //double Wigner1 = yrast->WignerEnergy(iZ1,iA1);
+            //double Wigner2 = yrast->WignerEnergy(iZ2,iA2);
 
             //saddlePoint += WignerScaled*(Wigner1+Wigner2-Wigner0) + WignerAdd;
             saddlePoint +=  WignerAdd;
             if (iZ > Zshell) saddlePoint -= fPairing + fShell;
 
 
-            float gamma = getWidthZA(saddlePoint,iAfAn);
+            double gamma = getWidthZA(saddlePoint,iAfAn);
             if (iZ1 == iZ - iZ1 && iA1 == iA - iA1) gamma /= 2.;
             if (gamma <= 0.) continue;
             SStore aStore;
@@ -1755,22 +1725,22 @@ float CNucleus::asyFissionWidth()
 
 
     //call random nummber
-    float x = ran->Rndm();
+    double x = ran->Rndm();
     SStoreIter selectedChannel = std::lower_bound(store.begin(),
                                                   store.end(),
                                                   x,
-                                                  CompareGammaToX<SStore, float>());
+                                                  CompareGammaToX<SStore, double>());
     fissionZ = selectedChannel->iZ;
     fissionA = selectedChannel->iA;
-    float saddlePoint = yrast->getSaddlePointEnergy(fissionZ,fissionA);
+    double saddlePoint = yrast->getSaddlePointEnergy(fissionZ,fissionA);
     saddlePoint = (saddlePoint-Erot)*scaleImf + Erot;
 
     /*
   //add on a congruence energy
   int iA2 = iA - fissionA;
   int iZ2 = iZ - fissionZ;
-  float Wigner1 = yrast->WignerEnergy(fissionZ,fissionA);
-  float Wigner2 = yrast->WignerEnergy(iZ2,iA2);
+  double Wigner1 = yrast->WignerEnergy(fissionZ,fissionA);
+  double Wigner2 = yrast->WignerEnergy(iZ2,iA2);
   saddlePoint += WignerScaled*(Wigner1+Wigner2-Wigner0) + WignerAdd;
   */
     saddlePoint +=  WignerAdd;
@@ -1784,7 +1754,7 @@ float CNucleus::asyFissionWidth()
  * Calculates the complex fragments decay widths in MeV where the total fission
  * width all channels is normalised to the Bohr-Wheeler result.
  */
-float CNucleus::asyFissionWidthBW()
+double CNucleus::asyFissionWidthBW()
 {
 
 
@@ -1792,10 +1762,10 @@ float CNucleus::asyFissionWidthBW()
     SStoreVector store;
     needSymmetricFission = 0;
     int iFission = -1;
-    float gammaTot = 0;
-    float saddlePointOld = -10000.;
+    double gammaTot = 0;
+    double saddlePointOld = -10000.;
     yrast->prepareAsyBarrier(iZ,iA,fJ);
-    float A1 = (float)iA/2.;
+    double A1 = (double)iA/2.;
 
 
     //the following is the differece between the symmetric saddle points
@@ -1804,23 +1774,23 @@ float CNucleus::asyFissionWidthBW()
     // at J=0, they are garenteed to be identical
     // I fill just shift down the asymmetric barrirs by delta now
 
-    float delta = yrast->getSaddlePointEnergy(A1) - symSaddlePoint;
+    double delta = yrast->getSaddlePointEnergy(A1) - symSaddlePoint;
 
     for (int iZ1=evap->maxZ+1;iZ1<=iZ/2;iZ1++)
     {
 
-        float A1 = (float)iZ1/(float)iZ*float(iA);
-        float saddlePoint = yrast->getSaddlePointEnergy(A1) - delta;
+        double A1 = (double)iZ1/(double)iZ*double(iA);
+        double saddlePoint = yrast->getSaddlePointEnergy(A1) - delta;
         if (iZ > Zshell) saddlePoint -= fPairing + fShell;
 
-        float A2 = (float)(iZ1-1)/(float)(iZ)*float(iA);
-        float A3 = (float)(iZ1+1)/(float)(iZ)*float(iA);
-        float A4 = (float)(iZ1-2)/(float)(iZ)*float(iA);
-        float A5 = (float)(iZ1+2)/(float)(iZ)*float(iA);
-        float saddlePoint2 = yrast->getSaddlePointEnergy(A2) - delta;
-        float saddlePoint3 = yrast->getSaddlePointEnergy(A3) - delta;
-        float saddlePoint4 = yrast->getSaddlePointEnergy(A4) - delta;
-        float saddlePoint5 = yrast->getSaddlePointEnergy(A5) - delta;
+        double A2 = (double)(iZ1-1)/(double)(iZ)*double(iA);
+        double A3 = (double)(iZ1+1)/(double)(iZ)*double(iA);
+        double A4 = (double)(iZ1-2)/(double)(iZ)*double(iA);
+        double A5 = (double)(iZ1+2)/(double)(iZ)*double(iA);
+        double saddlePoint2 = yrast->getSaddlePointEnergy(A2) - delta;
+        double saddlePoint3 = yrast->getSaddlePointEnergy(A3) - delta;
+        double saddlePoint4 = yrast->getSaddlePointEnergy(A4) - delta;
+        double saddlePoint5 = yrast->getSaddlePointEnergy(A5) - delta;
 
         saddlePoint = (saddlePoint+saddlePoint2+saddlePoint3
                        +saddlePoint4+saddlePoint5)/5.;
@@ -1830,7 +1800,7 @@ float CNucleus::asyFissionWidthBW()
         {
             if (iZ/2 - iZ1 > 5)
             {
-                iFission = store.size();
+                iFission = static_cast<int>(store.size());
 
             }
         }
@@ -1839,7 +1809,7 @@ float CNucleus::asyFissionWidthBW()
 
 
 
-        float gammaZ0 = getWidthZA(saddlePoint,iAfAn);
+        double gammaZ0 = getWidthZA(saddlePoint,iAfAn);
         if (iZ1 == iZ - iZ1) gammaZ0 /= 2.;
         if (gammaZ0 <= 0.) continue;
         int iaMin1 = mass->chart->getAmin(iZ1);
@@ -1849,15 +1819,15 @@ float CNucleus::asyFissionWidthBW()
         int iaMax2 = iA - mass->chart->getAmin(iZ-iZ1);
         int iaMax = min(iaMax1,iaMax2);
         if (iZ1 == iZ - iZ1) iaMax = min(iA/2,iaMax);
-        float gammaZ = 0;
-        int iStart = store.size();
+        double gammaZ = 0;
+        unsigned int iStart = static_cast<unsigned int>(store.size());
         for (int iA1 = iaMin;iA1<=iaMax;iA1++)
         {
 
-            float saddlePoint = yrast->getSaddlePointEnergy(iZ1,iA1);
+            double saddlePoint = yrast->getSaddlePointEnergy(iZ1,iA1);
             if (iZ > Zshell) saddlePoint -= fPairing + fShell;
 
-            float gamma = getWidthZA(saddlePoint,iAfAn);
+            double gamma = getWidthZA(saddlePoint,iAfAn);
             if (iZ1 == iZ - iZ1 && iA1 == iA - iA1) gamma /= 2.;
             if (gamma <= 0.) continue;
             SStore aStore;
@@ -1893,13 +1863,13 @@ float CNucleus::asyFissionWidthBW()
     // to normalise fission peak to Bohr-wheeler width
     if (iFission > 0)
     {
-        float gammaFission = 0.;
+        double gammaFission = 0.;
         for (unsigned int i=iFission;i<store.size();i++)
         {
             gammaFission += store.at(i).gamma;
         }
-        float gammaBW = BohrWheelerWidth();
-        float ratio = gammaBW/gammaFission;
+        double gammaBW = BohrWheelerWidth();
+        double ratio = gammaBW/gammaFission;
         gammaTot = gammaBW;
         for (unsigned int i=iFission;i<store.size();i++)
         {
@@ -1922,14 +1892,14 @@ float CNucleus::asyFissionWidthBW()
 
 
     //call random nummber
-    float x = ran->Rndm();
+    double x = ran->Rndm();
     SStoreIter selectedChannel = std::lower_bound(store.begin(),
                                                   store.end(),
                                                   x,
-                                                  CompareGammaToX<SStore, float>());
+                                                  CompareGammaToX<SStore, double>());
     fissionZ = selectedChannel->iZ;
     fissionA = selectedChannel->iA;
-    float saddlePoint = yrast->getSaddlePointEnergy(fissionZ,fissionA);
+    double saddlePoint = yrast->getSaddlePointEnergy(fissionZ,fissionA);
     if (iZ > Zshell) saddlePoint -= fPairing + fShell;
     fissionU = fEx - saddlePoint;
 
@@ -1944,23 +1914,23 @@ float CNucleus::asyFissionWidthBW()
  *
  * The asymmetric fission width are in MeV.
  */
-float CNucleus::asyFissionWidthZA()
+double CNucleus::asyFissionWidthZA()
 {
     short iAfAn = 2;
     SStoreVector store;
     needSymmetricFission = 0;
-    float gammaTot = 0;
-    float saddlePointOld = -10000.;
+    double gammaTot = 0;
+    double saddlePointOld = -10000.;
     yrast->prepareAsyBarrier(iZ,iA,fJ);
     //yrast->printAsyBarrier();
-    //float Wigner0 = yrast->WignerEnergy(iZ,iA);
+    //double Wigner0 = yrast->WignerEnergy(iZ,iA);
     scission.init(iZ,iA,fJ,1);
     iZ1_IMF_Max = 400;
     for (int iZ1=evap->maxZ+1;iZ1<=iZ/2;iZ1++)
     {
         int iZ2 = iZ - iZ1;
-        float A1 = (float)iZ1/(float)iZ*float(iA);
-        float saddlePoint = yrast->getSaddlePointEnergy(A1);
+        double A1 = (double)iZ1/(double)iZ*double(iA);
+        double saddlePoint = yrast->getSaddlePointEnergy(A1);
         saddlePoint = (saddlePoint-Erot)*scaleImf + Erot;
         //add on a congruence energy
 
@@ -1993,28 +1963,28 @@ float CNucleus::asyFissionWidthZA()
         {
             int iA2 = iA - iA1;
             //make sure I can conserve energy latter
-            //float mass1 = mass->getCalMass(iZ1,iA1);
-            //float mass2 = mass->getCalMass(iZ2,iA2);
-            float mass1 = mass->getExpMass(iZ1,iA1);
-            float mass2 = mass->getExpMass(iZ2,iA2);
+            //double mass1 = mass->getCalMass(iZ1,iA1);
+            //double mass2 = mass->getCalMass(iZ2,iA2);
+            double mass1 = mass->getExpMass(iZ1,iA1);
+            double mass2 = mass->getExpMass(iZ2,iA2);
             scission.getFissionKineticEnergy(iZ1,iA1);
-            float Qvalue = fExpMass - mass1 - mass2 - scission.ekTot
+            double Qvalue = fExpMass - mass1 - mass2 - scission.ekTot
                            - scission.Erotate1 - scission.Erotate2;
             qVal = Qvalue;
             if( fEx + Qvalue <= 0.) continue;
 
-            float saddlePoint = yrast->getSaddlePointEnergy(iZ1,iA1);
+            double saddlePoint = yrast->getSaddlePointEnergy(iZ1,iA1);
             saddlePoint = (saddlePoint-Erot)*scaleImf + Erot;
             //add on a congruence energy
             /*
-          float Wigner1 = yrast->WignerEnergy(iZ1,iA1);
-          float Wigner2 = yrast->WignerEnergy(iZ2,iA2);
+          double Wigner1 = yrast->WignerEnergy(iZ1,iA1);
+          double Wigner2 = yrast->WignerEnergy(iZ2,iA2);
           saddlePoint += WignerScaled*(Wigner1+Wigner2-Wigner0)+WignerAdd;
           */
             saddlePoint += WignerAdd;
             if (iZ > Zshell) saddlePoint -= fPairing + fShell;
 
-            float gamma = getWidthZA(saddlePoint,iAfAn);
+            double gamma = getWidthZA(saddlePoint,iAfAn);
 
             if (iZ1 == iZ - iZ1 && iA1 == iA - iA1) gamma /= 2.;
             if (gamma <= 0.) continue;
@@ -2029,17 +1999,17 @@ float CNucleus::asyFissionWidthZA()
           //the Lestone logical for asymmetric fission
           //
           // start Lestone correction
-          //float R1 = pow((float)iA1,(float)(1./3.))*r0;
-          //float R2 = pow((float)(iA-iA1),(float)(1./3.))*r0;
+          //double R1 = pow((double)iA1,(double)(1./3.))*r0;
+          //double R2 = pow((double)(iA-iA1),(double)(1./3.))*r0;
 
-          //float momInertia1 = 0.4*(float)iA*pow(R1,2);
-          //float momInertia2 = 0.4*(float)(iA-iA1)*pow(R2,2);
-          //float Areduced = (float)(iA1*(iA-iA1))/float(iA);
-          //float momInertiaPerp = momInertia1 + momInertia2 +
+          //double momInertia1 = 0.4*(double)iA*pow(R1,2);
+          //double momInertia2 = 0.4*(double)(iA-iA1)*pow(R2,2);
+          //double Areduced = (double)(iA1*(iA-iA1))/double(iA);
+          //double momInertiaPerp = momInertia1 + momInertia2 +
           //  Areduced*(R1+R2+sep);
-          //float momInertiaPara = momInertia1 + momInertia2;
-          //float momInertiaEff = 1./(1./momInertiaPara - 1./momInertiaPerp);
-          //float corr = LestoneCorrection(fEx-saddlePoint,momInertiaEff,iAfAn);
+          //double momInertiaPara = momInertia1 + momInertia2;
+          //double momInertiaEff = 1./(1./momInertiaPara - 1./momInertiaPerp);
+          //double corr = LestoneCorrection(fEx-saddlePoint,momInertiaEff,iAfAn);
           //gamma *= corr;
           //end lestone correction
           */
@@ -2064,21 +2034,21 @@ float CNucleus::asyFissionWidthZA()
 
 
     //call random nummber
-    float x = ran->Rndm();
+    double x = ran->Rndm();
     SStoreIter selectedChannel = std::lower_bound(store.begin(),
                                                   store.end(),
                                                   x,
-                                                  CompareGammaToX<SStore, float>());
+                                                  CompareGammaToX<SStore, double>());
     fissionZ = selectedChannel->iZ;
     fissionA = selectedChannel->iA;
-    float saddlePoint = yrast->getSaddlePointEnergy(fissionZ,fissionA);
+    double saddlePoint = yrast->getSaddlePointEnergy(fissionZ,fissionA);
     saddlePoint = (saddlePoint-Erot)*scaleImf + Erot;
     //add on a congruence energy
     /*
   int iA2 = iA - fissionA;
   int iZ2 = iZ - fissionZ;
-  float Wigner1 = yrast->WignerEnergy(fissionZ,fissionA);
-  float Wigner2 = yrast->WignerEnergy(iZ2,iA2);
+  double Wigner1 = yrast->WignerEnergy(fissionZ,fissionA);
+  double Wigner2 = yrast->WignerEnergy(iZ2,iA2);
   saddlePoint += WignerScaled*(Wigner1+Wigner2-Wigner0) + WignerAdd;
   */
 
@@ -2090,7 +2060,7 @@ float CNucleus::asyFissionWidthZA()
     return gammaTot;
 }
 //********************************************************************
-float CNucleus::LestoneFissionWidth()
+double CNucleus::LestoneFissionWidth()
 /**
   * Gives the fission decay width from Lestone in units of MeV.
   * Lestone gives an extention of the BohrWheeler width with the inclusion
@@ -2098,24 +2068,24 @@ float CNucleus::LestoneFissionWidth()
   * See PRC 59 (1999) 1540.
   */
 {
-    float gamma = BohrWheelerWidth();
+    double gamma = BohrWheelerWidth();
     if (gamma <= 0.) return gamma;
 
     short iAfAn = 1;
 
-    float momInertiaPerp = yrast->getMomentOfInertiaSierk(fJ);
-    float momInertiaPara = yrast->momInertiaMin;
-    float momInertiaEff = 1.0/(1.0/momInertiaPara-1.0/momInertiaPerp);
+    double momInertiaPerp = yrast->getMomentOfInertiaSierk(fJ);
+    double momInertiaPara = yrast->momInertiaMin;
+    double momInertiaEff = 1.0/(1.0/momInertiaPara-1.0/momInertiaPerp);
 
-    float U = fEx - symSaddlePoint;
+    double U = fEx - symSaddlePoint;
 
-    float corr = LestoneCorrection(U,momInertiaEff,iAfAn);
+    double corr = LestoneCorrection(U,momInertiaEff,iAfAn);
     return gamma*corr;
 }
 
 
 //*************************************************************************
-float CNucleus::BohrWheelerWidth()
+double CNucleus::BohrWheelerWidth()
 /**
   * Gives the Bohr-Wheeler decay width for fission in units of MeV
   */
@@ -2124,10 +2094,10 @@ float CNucleus::BohrWheelerWidth()
     symSaddlePoint = yrast->getSymmetricSaddleEnergy(iZ,iA,fJ) + barAdd;
     if (iZ > Zshell) symSaddlePoint -= fPairing + fShell;
 
-    /*float fJJ = fJ;
+    /*double fJJ = fJ;
   if (fJ > yrast->Jmax) fJJ = yrast->Jmax;*/
     short iAfAn = 1;
-    float gamma = getWidthZA(symSaddlePoint,iAfAn)*fissionScaleFactor;
+    double gamma = getWidthZA(symSaddlePoint,iAfAn)*fissionScaleFactor;
     return gamma;
 }
 //************************************************
@@ -2150,8 +2120,8 @@ void CNucleus::asyFissionDivide()
         daughterLight->excite(0.,0.);
         daughterHeavy->excite(0.,0.);
 
-        float phi= 2.*pi*ran->Rndm();
-        float theta = acos(1.0-2.0*ran->Rndm());
+        double phi= 2.*pi*ran->Rndm();
+        double theta = acos(1.0-2.0*ran->Rndm());
         CAngle symmetryCM(theta,phi);
         split(symmetryCM);
         return;
@@ -2159,51 +2129,51 @@ void CNucleus::asyFissionDivide()
 
 
 
-    float A1 = (float)fissionA;
-    float A2 = (float)(iA-fissionA);
-    float Ared = A1*A2/(A1+A2);
-    float U1 = fissionU*A1/(A1+A2);
-    float U2 = fissionU - U1;
-    float r1 = scission.r0*pow(A1,(float)(1./3.));
-    float r2 = scission.r0*pow(A2,(float)(1./3.));
-    float MInertia1 = 0.4*A1*pow(r1,2);
-    float MInertia2 = 0.4*A2*pow(r2,2);
+    double A1 = (double)fissionA;
+    double A2 = (double)(iA-fissionA);
+    double Ared = A1*A2/(A1+A2);
+    double U1 = fissionU*A1/(A1+A2);
+    double U2 = fissionU - U1;
+    double r1 = scission.r0*pow(A1,(double)(1./3.));
+    double r2 = scission.r0*pow(A2,(double)(1./3.));
+    double MInertia1 = 0.4*A1*pow(r1,2);
+    double MInertia2 = 0.4*A2*pow(r2,2);
 
-    float MInertiaOrbit = Ared*pow(r1+r2+scission.sep,2);
-    float MInertia12 = MInertia1 + MInertia2;
-    float MInertiaSaddle = MInertia12 + MInertiaOrbit;
+    double MInertiaOrbit = Ared*pow(r1+r2+scission.sep,2);
+    double MInertia12 = MInertia1 + MInertia2;
+    double MInertiaSaddle = MInertia12 + MInertiaOrbit;
 
 
-    float aden1 = levelDensity->getLittleA(fissionA,U1);
-    //float entropy1 = levelDensity->getEntropy();
-    float aden2 = levelDensity->getLittleA(iA-fissionA,U2);
-    //float entropy2 = levelDensity->getEntropy();
-    float aden = aden1 + aden2;
-    //float entropy0 = entropy1 + entropy2;
+    double aden1 = levelDensity->getLittleA(fissionA,U1);
+    //double entropy1 = levelDensity->getEntropy();
+    double aden2 = levelDensity->getLittleA(iA-fissionA,U2);
+    //double entropy2 = levelDensity->getEntropy();
+    double aden = aden1 + aden2;
+    //double entropy0 = entropy1 + entropy2;
 
-    float temp = sqrt(fissionU/aden);
-    float entropy0 = 2.*sqrt(aden*fissionU);
+    double temp = sqrt(fissionU/aden);
+    double entropy0 = 2.*sqrt(aden*fissionU);
 
-    float fact10 =  MInertiaOrbit*(MInertia2-MInertia1)
+    double fact10 =  MInertiaOrbit*(MInertia2-MInertia1)
                    /(2.0*MInertia1*MInertia2);
-    float fact1 = sqrt(pow(fact10,2)+1);
-    float theta = atan(fact10+fact1);
-    float fact3  = MInertia12/(MInertia1*MInertia2);
-    float c = cos(theta);
-    float s = sin(theta);
-    float cc = pow(c,2);
-    float ss = pow(s,2);
-    float fact4 =  2.0*s*c/MInertiaOrbit;
-    float aBending = (cc/MInertia1+ss/MInertia2
+    double fact1 = sqrt(pow(fact10,2)+1);
+    double theta = atan(fact10+fact1);
+    double fact3  = MInertia12/(MInertia1*MInertia2);
+    double c = cos(theta);
+    double s = sin(theta);
+    double cc = pow(c,2);
+    double ss = pow(s,2);
+    double fact4 =  2.0*s*c/MInertiaOrbit;
+    double aBending = (cc/MInertia1+ss/MInertia2
                       +1.0/MInertiaOrbit-fact4)*kRotate;
-    float aWriggling = (ss/MInertia1+cc/MInertia2
+    double aWriggling = (ss/MInertia1+cc/MInertia2
                         +1.0/MInertiaOrbit+fact4)*kRotate;
-    float aTilting = MInertiaOrbit/MInertia12/MInertiaSaddle*kRotate;
-    float aTwisting = fact3*kRotate;
+    double aTilting = MInertiaOrbit/MInertia12/MInertiaSaddle*kRotate;
+    double aTwisting = fact3*kRotate;
 
 
-    float K,JTwisting,JBendingX,JBendingZ,JWrigglingX,JWrigglingZ;
-    float deltaE;
+    double K,JTwisting,JBendingX,JBendingZ,JWrigglingX,JWrigglingZ;
+    double deltaE;
 
 
 
@@ -2214,7 +2184,7 @@ void CNucleus::asyFissionDivide()
         K = selectJ(aTilting,aden,entropy0,fJ);
 
         //choose twisting
-        float sig = 5.*sqrt(temp/aTwisting);
+        double sig = 5.*sqrt(temp/aTwisting);
         JTwisting = selectJ(aTwisting,aden,entropy0,sig);
 
 
@@ -2260,35 +2230,35 @@ void CNucleus::asyFissionDivide()
 
 
     //calculate components of r1, depolarizing mode of fragment 1
-    float R1x = JBendingX*c + JWrigglingX*s;
-    float R1y = JTwisting;
-    float R1z = JBendingZ*c + JWrigglingZ*s;
+    double R1x = JBendingX*c + JWrigglingX*s;
+    double R1y = JTwisting;
+    double R1z = JBendingZ*c + JWrigglingZ*s;
 
     //       calculate components of r2
-    float R2x = JWrigglingX*c - JBendingX*s;
-    float R2y = -JTwisting;
-    float R2z = JWrigglingZ*c - JBendingZ*s;
+    double R2x = JWrigglingX*c - JBendingX*s;
+    double R2y = -JTwisting;
+    double R2z = JWrigglingZ*c - JBendingZ*s;
 
 
-    float omega_t = ran->Rndm()*2.*pi;
-    float J0xz = sqrt(pow(fJ,2)-pow(K,2));
-    float J0x = J0xz*sin(omega_t);
-    float J0z = J0xz*cos(omega_t);
+    double omega_t = ran->Rndm()*2.*pi;
+    double J0xz = sqrt(pow(fJ,2)-pow(K,2));
+    double J0x = J0xz*sin(omega_t);
+    double J0z = J0xz*cos(omega_t);
 
 
     //calculate components of s1
-    float ratio1 = MInertia1/MInertiaSaddle;
-    float S1x = J0x*ratio1 + R1x;
-    float S1y = MInertia1/MInertia12*K + R1y;
-    float S1z = J0z*ratio1 + R1z;
-    float S1 = sqrt(pow(S1x,2) + pow(S1y,2) + pow(S1z,2));
+    double ratio1 = MInertia1/MInertiaSaddle;
+    double S1x = J0x*ratio1 + R1x;
+    double S1y = MInertia1/MInertia12*K + R1y;
+    double S1z = J0z*ratio1 + R1z;
+    double S1 = sqrt(pow(S1x,2) + pow(S1y,2) + pow(S1z,2));
 
     //calculate components of s2
-    float ratio2 = MInertia2/MInertiaSaddle;
-    float S2x = J0x*ratio2 + R2x;
-    float S2y = MInertia2/MInertia12*K + R2y;
-    float S2z = J0z*ratio2 + R2z;
-    float S2 = sqrt(pow(S2x,2) + pow(S2y,2) + pow(S2z,2));
+    double ratio2 = MInertia2/MInertiaSaddle;
+    double S2x = J0x*ratio2 + R2x;
+    double S2y = MInertia2/MInertia12*K + R2y;
+    double S2z = J0z*ratio2 + R2z;
+    double S2 = sqrt(pow(S2x,2) + pow(S2y,2) + pow(S2z,2));
 
     //note that fissionU was calculated as the thermal energy above
     //a rigidly rotation configuration. The rotational energy of the
@@ -2297,12 +2267,12 @@ void CNucleus::asyFissionDivide()
     //to these fragment, this component must be corrected for
 
     //old rotational energies
-    float Erotate10 = scission.Erotate1;
-    float Erotate20 = scission.Erotate2;
+    double Erotate10 = scission.Erotate1;
+    double Erotate20 = scission.Erotate2;
 
 
-    float Erotate1 = pow(S1,2)*kRotate/2./MInertia1;
-    float Erotate2 = pow(S2,2)*kRotate/2./MInertia2;
+    double Erotate1 = pow(S1,2)*kRotate/2./MInertia1;
+    double Erotate2 = pow(S2,2)*kRotate/2./MInertia2;
     fissionU += Erotate10 + Erotate20 - Erotate1 - Erotate2;
 
 
@@ -2313,8 +2283,8 @@ void CNucleus::asyFissionDivide()
         daughterLight->excite(0.,0.);
         daughterHeavy->excite(0.,0.);
 
-        float phi= 2.*pi*ran->Rndm();
-        float theta = acos(1.0-2.0*ran->Rndm());
+        double phi= 2.*pi*ran->Rndm();
+        double theta = acos(1.0-2.0*ran->Rndm());
         CAngle symmetryCM(theta,phi);
         split(symmetryCM);
         return;
@@ -2322,18 +2292,18 @@ void CNucleus::asyFissionDivide()
 
 
 
-    float de = 0.5;
-    float deltaP1 = mass->getPairing(daughterLight->iZ,daughterLight->iA);
-    float deltaP2 = mass->getPairing(daughterHeavy->iZ,daughterHeavy->iA);
-    float deltaW1 = mass->getShellCorrection(daughterLight->iZ,daughterLight->iA);
-    float deltaW2 = mass->getShellCorrection(daughterHeavy->iZ,daughterHeavy->iA);
+    double de = 0.5;
+    double deltaP1 = mass->getPairing(daughterLight->iZ,daughterLight->iA);
+    double deltaP2 = mass->getPairing(daughterHeavy->iZ,daughterHeavy->iA);
+    double deltaW1 = mass->getShellCorrection(daughterLight->iZ,daughterLight->iA);
+    double deltaW2 = mass->getShellCorrection(daughterHeavy->iZ,daughterHeavy->iA);
     const int Nuu_max = 500;
-    float  uu[Nuu_max];
-    float  probuu[Nuu_max];
+    double  uu[Nuu_max];
+    double  probuu[Nuu_max];
 
-    float U10 = U1;
-    float U20 = U2;
-    float probuu_max = 0.;
+    double U10 = U1;
+    double U20 = U2;
+    double probuu_max = 0.;
     int Nuu = 0;
     bool eject = false;
     int count = 0;
@@ -2348,8 +2318,8 @@ void CNucleus::asyFissionDivide()
             cout << "too many tries " << fissionU << endl;
             abort();
         }
-        float uu1 = U10;
-        float uu2 = U20;
+        double uu1 = U10;
+        double uu2 = U20;
         aden1 = levelDensity->getLittleA(daughterLight->iA,uu1,deltaP1,deltaW1);
         aden2 = levelDensity->getLittleA(daughterHeavy->iA,uu2,deltaP2,deltaW2);
         if (uu1 > 0. && uu2 > 0.)
@@ -2361,8 +2331,8 @@ void CNucleus::asyFissionDivide()
             }
             else
             {
-                float entropy = 2.*(sqrt(aden1*uu1)+sqrt(aden2*uu2));
-                float pr =    exp(entropy - entropy0);
+                double entropy = 2.*(sqrt(aden1*uu1)+sqrt(aden2*uu2));
+                double pr =    exp(entropy - entropy0);
                 probuu[Nuu] = pr;
             }
             probuu_max = max(probuu[Nuu],probuu_max);
@@ -2409,22 +2379,22 @@ void CNucleus::asyFissionDivide()
         daughterLight->excite(0.,0.);
         daughterHeavy->excite(0.,0.);
 
-        float phi= 2.*pi*ran->Rndm();
-        float theta = acos(1.0-2.0*ran->Rndm());
+        double phi= 2.*pi*ran->Rndm();
+        double theta = acos(1.0-2.0*ran->Rndm());
         CAngle symmetryCM(theta,phi);
         split(symmetryCM);
         return;
     }
 
-    float prob = ran->Rndm();
+    double prob = ran->Rndm();
     int i = 0;
     for (;;)
     {
         if (prob <= probuu[i]/probuu[Nuu-1]) break;
         i++;
     }
-    float Ex1 = uu[i] + Erotate1;
-    float Ex2 = fissionU - uu[i] + Erotate2;
+    double Ex1 = uu[i] + Erotate1;
+    double Ex2 = fissionU - uu[i] + Erotate2;
 
     if (Ex1 <0.) Ex1 = 0.;
     if (Ex2 <0.) Ex2 = 0.;
@@ -2432,21 +2402,21 @@ void CNucleus::asyFissionDivide()
     /*
 
  temp = sqrt(fissionU/aden);
- float sig = sqrt(2.0*pow(temp,3)*aden1*aden2/aden);
+ double sig = sqrt(2.0*pow(temp,3)*aden1*aden2/aden);
  U1 = fissionU*A1/(A1+A2);
  U2 = fissionU - U1;
  entropy0 = 2.0*sqrt(aden*fissionU);
- float demax = min((float)5.0*sig,U1);
- float demin = min((float)5.0*sig,U2);
+ double demax = min((double)5.0*sig,U1);
+ double demin = min((double)5.0*sig,U2);
 
 
  tries = 0;
  for (;;)
    {
      deltaE = (demin+demax)*ran->Rndm() - demax;
-    float y = exp(2.0*sqrt(aden1*(U1+deltaE))
+    double y = exp(2.0*sqrt(aden1*(U1+deltaE))
                   +2.0*sqrt(aden2*(U2-deltaE))-entropy0);
-    float yy = ran->Rndm();
+    double yy = ran->Rndm();
     // cout << deltaE << " " << y << " " << yy << endl;
     if (yy <= y) break;
     tries++;
@@ -2458,8 +2428,8 @@ void CNucleus::asyFissionDivide()
       }
    }
 
- float Ex1 = U1 + deltaE + Erotate1;
- float Ex2 = U2 - deltaE + Erotate2;
+ double Ex1 = U1 + deltaE + Erotate1;
+ double Ex2 = U2 - deltaE + Erotate2;
 
  */
 
@@ -2467,7 +2437,7 @@ void CNucleus::asyFissionDivide()
     //cout << fEx + fExpMass - daughterLight->fExpMass - daughterHeavy->fExpMass
     //- scission.ekTot -Ex1 - Ex2 << endl;
 
-    float fJ1,fJ2;
+    double fJ1,fJ2;
     if (fissionA%2 == 0)
     {
         fJ1 = round(S1);
@@ -2536,7 +2506,7 @@ void CNucleus::asyFissionDivide()
 
 
     // randomize the phi coordinate.
-    float dphi = 2.*pi*ran->Rndm();
+    double dphi = 2.*pi*ran->Rndm();
     symmetryJ0.phi += dphi;
     if (symmetryJ0.phi > 2.*pi) symmetryJ0.phi -= 2.*pi;
 
@@ -2594,19 +2564,19 @@ void CNucleus::asyFissionDivide()
 
     // calculate velocities in frame of emitting system
     // first find the kinetic energy of separation
-    //Ek = 1.44*(float)fissionZ*(float)(iZ-fissionZ)/(r1+r2+sep)
+    //Ek = 1.44*(double)fissionZ*(double)(iZ-fissionZ)/(r1+r2+sep)
     //generlization of Viola see Hinde Nucl Phys A472, 318 (1987).
-    //float Ek = yrast->viola((float)fissionZ,A1,(float)(iZ-fissionZ),A2);
-    //float Ek = 0.755*(float)fissionZ*(float)(iZ-fissionZ)/
-    // (pow(A1,(float)(1./3.))+pow(A2,(float)(1./3.)))
+    //double Ek = yrast->viola((double)fissionZ,A1,(double)(iZ-fissionZ),A2);
+    //double Ek = 0.755*(double)fissionZ*(double)(iZ-fissionZ)/
+    // (pow(A1,(double)(1./3.))+pow(A2,(double)(1./3.)))
     //  + 7.3;
 
 
     // find orbital angular momentum
-    //float ratio_l = MInertiaOrbit/MInertiaSaddle;
-    //float lx = J0x*ratio_l - R1x - R2x;
-    //float lz = J0z*ratio_l - R1z - R2z;
-    //float l = sqrt(pow(lx,2) + pow(lz,2));
+    //double ratio_l = MInertiaOrbit/MInertiaSaddle;
+    //double lx = J0x*ratio_l - R1x - R2x;
+    //double lz = J0z*ratio_l - R1z - R2z;
+    //double l = sqrt(pow(lx,2) + pow(lz,2));
     //ek = ek + 20.8993*l**2.0/M_inertia_orbit
 
     split(symmetryCM);
@@ -2617,20 +2587,20 @@ void CNucleus::asyFissionDivide()
  *  Randomly selects the spin associated with a fission normal modes such as
  * wriggling, twisting, etc.
  */
-float CNucleus::selectJ(float ac, float aden, float entropy0,float Jmax)
+double CNucleus::selectJ(double ac, double aden, double entropy0,double Jmax)
 {
 
-    float Jmax1 = sqrt(2.0*fissionU/ac);
-    float Jmax2 = min(Jmax,Jmax1);
+    double Jmax1 = sqrt(2.0*fissionU/ac);
+    double Jmax2 = min(Jmax,Jmax1);
 
-    float J;
+    double J;
     int tries = 0;
     for (;;)
     {
         J = Jmax2*(1.0-2.0*ran->Rndm());
-        float diff = max( fissionU-0.5*ac*J*J, 0.0 );
-        float y1 = exp(2.0*sqrt(aden*diff)-entropy0);
-        float y2 = ran->Rndm();
+        double diff = max( fissionU-0.5*ac*J*J, 0.0 );
+        double y1 = exp(2.0*sqrt(aden*diff)-entropy0);
+        double y2 = ran->Rndm();
         if (y2 < y1) break;
         tries++;
         if (tries == 15)
@@ -2677,8 +2647,8 @@ void CNucleus::setSpinAxisDegrees(CAngle spin0)
  /param theta is theta angle in radians
  /param phi is phi angle in radians
 */
-void CNucleus::setVelocityPolar(float vel/*=0.*/,
-                                float theta/*=0.*/, float phi/*=0.*/)
+void CNucleus::setVelocityPolar(double vel/*=0.*/,
+                                double theta/*=0.*/, double phi/*=0.*/)
 {
 
     //default values are zero
@@ -2695,8 +2665,8 @@ void CNucleus::setVelocityPolar(float vel/*=0.*/,
  \param  vy is y component of velocity in cm/ns
  \param vz is z component of velocity in cm/ns
  */
-void CNucleus::setVelocityCartesian(float vx/*=0.*/, float vy/*=0.*/,
-                                    float vz/*=0.*/)
+void CNucleus::setVelocityCartesian(double vx/*=0.*/, double vy/*=0.*/,
+                                    double vz/*=0.*/)
 {
     //default values are zero
     velocity[0] = vx;
@@ -2708,10 +2678,10 @@ void CNucleus::setVelocityCartesian(float vx/*=0.*/, float vy/*=0.*/,
  *  Calculates the total decay widths in MeV for light particle evaporation.
  * using the Hauser-Feshbach or Weiskopf formulism
  */
-float CNucleus::evaporationWidth()
+double CNucleus::evaporationWidth()
 {
 
-    float width = 0.;
+    double width = 0.;
     EcostMin = 1000.;
     for (int i=0;i<evap->nLight;i++)
     {
@@ -2744,7 +2714,7 @@ float CNucleus::evaporationWidth()
  * Calculated the Hauser-Feshbach decay width in MeV for a given channel
 \param iChannel is the channel of the evaporated particle
 */
-float CNucleus::hauserFeshbach(int iChannel)
+double CNucleus::hauserFeshbach(int iChannel)
 {
     //returns the Hauser-Feshbach evaporation width for a given channel
     //width is in units of MeV
@@ -2783,14 +2753,14 @@ float CNucleus::hauserFeshbach(int iChannel)
     lightP->separationEnergy = lightP->residue.fExpMass + lightP->fExpMass - fExpMass;
 
 
-    rResidue = r0*pow((float)lightP->residue.iA,(float)(1./3.));
-    lightP->fMInertia = 0.4*(float)lightP->residue.iA*pow(rResidue,2);
-    lightP->fMInertiaOrbit = (float)(lightP->residue.iA*lightP->iA)/
-                             (float)(lightP->residue.iA+lightP->iA)*pow(rResidue+lightP->rLight+2.,2);
+    rResidue = r0*pow((double)lightP->residue.iA,(double)(1./3.));
+    lightP->fMInertia = 0.4*(double)lightP->residue.iA*pow(rResidue,2);
+    lightP->fMInertiaOrbit = (double)(lightP->residue.iA*lightP->iA)/
+                             (double)(lightP->residue.iA+lightP->iA)*pow(rResidue+lightP->rLight+2.,2);
 
     // decide if decay mode is too costly` (very rare) if so abort calculation
-    Ecoul = 1.44*(float)(lightP->iZ*lightP->residue.iZ)/(rResidue+lightP->rLight+2.);
-    float Ecost = lightP->separationEnergy + Ecoul;
+    Ecoul = 1.44*(double)(lightP->iZ*lightP->residue.iZ)/(rResidue+lightP->rLight+2.);
+    double Ecost = lightP->separationEnergy + Ecoul;
     if (Ecost < EcostMin) EcostMin = Ecost;
     if (exp(-(Ecost-EcostMin)/temp) < threshold && lightP->iA > 1) return 0.;
 
@@ -2812,11 +2782,11 @@ float CNucleus::hauserFeshbach(int iChannel)
 \param ek is \f$\varepsilon\f$, the kinetic energy in MeV
 \param temp is the temperature on the residue in MeV
 */
-float CNucleus::getSumTl(float ek,float temp)
+double CNucleus::getSumTl(double ek,double temp)
 {
     //function used by hauserFeshbach
-    float sumTl = 0.;
-    float tlWeightMax = 0.;
+    double sumTl = 0.;
+    double tlWeightMax = 0.;
 
     thread_local SStoreSubVector storeSub;
     storeSub.clear();
@@ -2826,35 +2796,35 @@ float CNucleus::getSumTl(float ek,float temp)
         storeSub.reserve(static_cast<size_t>(storeSubCapacity));
     }
     int iL = lMin;
-    float scale = 1.;
+    double scale = 1.;
     if (lightP->iA == 1 && lightP->iZ == 1)
     {
         //mass at the attractor line
-        float Aeal = 2.045*(float)lightP->residue.iZ
-                     + 3.57e-3*pow((float)lightP->residue.iZ,2);
-        float r_eal = 1.2*pow(Aeal,float(1./3.)) + 1.167;
-        float r     = 1.2*pow((float)lightP->residue.iA,(float)(1./3.)) + 1.167;
+        double Aeal = 2.045*(double)lightP->residue.iZ
+                     + 3.57e-3*pow((double)lightP->residue.iZ,2);
+        double r_eal = 1.2*pow(Aeal,double(1./3.)) + 1.167;
+        double r     = 1.2*pow((double)lightP->residue.iA,(double)(1./3.)) + 1.167;
         scale = r/r_eal;  //rjc
     }
     else if (lightP->iA == 4)
     {
         //mass at the attractor line
-        float Aeal = 2.045*(float)lightP->residue.iZ
-                     + 3.57e-3*pow((float)lightP->residue.iZ,2);
-        float deltaA = (float)lightP->residue.iA - Aeal;
-        scale = 1.+deltaA*(-5.412976E-04-9.176213E-02/(float)lightP->residue.iZ
-                               + 3.916151E-06*(float)lightP->residue.iZ);
+        double Aeal = 2.045*(double)lightP->residue.iZ
+                     + 3.57e-3*pow((double)lightP->residue.iZ,2);
+        double deltaA = (double)lightP->residue.iA - Aeal;
+        scale = 1.+deltaA*(-5.412976E-04-9.176213E-02/(double)lightP->residue.iZ
+                               + 3.916151E-06*(double)lightP->residue.iZ);
         scale = 1./scale;
     }
 
     for (;;)
     {
-        float tl = lightP->tlArray->getTl(iL,ek*scale,temp);
+        double tl = lightP->tlArray->getTl(iL,ek*scale,temp);
         //cout << iL << " " << ek << " " << lightP->residue.iZ << " " << tl << endl;
-        float maxLplusS = min(iL+lightP->fJ,lPlusSMax);
-        float minLplusS = max(fabs(iL-lightP->fJ),lPlusSMin);
-        float tlWeight = tl*(maxLplusS - minLplusS + 1.);
-        float gamma = tlWeight;
+        double maxLplusS = min(iL+lightP->fJ,lPlusSMax);
+        double minLplusS = max(fabs(iL-lightP->fJ),lPlusSMin);
+        double tlWeight = tl*(maxLplusS - minLplusS + 1.);
+        double gamma = tlWeight;
         if (!storeSub.empty()) gamma += storeSub.back().gamma;
         storeSub.emplace_back();
         SStoreSub &aStoreSub = storeSub.back();
@@ -2869,7 +2839,7 @@ float CNucleus::getSumTl(float ek,float temp)
     }
 
 
-    float xran = ran->Rndm();
+    double xran = ran->Rndm();
 
     if(sumTl<=0.) {
         return 0.;
@@ -2878,7 +2848,7 @@ float CNucleus::getSumTl(float ek,float temp)
     SStoreSubIter selectedChannel = std::lower_bound(storeSub.begin(),
                                                      storeSub.end(),
                                                      xran*sumTl,
-                                                     CompareGammaToX<SStoreSub, float>());
+                                                     CompareGammaToX<SStoreSub, double>());
     EvapL = selectedChannel->L;
 
     return sumTl;
@@ -2928,8 +2898,8 @@ void CNucleus::angleEvap()
         //   (i.e. z axis parallel to l_plus_s)
         CAngle LL;
         if (EvapLPlusS > 0.0 && EvapL > 0.0)
-            LL.theta = acos((pow(EvapLPlusS,2) + pow((float)EvapL,2) - pow(EvapS1,2))
-                            /(2.0*EvapLPlusS*(float)EvapL));
+            LL.theta = acos((pow(EvapLPlusS,2) + pow((double)EvapL,2) - pow(EvapS1,2))
+                            /(2.0*EvapLPlusS*(double)EvapL));
         else LL.theta = acos(1.-2.*ran->Rndm());
         LL.phi = 2.*pi*ran->Rndm();
 
@@ -2940,8 +2910,8 @@ void CNucleus::angleEvap()
         //          (i.e. z axis parallel to l_plus_s)
         CAngle SS;
         if (EvapLPlusS > 0.0 && EvapL > 0)
-            SS.theta = acos((pow(EvapLPlusS,2) + pow((float)EvapL,2) -
-                             pow((float)EvapS1,2))/(2.0*EvapLPlusS*(float)EvapL));
+            SS.theta = acos((pow(EvapLPlusS,2) + pow((double)EvapL,2) -
+                             pow((double)EvapS1,2))/(2.0*EvapLPlusS*(double)EvapL));
         else if (EvapL == 0) SS.theta = 0.;
         else SS.theta = acos(1.-2.*ran->Rndm());
         SS.phi =  LL.phi+pi;
@@ -2989,14 +2959,14 @@ void CNucleus::angleEvap()
     }
 
     // get velocities
-    float vrel = sqrt(2.0*EvapEk*(float)(EvapA1+EvapA2)/
-                      (float)(EvapA1*EvapA2))*0.9794;
-    float v1 = (float)EvapA2/(float)(EvapA2+EvapA1)*vrel;
+    double vrel = sqrt(2.0*EvapEk*(double)(EvapA1+EvapA2)/
+                      (double)(EvapA1*EvapA2))*0.9794;
+    double v1 = (double)EvapA2/(double)(EvapA2+EvapA1)*vrel;
 
     daughterLight->velocity[0] = v1*sin(emitLab.theta)*cos(emitLab.phi);
     daughterLight->velocity[1] = v1*sin(emitLab.theta)*sin(emitLab.phi);
     daughterLight->velocity[2] = v1*cos(emitLab.theta);
-    float v2 = vrel - v1;
+    double v2 = vrel - v1;
     emitLab.theta = pi - emitLab.theta;
     emitLab.phi += pi;
     if (emitLab.phi > 2.*pi) emitLab.phi -= 2.*pi;
@@ -3021,18 +2991,18 @@ void CNucleus::angleIsotropic()
 {
     //chooses angles and velocities of evaporated particles from isotropic
     //distribution - used with Weiskopf formalism
-    float theta = acos(1.-2.*ran->Rndm());
-    float phi = 2.*pi*ran->Rndm();
+    double theta = acos(1.-2.*ran->Rndm());
+    double phi = 2.*pi*ran->Rndm();
 
 
-    float vrel = sqrt(2.0*EvapEk*(float)(EvapA1+EvapA2)/
-                      (float)(EvapA1*EvapA2))*0.9794;
-    float v1 = (float)EvapA2/(float)(EvapA2+EvapA1)*vrel;
+    double vrel = sqrt(2.0*EvapEk*(double)(EvapA1+EvapA2)/
+                      (double)(EvapA1*EvapA2))*0.9794;
+    double v1 = (double)EvapA2/(double)(EvapA2+EvapA1)*vrel;
 
     daughterLight->velocity[0] = v1*sin(theta)*cos(phi);
     daughterLight->velocity[1] = v1*sin(theta)*sin(phi);
     daughterLight->velocity[2] = v1*cos(theta);
-    float v2 = vrel - v1;
+    double v2 = vrel - v1;
     theta = pi - theta;
     phi += pi;
     if (phi > 2.*pi) phi -= 2.*pi;
@@ -3056,14 +3026,14 @@ void CNucleus::angleIsotropic()
  */
 void CNucleus::vCMofAllProducts()
 {
-    float momTot[3] = {0.,0.,0.};
+    double momTot[3] = {0.,0.,0.};
     for (unsigned int i=0;i<stableProducts.size();i++)
     {
         for (int j=0;j<3;j++)
-            momTot[j] += stableProducts[i]->velocity[j]*(float)stableProducts[i]->iA;
+            momTot[j] += stableProducts[i]->velocity[j]*(double)stableProducts[i]->iA;
     }
-    float vcm[3];
-    for (int j=0;j<3;j++) vcm[j] = momTot[j]/(float)iA;
+    double vcm[3];
+    for (int j=0;j<3;j++) vcm[j] = momTot[j]/(double)iA;
 
     cout << "Vcm= " << vcm[0] << " " << vcm[1] << " " << vcm[2] << endl;
 }
@@ -3073,13 +3043,13 @@ void CNucleus::vCMofAllProducts()
  *
  *  Contributions from E1's and E2's only
  */
-float CNucleus::gammaWidth()
+double CNucleus::gammaWidth()
 {
 
-    float widthTot = 0;
-    float width[3];
-    float Ex[3];
-    float S0[3];
+    double widthTot = 0;
+    double width[3];
+    double Ex[3];
+    double S0[3];
     for (int iMode =1;iMode<=2;iMode++)
     {
         if (iMode == 1) width[iMode]=gammaWidthE1GDR();
@@ -3107,44 +3077,44 @@ float CNucleus::gammaWidth()
 \param iMode 1 is E1, 2 is E2
 */
 
-float CNucleus::gammaWidthMultipole(int iMode)
+double CNucleus::gammaWidthMultipole(int iMode)
 {
 
     //iMode =1 is E1 and Imode=2 is E2
     //width given in units of MeV
     SStoreEvapVector storeEvap;
 
-    float deltaE = 1;
+    double deltaE = 1;
     if (fEx-Erot <= 15.0) deltaE = 0.2;
 
-    float  exponent = (float)(2.*iMode)/3.;
-    float constant = pow((float)(iA),exponent)*wue[iMode]*pi*2.0;
+    double  exponent = (double)(2.*iMode)/3.;
+    double constant = pow((double)(iA),exponent)*wue[iMode]*pi*2.0;
     constant *= gammaInhibition[iMode];
-    float S0 = fJ;
-    float S0Min = fabs(S0-(float)iMode);
-    float S0Max = S0 + (float)iMode;
+    double S0 = fJ;
+    double S0Min = fabs(S0-(double)iMode);
+    double S0Max = S0 + (double)iMode;
     S0 = S0Min;
-    float sumGammaMax = 0.0;
-    float width = 0.;
+    double sumGammaMax = 0.0;
+    double width = 0.;
     for (;;) //loop over S0 nucleus spin
     {
-        float Erotation = yrast->getYrast(iZ,iA,S0);
-        float U2Max = fEx - Erotation;
+        double Erotation = yrast->getYrast(iZ,iA,S0);
+        double U2Max = fEx - Erotation;
         if (U2Max < 0.01) break;
 
-        float e = 0.1;
-        float sumGamma = 0.0;
-        float gammaMax = 0.0;
+        double e = 0.1;
+        double sumGamma = 0.0;
+        double gammaMax = 0.0;
         for (;;) //loop over excitation energy
         {
-            float U2 = U2Max - e;
+            double U2 = U2Max - e;
             if (U2 < 0.01) break;
-            float logLevelDensityDaughter =
+            double logLevelDensityDaughter =
                 levelDensity->getLogLevelDensitySpherical
                 (iA,U2,fPairing,fShell,S0,fMInertia);
             if (logLevelDensityDaughter == 0) break;
 
-            float gamma = pow(e,2*iMode+1)*constant*deltaE*
+            double gamma = pow(e,2*iMode+1)*constant*deltaE*
                           exp(logLevelDensityDaughter-logLevelDensity)/2./pi;
 
 
@@ -3172,14 +3142,14 @@ float CNucleus::gammaWidthMultipole(int iMode)
     {
         return 0.;
     }
-    float xran = ran->Rndm();
+    double xran = ran->Rndm();
     SStoreEvapIter selectedChannel = std::lower_bound(storeEvap.begin(),
                                                       storeEvap.end(),
                                                       xran*width,
-                                                      CompareGammaToX<SStoreEvap, float>());
+                                                      CompareGammaToX<SStoreEvap, double>());
 
     //choose gamma energy and excitation energy of residual
-    float e; // gamma ray energy
+    double e; // gamma ray energy
     GammaEx = -1.;
     int iTry = 0;
     for (;;)
@@ -3205,20 +3175,20 @@ float CNucleus::gammaWidthMultipole(int iMode)
  * taking into acount GDR strength function
  * see see D.R. Chakrabarty et al. Phys Rev. C36 (1987) 1886
 */
-float CNucleus::gammaWidthE1GDR()
+double CNucleus::gammaWidthE1GDR()
 {
     //gives the statistical E1 gamma width  in units of MeV
     SStoreEvapVector storeEvap;
 
-    float deltaE = 1;
+    double deltaE = 1;
     if (fEx-Erot <= 15.0) deltaE = 0.2;
 
-    float Fe1 = 0.0;
-    float gammaGDR = 0.0;
-    float gamma  = 0.0;
+    double Fe1 = 0.0;
+    double gammaGDR = 0.0;
+    double gamma  = 0.0;
 
     //EGDR from systematics
-    float EGDR = 77.0/pow((float)iA,(float)(1./3.));
+    double EGDR = 77.0/pow((double)iA,(double)(1./3.));
 
 
     if(GDRParam == false)
@@ -3226,35 +3196,35 @@ float CNucleus::gammaWidthE1GDR()
         //giant dipole strength function
         //see D.R. Chakrabarty et al. Phys Rev. C36 (1987) 1886
         //for details
-        gammaGDR = 4.8+0.0026*pow(fEx-Erot,(float)1.6);
-        Fe1 = 2.09e-5*(float)iZ*(float)(iA-iZ)/(float)(iA)*gammaGDR;
+        gammaGDR = 4.8+0.0026*pow(fEx-Erot,(double)1.6);
+        Fe1 = 2.09e-5*(double)iZ*(double)(iA-iZ)/(double)(iA)*gammaGDR;
 
     }
     else // giant dipole  strenght function, parametrized up to 5 lorentzian
     {
-        Fe1 = 2.09e-5*(float)iZ*(float)(iA-iZ)/(float)(iA);
+        Fe1 = 2.09e-5*(double)iZ*(double)(iA-iZ)/(double)(iA);
     }
 
-    float S0 = fJ;
-    float S0Min = fabs(S0-1.);
-    float S0Max = S0 + 1.;
+    double S0 = fJ;
+    double S0Min = fabs(S0-1.);
+    double S0Max = S0 + 1.;
     S0 = S0Min;
-    float sumGammaMax = 0.0;
-    float width = 0.;
+    double sumGammaMax = 0.0;
+    double width = 0.;
     for (;;) //loop over S0 nucleus spin
     {
-        float Erotation = yrast->getYrast(iZ,iA,S0);
-        float U2Max = fEx - Erotation;
+        double Erotation = yrast->getYrast(iZ,iA,S0);
+        double U2Max = fEx - Erotation;
         if (U2Max < 0.01) break;
 
-        float e = 0.1;
-        float sumGamma = 0.0;
-        float gammaMax = 0.0;
+        double e = 0.1;
+        double sumGamma = 0.0;
+        double gammaMax = 0.0;
         for (;;) //loop over excitation energy
         {
-            float U2 = U2Max - e;
+            double U2 = U2Max - e;
             if (U2 < 0.01) break;
-            float logLevelDensityDaughter =
+            double logLevelDensityDaughter =
                 levelDensity->getLogLevelDensitySpherical
                 (iA,U2,fPairing,fShell,S0,fMInertia);
             if (logLevelDensityDaughter == 0) break;
@@ -3299,12 +3269,12 @@ float CNucleus::gammaWidthE1GDR()
         return 0.;
     }
 
-    float xran = ran->Rndm();
+    double xran = ran->Rndm();
     SStoreEvapIter selectedChannel = std::lower_bound(storeEvap.begin(),
                                                       storeEvap.end(),
                                                       xran*width,
-                                                      CompareGammaToX<SStoreEvap, float>());
-    float e = selectedChannel->energy;
+                                                      CompareGammaToX<SStoreEvap, double>());
+    double e = selectedChannel->energy;
     e += deltaE*(0.5*ran->Rndm());
     if (e < 0.) e=0.;
     GammaEx = fEx - e;
@@ -3325,8 +3295,8 @@ void CNucleus::angleGamma()
     // vector (i.e. z axis parallel to s0)
     CAngle residueCM;
     if (GammaL > 0 && fJ > 0.0)
-        residueCM.theta = acos((pow(fJ,2) + pow((float)GammaL,2)
-                                - pow(GammaJ,2))/(2.0*(float)GammaL*fJ));
+        residueCM.theta = acos((pow(fJ,2) + pow((double)GammaL,2)
+                                - pow(GammaJ,2))/(2.0*(double)GammaL*fJ));
     else if (GammaL == 0) residueCM.theta = 0;
     else residueCM.theta = acos(1.-2.*ran->Rndm());
 
@@ -3339,9 +3309,9 @@ void CNucleus::angleGamma()
  * Return the theta angle of the fragments in radians
  */
 
-float CNucleus::getTheta()
+double CNucleus::getTheta()
 {
-    float V = 0.;
+    double V = 0.;
     for (int i=0;i<3;i++) V += pow(velocity[i],2);
     return acos(velocity[2]/sqrt(V));
 }
@@ -3354,11 +3324,11 @@ float CNucleus::getTheta()
 CAngle CNucleus::getAngle()
 {
 
-    float V = 0.;
+    double V = 0.;
     for (int i=0;i<3;i++) V += pow(velocity[i],2);
 
-    float theta;
-    float phi;
+    double theta;
+    double phi;
 
     if (V > 0.)
     {
@@ -3378,7 +3348,7 @@ CAngle CNucleus::getAngle()
 /**
  * Return the theta angle of the fragments in degrees
  */
-float CNucleus::getThetaDegrees()
+double CNucleus::getThetaDegrees()
 {
     //get the theta angle of a fragments in degrees
     return getTheta()*180./pi;
@@ -3400,7 +3370,7 @@ CAngle CNucleus::getAngleDegrees()
  * the Weisskopf formulism
  \param saddle bool true=saddleToScission decay false=normal evaporation
 */
-float CNucleus::weiskopf( bool saddle)
+double CNucleus::weiskopf( bool saddle)
 {
     //calculates the evaporation decay width with the Weiskopf formalism
     lightP->width = 0.;
@@ -3415,18 +3385,18 @@ float CNucleus::weiskopf( bool saddle)
     //products must lie on the chart of nuclides used by gemini
     if (lightP->residue.iA < mass->chart->getAmin(lightP->residue.iZ)) return 0.;
     if (lightP->residue.iA > mass->chart->getAmax(lightP->residue.iZ)) return 0.;
-    rResidue = r0*pow((float)lightP->residue.iA,(float)(1./3.));
-    lightP->fMInertia = 0.4*(float)lightP->residue.iA*pow(rResidue,2);
-    lightP->fMInertiaOrbit = (float)(lightP->residue.iA*lightP->iA)/
-                             (float)(lightP->residue.iA+lightP->iA)*pow(rResidue+lightP->rLight+2.,2);
+    rResidue = r0*pow((double)lightP->residue.iA,(double)(1./3.));
+    lightP->fMInertia = 0.4*(double)lightP->residue.iA*pow(rResidue,2);
+    lightP->fMInertiaOrbit = (double)(lightP->residue.iA*lightP->iA)/
+                             (double)(lightP->residue.iA+lightP->iA)*pow(rResidue+lightP->rLight+2.,2);
 
     if (saddle)
     {
         if (fissionMassScission)scission.init(lightP->residue.iZ,lightP->residue.iA,fJ,2);
         else
         {
-            float Z1 = (float)fissionZ/(float)fissioningZ*(float)lightP->residue.iZ;
-            float A1 = (float)fissionA/(float)fissioningA*(float)lightP->residue.iA;
+            double Z1 = (double)fissionZ/(double)fissioningZ*(double)lightP->residue.iZ;
+            double A1 = (double)fissionA/(double)fissioningA*(double)lightP->residue.iA;
             scission.init(lightP->residue.iZ,lightP->residue.iA,fJ,2,Z1,A1);
         }
     }
@@ -3447,7 +3417,7 @@ float CNucleus::weiskopf( bool saddle)
 
     //cout << "masses " << lightP->residue.fExpMass << "  " << lightP->fExpMass << " " <<  fExpMass << endl;
 
-    float Edef = 0.;
+    double Edef = 0.;
     if (saddle)
     {
         Edef = scission.getScissionEnergy();
@@ -3458,31 +3428,31 @@ float CNucleus::weiskopf( bool saddle)
 
 
 
-    float maxGamma = 0.;
-    float constant = (2.*lightP->fJ+1.)*de/(2.*pi);
+    double maxGamma = 0.;
+    double constant = (2.*lightP->fJ+1.)*de/(2.*pi);
     if (!saddle) constant *= (2*fJ+1.);
 
     //prepare transmission coeff
 
 
-    float Ecoul;
+    double Ecoul;
     if (Isig)
     {
-        lightP->sigBarDist->prepare((float)lightP->residue.iZ,(float)lightP->residue.iA);
+        lightP->sigBarDist->prepare((double)lightP->residue.iZ,(double)lightP->residue.iA);
         Ecoul = lightP->sigBarDist->getBarrier();
     }
     else
     {
-        lightP->sigBarDist->prepare((float)lightP->residue.iZ,(float)lightP->residue.iA);
+        lightP->sigBarDist->prepare((double)lightP->residue.iZ,(double)lightP->residue.iA);
         Ecoul = lightP->sigBarDist->getBarrier();
         lightP->tlArray->prepare(lightP->residue.iZ);
     }
 
-    float fEk = Ecoul;
+    double fEk = Ecoul;
     bool up = 1;
-    float logLevelDensity2_max = 0;
+    double logLevelDensity2_max = 0;
 
-    //  float U2 = fEx - lightP->separationEnergy - fEk - Edef;
+    //  double U2 = fEx - lightP->separationEnergy - fEk - Edef;
     //  cout <<  " U2 " << U2 << " " <<
     //           fEx << " " <<
     //           lightP->separationEnergy<< " " <<
@@ -3491,10 +3461,10 @@ float CNucleus::weiskopf( bool saddle)
 
     for (;;)
     {
-        float U = fEx - lightP->separationEnergy - fEk - Edef;
+        double U = fEx - lightP->separationEnergy - fEk - Edef;
         if (U <= 0.) break;
 
-        float logLevelDensity2 = 0.;
+        double logLevelDensity2 = 0.;
         if (saddle) logLevelDensity2 =
                 levelDensity->getLogLevelDensityScission(iA,U);
         else logLevelDensity2 = levelDensity->getLogLevelDensitySpherical
@@ -3512,12 +3482,12 @@ float CNucleus::weiskopf( bool saddle)
 
         logLevelDensity2_max = qMax(logLevelDensity2_max,logLevelDensity2);
         if (logLevelDensity2 == 0.) break;
-        float temp = levelDensity->getTemp();
-        float sigmaInverse;
+        double temp = levelDensity->getTemp();
+        double sigmaInverse;
         if (Isig) sigmaInverse = lightP->sigBarDist->getInverseXsec(fEk,temp);
         else sigmaInverse =      lightP->tlArray->getInverseXsec(fEk,temp);
 
-        float gamma = sigmaInverse*exp(logLevelDensity2-logLevelDensity) *constant;
+        double gamma = sigmaInverse*exp(logLevelDensity2-logLevelDensity) *constant;
 
         lightP->width += gamma;
         SStoreEvap aStoreEvap;
@@ -3549,7 +3519,7 @@ float CNucleus::weiskopf( bool saddle)
     }
 
 
-    //  float del = 0.;
+    //  double del = 0.;
     //if (lightP->residue.iA%2 == 1)del =  0.5;
 
     //  cout << "Oleg  weisk " << lightP->iA << " " << lightP->iZ << " " <<
@@ -3565,9 +3535,9 @@ float CNucleus::weiskopf( bool saddle)
  *
  * The width is given in units of MeV
  */
-float CNucleus::evaporationWidthSS()
+double CNucleus::evaporationWidthSS()
 {
-    float width = 0.;
+    double width = 0.;
 
     EcostMin = 1000.;
     bool isaddle = 1;
@@ -3583,11 +3553,11 @@ float CNucleus::evaporationWidthSS()
 
 
     //if decay possible choose channel
-    float xran = ran->Rndm();
+    double xran = ran->Rndm();
     int i = 0;
     for (;;)
     {
-        float prob = evap->prob[i]/width;
+        double prob = evap->prob[i]/width;
         if (prob >= xran) break;
         if ( i == evap->nLight-1) break;
         i++;
@@ -3613,7 +3583,7 @@ float CNucleus::evaporationWidthSS()
  \param fEx0 is the compound nucleus excitation energy in MeV
  \param fJ0 is the compound nucleus spin in hbar
 */
-void CNucleus::setCompoundNucleus(float fEx0, float fJ0)
+void CNucleus::setCompoundNucleus(double fEx0, double fJ0)
 {
     //initialize as a compound nucleus ready for decay
     excite(fEx0,fJ0);
@@ -3628,36 +3598,6 @@ void CNucleus::setCompoundNucleus(float fEx0, float fJ0)
     bResidue  = true;
     bSymmetricFission = false;
     bAsymmetricFission = false;
-}
-//*****************************************
-/**
- * Initializes the compound nucleus excitation and spin.
- \param dEx0 is the compound nucleus excitation energy in MeV
- \param fJ0 is the compound nucleus spin in hbar
-*/
-void CNucleus::setCompoundNucleus(double dEx0, float fJ0)
-{
-    setCompoundNucleus((float)dEx0,fJ0);
-}
-//********************************************
-/**
- * Initializes the compound nucleus excitation and spin.
- \param fEx0 is the compound nucleus excitation energy in MeV
- \param dJ0 is the compound nucleus spin in hbar
-*/
-void CNucleus::setCompoundNucleus(float fEx0, double dJ0)
-{
-    setCompoundNucleus(fEx0,(float)dJ0);
-}
-//**********************************************
-/**
- * Initializes the compound nucleus excitation and spin.
- \param dEx0 is the compound nucleus excitation energy in MeV
- \param dJ0 is the compound nucleus spin in hbar
-*/
-void CNucleus::setCompoundNucleus(double dEx0, double dJ0)
-{
-    setCompoundNucleus((float)dEx0,(float)dJ0);
 }
 //*************************************************
 /**
@@ -3720,7 +3660,7 @@ CNucleus * CNucleus::getLightDaughter()
 
 int CNucleus::getNumberOfProducts()
 {
-    return stableProducts.size();
+    return static_cast<int>(stableProducts.size());
 }
 //**************************************************************
 /**
@@ -3729,8 +3669,8 @@ int CNucleus::getNumberOfProducts()
 void CNucleus::decay()
 {
     // qDebug() << "decay()";
-    unsigned int iProductsOld = allProducts.size();
-    unsigned int iStableOld   = stableProducts.size();
+    unsigned int iProductsOld = static_cast<unsigned int>(allProducts.size());
+    unsigned int iStableOld   = static_cast<unsigned int>(stableProducts.size());
     unsigned int reserveCount = static_cast<unsigned int>(iA);
     if (allProducts.capacity() < reserveCount)
     {
@@ -3905,41 +3845,41 @@ int CNucleus::getMultSaddleToScission()
  */
 void CNucleus::energyConservation()
 {
-    float sumKE = 0.;
-    float sumMass = 0.;
-    float sumEx = 0.;
+    double sumKE = 0.;
+    double sumMass = 0.;
+    double sumEx = 0.;
     for (unsigned int i=0;i<stableProducts.size();i++)
     {
         sumKE += stableProducts.at(i)->getKE();
         sumMass += stableProducts.at(i)->getExcessMass();
         sumEx += stableProducts.at(i)->fEx;
     }
-    float Qvalue = fExpMass - sumMass;
+    double Qvalue = fExpMass - sumMass;
     qVal = Qvalue;
     //cout << sumKE << " " << Qvalue << " " << sumEx << " " <<
     //   sumKE-Qvalue+sumEx+sumGammaEnergy
     //   << " " <<  fEx - sumKE + Qvalue - sumEx - sumGammaEnergy<< endl;
 }
 //**********************************************************
-float CNucleus::getKE()
+double CNucleus::getKE()
 /**
  * Returns the fragments kinetic energy in MeV.
  */
 {
 
-    float KE = 0.;
+    double KE = 0.;
     for (int i=0;i<3;i++) KE += pow(velocity[i]/.9784,2);
-    KE *= 0.5*(float)iA;
+    KE *= 0.5*(double)iA;
     return KE;
 }
 //**********************************************************
 /**
  * Returns the magnitude of the fragment's velocity in cm/ns
  */
-float CNucleus::getVelocity()
+double CNucleus::getVelocity()
 {
 
-    float vel = 0.;
+    double vel = 0.;
     for (int i=0;i<3;i++) vel += pow(velocity[i],2);
     vel = sqrt(vel);
     return vel;
@@ -3948,10 +3888,10 @@ float CNucleus::getVelocity()
 /**
  * Returns the magnitude of the fragment's momentum in MeV/c
  */
-float CNucleus::getMomentum()
+double CNucleus::getMomentum()
 {
 
-    return getVelocity()*(float)iA/30.*931.5016;
+    return getVelocity()*(double)iA/30.*931.5016;
 }
 //********************************************************
 /**
@@ -3961,17 +3901,17 @@ float CNucleus::getMomentum()
 void CNucleus::split(CAngle symmetryCM)
 {
     //angles and velocity of fragments after binary decay (not evaporation)
-    float A1 = (float)fissionA;
-    float A2 = (float)(iA-fissionA);
-    float Ared = A1*A2/(A1+A2);
-    //float Ek = yrast->viola((float)fissionZ,A1,
-    //			 (float)(iZ-fissionZ),A2);
+    double A1 = (double)fissionA;
+    double A2 = (double)(iA-fissionA);
+    double Ared = A1*A2/(A1+A2);
+    //double Ek = yrast->viola((double)fissionZ,A1,
+    //			 (double)(iZ-fissionZ),A2);
 
-    float Ek = scission.ekTot;
+    double Ek = scission.ekTot;
 
-    float Vrel = sqrt(2.0*Ek/Ared)*0.9794;
-    float V1CM = A2/(A1+A2)*Vrel;
-    float V2CM = Vrel-V1CM;
+    double Vrel = sqrt(2.0*Ek/Ared)*0.9794;
+    double V1CM = A2/(A1+A2)*Vrel;
+    double V2CM = Vrel-V1CM;
 
     // in the c-o-m frame the velocity vectors are
 
@@ -4012,7 +3952,7 @@ void CNucleus::split(CAngle symmetryCM)
 \param fEx0 is the excitation energy in MeV
 \param fJ0 is the spin in hbar
  */
-void CNucleus::setNewIsotope(int iZ0, int iA0, float fEx0, float fJ0)
+void CNucleus::setNewIsotope(int iZ0, int iA0, double fEx0, double fJ0)
 {
     init(iZ0,iA0);
     setCompoundNucleus(fEx0,fJ0);
@@ -4022,7 +3962,7 @@ void CNucleus::setNewIsotope(int iZ0, int iA0, float fEx0, float fJ0)
  * sets the transient time (fission delay) in zs different from the default
  * value. This is a static function.
  */
-void CNucleus::setTimeTransient(float time)
+void CNucleus::setTimeTransient(double time)
 {
     timeTransient = time;
 }
@@ -4031,7 +3971,7 @@ void CNucleus::setTimeTransient(float time)
  * returns the transient time (fission delay) in zs different from the default
  * value. This is a static function.
  */
-float CNucleus::getTimeTransient()
+double CNucleus::getTimeTransient()
 {
     return timeTransient;
 }
@@ -4040,7 +3980,7 @@ float CNucleus::getTimeTransient()
  * returns a pointer to the array containing the velocity vector.
  * units are in cm/ns
  */
-float* CNucleus::getVelocityVector()
+double* CNucleus::getVelocityVector()
 {
     return velocity;
 }
@@ -4049,9 +3989,9 @@ float* CNucleus::getVelocityVector()
  * returns a pointer to the arrays containing the momentum vector.
  * units are in MeV/c
  */
-float* CNucleus::getMomentumVector()
+double* CNucleus::getMomentumVector()
 {
-    for (int i=0;i<3;i++) momentum[i] = velocity[i]*(float)iA/30.*931.5016;
+    for (int i=0;i<3;i++) momentum[i] = velocity[i]*(double)iA/30.*931.5016;
     return momentum;
 }
 //****************************************************
@@ -4059,7 +3999,7 @@ float* CNucleus::getMomentumVector()
  * sets the fission scale factor
 \param factor is the scale factor
 */
-void CNucleus::setFissionScaleFactor(float factor)
+void CNucleus::setFissionScaleFactor(double factor)
 {
     fissionScaleFactor = factor;
 }
@@ -4067,7 +4007,7 @@ void CNucleus::setFissionScaleFactor(float factor)
 /**
  * returns the fission scale  factor
 */
-float CNucleus::getFissionScaleFactor()
+double CNucleus::getFissionScaleFactor()
 {
     return fissionScaleFactor;
 }
@@ -4076,7 +4016,7 @@ float CNucleus::getFissionScaleFactor()
  * set the parameter controlling the width of the barrier distribution
 \param width - width is \f$ \sqrt(T)* width \f$
  */
-void CNucleus::setBarWidth(float width)
+void CNucleus::setBarWidth(double width)
 {
     CTlBarDist::setBarWidth(width);
     CSigBarDist::setBarWidth(width);
@@ -4085,7 +4025,7 @@ void CNucleus::setBarWidth(float width)
 /**
  * returns the paramter controlling the width of the barrier dist
  */
-float CNucleus::getBarWidth()
+double CNucleus::getBarWidth()
 {
     return CTlBarDist::getBarWidth();
 }
@@ -4095,7 +4035,7 @@ float CNucleus::getBarWidth()
  *formulism
 \param de0 with of the energy bin
 */
-void CNucleus::setDeltaE(float de0)
+void CNucleus::setDeltaE(double de0)
 {
     de = de0;
 }
@@ -4104,7 +4044,7 @@ void CNucleus::setDeltaE(float de0)
  * returns the energy bin width used for integrating the Hauser-Feshbach
  * formulism
  */
-float CNucleus::getDeltaE()
+double CNucleus::getDeltaE()
 {
     return de;
 }
@@ -4114,7 +4054,7 @@ float CNucleus::getDeltaE()
  * channels. All channels will be included if set to zero.
 \param threshold0 is the threshold
 */
-void CNucleus::setThreshold(float threshold0)
+void CNucleus::setThreshold(double threshold0)
 {
     threshold = threshold0;
 }
@@ -4123,7 +4063,7 @@ void CNucleus::setThreshold(float threshold0)
  * returns the threshold used to cut out low probability evaporation
  * channels
  */
-float CNucleus::getThreshold()
+double CNucleus::getThreshold()
 {
     return threshold;
 }
@@ -4132,7 +4072,7 @@ float CNucleus::getThreshold()
    * the symmetric fission barrier is modified by adding this quantity
    \param barAdd0 barrier adjestment in MeV
   */
-void CNucleus::setAddToFisBarrier(float barAdd0)
+void CNucleus::setAddToFisBarrier(double barAdd0)
 {
     barAdd = barAdd0;
 }
@@ -4141,7 +4081,7 @@ void CNucleus::setAddToFisBarrier(float barAdd0)
    * returns the quantity by which the symmerty fission is added to.
 
   */
-float CNucleus::getAddToFisBarrier()
+double CNucleus::getAddToFisBarrier()
 {
     return barAdd;
 }
@@ -4206,16 +4146,16 @@ void CNucleus::printParameters()
    \param iAfAn switch to allow af/an value.
   */
 
-float CNucleus::LestoneCorrection( float Usaddle, float momInertiaEff,
+double CNucleus::LestoneCorrection( double Usaddle, double momInertiaEff,
                                   short iAfAn)
 {
-    float saddleLD = levelDensity->getLogLevelDensitySpherical
-                     (iA,Usaddle,(float)0.,(float)0.,fJ,fMInertia,iAfAn);
-    float saddleTemp = levelDensity->getTemp();
+    double saddleLD = levelDensity->getLogLevelDensitySpherical
+                     (iA,Usaddle,(double)0.,(double)0.,fJ,fMInertia,iAfAn);
+    double saddleTemp = levelDensity->getTemp();
 
-    float K = fJ - roundf(fJ);
+    double K = fJ - roundf(fJ);
 
-    float tot = 0.;
+    double tot = 0.;
     for (;;)
     {
         if (K > fJ) break;
@@ -4226,14 +4166,14 @@ float CNucleus::LestoneCorrection( float Usaddle, float momInertiaEff,
 
 
 
-            float ErotK = kRotate/2.*pow(K,2)/momInertiaEff;
-            float U = Usaddle - ErotK;
+            double ErotK = kRotate/2.*pow(K,2)/momInertiaEff;
+            double U = Usaddle - ErotK;
             if (U <= 0.) break;
-            float LD = levelDensity->
-                       getLogLevelDensitySpherical(iA,U,(float)0.,(float)0.,
+            double LD = levelDensity->
+                       getLogLevelDensitySpherical(iA,U,(double)0.,(double)0.,
                                                    fJ,fMInertia,iAfAn);
 
-            float yield = exp(LD-saddleLD)*2.*levelDensity->getTemp()/saddleTemp;
+            double yield = exp(LD-saddleLD)*2.*levelDensity->getTemp()/saddleTemp;
 
             if (yield < 1.e-3) break;
             tot += yield;
@@ -4266,20 +4206,20 @@ CNucleus* CNucleus::getCompoundNucleus()
  * Hauser-Feshbach routine to sum of the spin of the residual nucleus
 \param Ekvalue if < 0, then loop over Ek, other for the specificed Ekvalue
  */
-float CNucleus::S2Loop(float Ekvalue)
+double CNucleus::S2Loop(double Ekvalue)
 {
 
     lightP->storeEvap.clear();
     S2 = S2Start;
-    float width0 = S2Width(Ekvalue);
+    double width0 = S2Width(Ekvalue);
     S2 += 1.;
-    float width1 = S2Width(Ekvalue);
+    double width1 = S2Width(Ekvalue);
 
-    float width = width0 + width1;
+    double width = width0 + width1;
     if (width <= 0.) return 0.;
-    float sign = 1.;
+    double sign = 1.;
     if (width1 < width0) sign = -1.;
-    float gammaMax = max(width0,width1);
+    double gammaMax = max(width0,width1);
 
     //increase or decrease S2
     if (sign > 0.) S2++;
@@ -4287,7 +4227,7 @@ float CNucleus::S2Loop(float Ekvalue)
     for (;;)
     {
         if (S2 < 0.) break;
-        float gamma = S2Width(Ekvalue);
+        double gamma = S2Width(Ekvalue);
         gammaMax = max(gammaMax,gamma);
         width += gamma;
         if (gamma <= EkFraction*gammaMax) break;
@@ -4302,7 +4242,7 @@ float CNucleus::S2Loop(float Ekvalue)
     for (;;)
     {
         if (S2 < 0.) break;
-        float gamma = S2Width(Ekvalue);
+        double gamma = S2Width(Ekvalue);
         gammaMax = max(gammaMax,gamma);
         width += gamma;
         if (gamma <= EkFraction*gammaMax) break;
@@ -4319,7 +4259,7 @@ float CNucleus::S2Loop(float Ekvalue)
    * but integrated over l and ek
    \param Ekvalue if < 0, then loop over Ek, other for the specificed Ekvalue
    */
-float CNucleus::S2Width(float Ekvalue)
+double CNucleus::S2Width(double Ekvalue)
 {
 
     //   consider particle"s spin in determining
@@ -4348,18 +4288,18 @@ float CNucleus::S2Width(float Ekvalue)
    * Calculates the Hauser-Feshbach decay width for a single S2 and ek,
    * but integrated over l
    */
-float CNucleus::EkWidth(float ek)
+double CNucleus::EkWidth(double ek)
 {
-    float U2 = UMin-ek;
-    float daughterLD = levelDensity->
+    double U2 = UMin-ek;
+    double daughterLD = levelDensity->
                        getLogLevelDensitySpherical(lightP->residue.iA,U2,lightP->fPair,lightP->fShell
                                                    ,S2,lightP->fMInertia);
     if (daughterLD  == 0 ) return 0.;
-    float temp = levelDensity->getTemp();
-    float sumTl = getSumTl(ek,temp);
+    double temp = levelDensity->getTemp();
+    double sumTl = getSumTl(ek,temp);
     if (sumTl == 0) return 0.;
 
-    float gamma = de*sumTl*exp(daughterLD-logLevelDensity)/2./pi;
+    double gamma = de*sumTl*exp(daughterLD-logLevelDensity)/2./pi;
     if (gamma <= 0.) return 0.;
 
     SStoreEvap aStoreEvap;
@@ -4383,11 +4323,11 @@ float CNucleus::EkWidth(float ek)
 /**
  *Hauser-Feshbach function to sum over kinetic energy for a given S2
  */
-float CNucleus::EkLoop()
+double CNucleus::EkLoop()
 {
 
     //find energy at which tl=0.5 approximately
-    float ekMin = (float)((lMin+1)*lMin)*20.454/
+    double ekMin = (double)((lMin+1)*lMin)*20.454/
                       lightP->fMInertiaOrbit + Ecoul;
     if( ekMin > UMin) ekMin = UMin;
     //start just below the barrier
@@ -4396,16 +4336,16 @@ float CNucleus::EkLoop()
     if (ekMin < de/2.) ekMin = de/2.;
 
 
-    float ek = ekMin;
-    float width0 = EkWidth(ek);
+    double ek = ekMin;
+    double width0 = EkWidth(ek);
     ek += de;
-    float width1 = EkWidth(ek);
+    double width1 = EkWidth(ek);
 
-    float width = width0 + width1;
+    double width = width0 + width1;
     if (width <= 0.) return 0.;
-    float sign = 1.;
+    double sign = 1.;
     if (width1 < width0) sign = -1.;
-    float gammaMax = max(width0,width1);
+    double gammaMax = max(width0,width1);
 
     //increase or decrease S2
     if (sign > 0.) ek+= de;
@@ -4413,7 +4353,7 @@ float CNucleus::EkLoop()
     for (;;)
     {
         if (ek < 0.) break;
-        float gamma = EkWidth(ek);
+        double gamma = EkWidth(ek);
         gammaMax = max(gammaMax,gamma);
         width += gamma;
         if (gamma <= EkFraction*gammaMax) break;
@@ -4428,7 +4368,7 @@ float CNucleus::EkLoop()
     for (;;)
     {
         if (ek < 0.) break;
-        float gamma = EkWidth(ek);
+        double gamma = EkWidth(ek);
         gammaMax = max(gammaMax,gamma);
         width += gamma;
         if (gamma <= EkFraction*gammaMax) break;
@@ -4508,7 +4448,7 @@ void CNucleus::setSolution(int isol)
 /**
    * returns the total energy removed by gamma rays in MeV
    */
-float CNucleus::getSumGammaEnergy()
+double CNucleus::getSumGammaEnergy()
 {
     return sumGammaEnergy;
 }
@@ -4516,7 +4456,7 @@ float CNucleus::getSumGammaEnergy()
 /**
    * returns gamma ray energy in MeV
    */
-float CNucleus::getGammaRayEnergy(int number)
+double CNucleus::getGammaRayEnergy(int number)
 {
     return GammaRayEnergy[number];
 }
@@ -4533,7 +4473,7 @@ int CNucleus::getnGammaRays()
    * returns the time in zs at which the particle was created after
    * the formation of the CN
    */
-float CNucleus::getTime()
+double CNucleus::getTime()
 {
     return timeSinceStart;
 }
@@ -4547,21 +4487,21 @@ void CNucleus::getSpin(bool saddle)
     if (HF && !saddle)
     {
         //choose the residue spin and evaporated particles energy;
-        float xran = 1.5;
+        double xran = 1.5;
         while(floor(xran) > 0.5)xran = ran->Rndm();
 
         SStoreEvapIter selectedChannel = std::lower_bound(lightP->storeEvap.begin(),
                                                           lightP->storeEvap.end(),
                                                           xran*lightP->width,
-                                                          CompareGammaToX<SStoreEvap, float>());
+                                                          CompareGammaToX<SStoreEvap, double>());
 
-        float Ek,Ex;
+        double Ek,Ex;
         int iTry = 0;
         for (;;)
         {
             Ek = selectedChannel->energy + (1.-2.*ran->Rndm())*de/2.;
-            const float S2MinRes = (lightP->residue.iA%2==0 ? 0.0 : 0.5);
-            const float EYrastRes = yrast->getYrast(lightP->residue.iZ,lightP->residue.iA,S2MinRes);
+            const double S2MinRes = (lightP->residue.iA%2==0 ? 0.0 : 0.5);
+            const double EYrastRes = yrast->getYrast(lightP->residue.iZ,lightP->residue.iA,S2MinRes);
             Ex = fEx - lightP->separationEnergy - Ek;
             if ( Ek >= 0. && Ex >= EYrastRes) break;
             if (iTry ==4)
@@ -4611,19 +4551,19 @@ void CNucleus::getSpin(bool saddle)
 
     //now for HF == 0
     //choose the residue spin and evaporated particles energy;
-    float xran = ran->Rndm();
+    double xran = ran->Rndm();
     SStoreEvapIter selectedChannel = std::lower_bound(lightP->storeEvap.begin(),
                                                       lightP->storeEvap.end(),
                                                       xran*lightP->width,
-                                                      CompareGammaToX<SStoreEvap, float>());
+                                                      CompareGammaToX<SStoreEvap, double>());
 
-    float Ek,Ex;
+    double Ek,Ex;
     int iTry = 0;
     for (;;)
     {
         Ek = selectedChannel->energy + (1.-2.*ran->Rndm())*de/2.;
-        const float S2MinRes = (lightP->residue.iA%2==0 ? 0.0 : 0.5);
-        const float EYrastRes = yrast->getYrast(lightP->residue.iZ,lightP->residue.iA,S2MinRes);
+        const double S2MinRes = (lightP->residue.iA%2==0 ? 0.0 : 0.5);
+        const double EYrastRes = yrast->getYrast(lightP->residue.iZ,lightP->residue.iA,S2MinRes);
         Ex = fEx - lightP->separationEnergy - Ek;
         //for saddle-point, excitation energy can be less than zero,
         //as we are evaporing from the scission point which can be below
@@ -4688,7 +4628,7 @@ void CNucleus::getSpin(bool saddle)
 
         //prepare transmission coeff
         lightP->tlArray->prepare(lightP->residue.iZ);
-        float width = S2Loop(Ek);
+        double width = S2Loop(Ek);
 
         if(width<=0.) {
             // problematic corner case, it probably means that shell and pairing
@@ -4701,13 +4641,13 @@ void CNucleus::getSpin(bool saddle)
 
 
         //choose the residue spin and evaporated particles energy;
-        float xran = 1.5;
+        double xran = 1.5;
         while(floor(xran) > 0.5)xran = ran->Rndm();
 
         SStoreEvapIter selectedChannel = std::lower_bound(lightP->storeEvap.begin(),
                                                           lightP->storeEvap.end(),
                                                           xran*width,
-                                                          CompareGammaToX<SStoreEvap, float>());
+                                                          CompareGammaToX<SStoreEvap, double>());
 
         EvapS2 = selectedChannel->spin;
         if (lightP->odd) EvapS2 += 0.5;
@@ -4715,21 +4655,21 @@ void CNucleus::getSpin(bool saddle)
 
 
         /*
-      float sigmaInverse;
+      double sigmaInverse;
       if (Isig) sigmaInverse = lightP->sigBarDist->getInverseXsec(Ek,0.);
       else sigmaInverse =
                 lightP->tlArray->getInverseXsec(Ek,0.);
 
-      float lmax = sqrt(sigmaInverse);
+      double lmax = sqrt(sigmaInverse);
       int lc = (int)((lmax+.5)*sqrt(ran->Rndm()));
-      float jmin = fabs(fJ - (float)lc);
+      double jmin = fabs(fJ - (double)lc);
       jmin = jmin - lightP->fJ;
       for (;;)
         {
           if (jmin > 0.) break;
           jmin++;
         }
-      float jmax = fJ + (float)lc + lightP->fJ;
+      double jmax = fJ + (double)lc + lightP->fJ;
       for (;;)
         {
           if (jmax < 90.) break;
@@ -4737,10 +4677,10 @@ void CNucleus::getSpin(bool saddle)
         }
 
       int NN = (int) (jmax - jmin) + 1;
-      float prob[NN];
-      float U = Ex -  Edef;
+      double prob[NN];
+      double U = Ex -  Edef;
       int ii = 0;
-      for (float jj=jmin;jj<jmax+1.;jj+=1.)
+      for (double jj=jmin;jj<jmax+1.;jj+=1.)
         {
          prob[ii] =  levelDensity->getLogLevelDensitySpherical
            (lightP->residue.iA,U,fPairing,fShell,jj,fMInertia2)/(2.*jj+1);
@@ -4752,7 +4692,7 @@ void CNucleus::getSpin(bool saddle)
       cout << "increase NN" << endl;
          abort();
         }
-      float x = ran->Rndm();
+      double x = ran->Rndm();
       int i = 0;
       for (;;)
         {
@@ -4760,30 +4700,30 @@ void CNucleus::getSpin(bool saddle)
           i++;
         }
 
-      storeChan[iChannel].S2 = jmin + (float) i;
+      storeChan[iChannel].S2 = jmin + (double) i;
       storeChan[iChannel].Ek = Ek;
       storeChan[iChannel].L = 0;
      */
         /*
       //find mean and sigma of angular momentum distribution of residue
 
-      float Mreduced = (float)(lightP->iA*lightP->residue.iA)/
-                       (float)(lightP->iA+lightP->residue.iA);
-      float dist = 1.4*pow((float)lightP->residue.iA,(float)(1./3.)) + 2.;
-      float fMInertiaOrbit = Mreduced*pow(dist,2);
+      double Mreduced = (double)(lightP->iA*lightP->residue.iA)/
+                       (double)(lightP->iA+lightP->residue.iA);
+      double dist = 1.4*pow((double)lightP->residue.iA,(double)(1./3.)) + 2.;
+      double fMInertiaOrbit = Mreduced*pow(dist,2);
 
-      //float fS2 = (fJ - lightP->fJ)*fMInertia2/(fMInertia2+fMInertiaOrbit);
-      float fS2 = fJ*fMInertia2/(fMInertia2+fMInertiaOrbit);
+      //double fS2 = (fJ - lightP->fJ)*fMInertia2/(fMInertia2+fMInertiaOrbit);
+      double fS2 = fJ*fMInertia2/(fMInertia2+fMInertiaOrbit);
 
-      float U = Ex -  Edef;
+      double U = Ex -  Edef;
       levelDensity->getLogLevelDensitySpherical
         (lightP->residue.iA,U,fPair2,fShell2,0.,fMInertia2);
-      float temp = levelDensity->getTemp();
-      float sigma =  0.1546*sqrt(temp*fMInertiaOrbit*fMInertia2/(
+      double temp = levelDensity->getTemp();
+      double sigma =  0.1546*sqrt(temp*fMInertiaOrbit*fMInertia2/(
                            fMInertiaOrbit+fMInertia2));
 
       //now pick the final angular momentum
-      float value;
+      double value;
       for(;;)
         {
          value = ran.Gaus(fS2,sigma);
@@ -4831,9 +4771,9 @@ int CNucleus::getZmaxEvap()
    * is returned. the fusction decay() must be run before using this function
    \param timeScission scission time in zs (outpot)
    */
-float CNucleus::getFissionTimeSymmetric(float & timeScission)
+double CNucleus::getFissionTimeSymmetric(double & timeScission)
 {
-    float timeFission = -1.;
+    double timeFission = -1.;
     timeScission = -1.;
     if (!isSymmetricFission()) return timeFission;
     CNucleus * prod = daughterHeavy;
@@ -4861,10 +4801,10 @@ float CNucleus::getFissionTimeSymmetric(float & timeScission)
    * If not asymmetric fission, then returns -1., if more than one
    * asymmetric fission, the is returns the time of the first
    */
-float CNucleus::getFissionTimeAsymmetric()
+double CNucleus::getFissionTimeAsymmetric()
 {
 
-    float timeFission = -1.;
+    double timeFission = -1.;
     if (!isAsymmetricFission()) return timeFission;
     CNucleus * prod = daughterHeavy;
 
@@ -4890,21 +4830,21 @@ float CNucleus::getFissionTimeAsymmetric()
    * Can easily be changed to give the toal decay with by
    * also adding the symmetric and asymmetric fission
    */
-float CNucleus::getDecayWidth()
+double CNucleus::getDecayWidth()
 {
-    float widthEvaporation = evaporationWidth();
+    double widthEvaporation = evaporationWidth();
 
-    float widthGamma = gammaWidth();
+    double widthGamma = gammaWidth();
 
 
-    float sum = widthEvaporation + widthGamma;
+    double sum = widthEvaporation + widthGamma;
     return sum;
 }
 //******************************************************
 /**
    * returns the natural log of the level density in MeV-1
    */
-float CNucleus::getLogLevelDensity()
+double CNucleus::getLogLevelDensity()
 {
     return logLevelDensity;
 }

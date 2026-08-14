@@ -22,40 +22,40 @@ class CSigCharged
 {
  private:
   QString sName; //!< name of input file of coefficients
-  float rc0; //!< paramter to calculate radius for Coulomb barrier
-  float rc1; //!< paramter to calculate radius for Coulomb barrier
-  float rc2; //!< paramter to calculate radius for Coulomb barrier
-  float omega0;  //!< paramter for omega
-  float omega1;  //!< parameter for omega
-  float omega2;  //!< parameter for omega
-  float omega3;  //!< parameter for omega
-  float rI0; //!< paramter for radius for rotational energy
-  float rI1; //!< paramter for radius for rotational energy
-  float rI2; //!< paramter for radius for rotational energy
-  float aa0; //!< below barrier correction parameter
-  float aa1; //!< below barrier correction parameter
-  float a0; //!< above barrier correction parameter
-  float a1; //!< above barrier correction parameter
-  float Zp;  //!< proton number of evaporated particle
-  float Ap;  //!< mass number of evaporated particle
+  double rc0; //!< paramter to calculate radius for Coulomb barrier
+  double rc1; //!< paramter to calculate radius for Coulomb barrier
+  double rc2; //!< paramter to calculate radius for Coulomb barrier
+  double omega0;  //!< paramter for omega
+  double omega1;  //!< parameter for omega
+  double omega2;  //!< parameter for omega
+  double omega3;  //!< parameter for omega
+  double rI0; //!< paramter for radius for rotational energy
+  double rI1; //!< paramter for radius for rotational energy
+  double rI2; //!< paramter for radius for rotational energy
+  double aa0; //!< below barrier correction parameter
+  double aa1; //!< below barrier correction parameter
+  double a0; //!< above barrier correction parameter
+  double a1; //!< above barrier correction parameter
+  double Zp;  //!< proton number of evaporated particle
+  double Ap;  //!< mass number of evaporated particle
 
-  float barrier; //!< Coulomb barrier in MeV
-  float InvInertia; //!< inverse of the moment of inertia associated with rotateion
-  float omega; //!< amega parameter in MeV
-  float a; //!< above barrier correction
-  float aa; //!< below barrier correction
-  float offset;  //!< offset
+  double barrier; //!< Coulomb barrier in MeV
+  double InvInertia; //!< inverse of the moment of inertia associated with rotateion
+  double omega; //!< amega parameter in MeV
+  double a; //!< above barrier correction
+  double aa; //!< below barrier correction
+  double offset;  //!< offset
 
   bool neutron; //!<bool to signify neutron calculation
-  float n0; //!< neutron parameter
-  float n1; //!< neutron parameter
-  float n2; //!< neutron parameter
+  double n0; //!< neutron parameter
+  double n1; //!< neutron parameter
+  double n2; //!< neutron parameter
 
  public:
-  CSigCharged(const QString& file, float Zp0, float Ap0); //!< constructor
-  void prepare(float Z,float A); //!< prepares for calculations of inverse xsections
-  float getInverseXsec(float energy); //!<calculates the inverse xsection 
-  float getBarrier(); //!< calculates the barrier
+  CSigCharged(const QString& file, double Zp0, double Ap0); //!< constructor
+  void prepare(double Z,double A); //!< prepares for calculations of inverse xsections
+  double getInverseXsec(double energy); //!<calculates the inverse xsection 
+  double getBarrier(); //!< calculates the barrier
 
  };
 #endif

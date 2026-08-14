@@ -5,7 +5,7 @@
 #include <QFile>
 CEvap* CEvap::fInstance = 0;
 
-float const r0 = 1.16;
+double const r0 = 1.16;
 /**
  * Constructor
  */
@@ -24,7 +24,7 @@ CEvap::CEvap()
 
   // read in number of evaporation channels
   ifFile >> nLight;
-  prob = new float [nLight];
+  prob = new double [nLight];
   // create array of CLightP pointers
   lightP = new CLightP * [nLight];
 
@@ -43,7 +43,7 @@ CEvap::CEvap()
   ifFile.readLine();
 
 
-  float fJ, fEx, Ek, suppress;
+  double fJ, fEx, Ek, suppress;
   int iZ, iA;
   QString nameOld("");
   QString name("");
@@ -65,11 +65,11 @@ CEvap::CEvap()
       if (newTl)
         {
           tlArray[nTl] = new CTlBarDist(name);
-          sigBarDist[nTl] = new CSigBarDist(name,(float)iZ,(float)iA);
+          sigBarDist[nTl] = new CSigBarDist(name,(double)iZ,(double)iA);
           nTl++;
         }
       lightP[i] = new CLightP(iZ,iA,fJ,tlArray[nTl-1],sigBarDist[nTl-1]);
-      lightP[i]->rLight = pow((float)iA,(float)(1./3.))*r0;
+      lightP[i]->rLight = pow((double)iA,(double)(1./3.))*r0;
       lightP[i]->fEx = fEx;
       lightP[i]->suppress = suppress;
       // if an excited state add excitation energy to mass excess
@@ -86,13 +86,13 @@ CEvap::CEvap()
 
 
       // here are sum checks to make sure decay information is possible
-      if (decay[i].lPlusS1 > decay[i].S1 + (float)decay[i].L)
+      if (decay[i].lPlusS1 > decay[i].S1 + (double)decay[i].L)
         {
           cout << "bad LPlusS1 in evap.cpp for mode " << i << endl;
           abort();
         }
 
-      if (decay[i].lPlusS1 < fabs(decay[i].S1 - (float)decay[i].L))
+      if (decay[i].lPlusS1 < fabs(decay[i].S1 - (double)decay[i].L))
         {
           cout << "bad LPlusS1 in evap.cpp for mode " << i << endl;
           abort();

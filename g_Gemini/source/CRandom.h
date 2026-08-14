@@ -16,16 +16,16 @@ class CRandom
   CRandom();
   static  CRandom* fInstance; //!< instance member to make tis a singleton
   bool one; //!< used for Gaus
-  float angle; //!< used for Gaus
-  float x; //!< parameter
-  float  pi; //!< 3.14159
+  double angle; //!< used for Gaus
+  double x; //!< parameter
+  double  pi; //!< 3.14159
  public:
   static CRandom* instance(); //!< instance member to make this a singleton
   ~CRandom();
   double Rndm();
-  float Gaus(float mean,float sigma);
-  float expDecayTime(float width);
-  float BreitWigner(float mean ,float width);
+  double Gaus(double mean,double sigma);
+  double expDecayTime(double width);
+  double BreitWigner(double mean ,double width);
 };
 
 

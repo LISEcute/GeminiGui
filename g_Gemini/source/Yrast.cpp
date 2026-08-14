@@ -12,13 +12,13 @@ CYrast* CYrast::fInstance = 0;  // singleton
 
 double CYrast::addBar = 0.;
 double const CYrast::pi=acos(-1.);
-float const CYrast::deltaJ= 3.;
+double const CYrast::deltaJ= 3.;
 bool CYrast::first = 1;
 bool CYrast::bForceSierk = 0;
-float const CYrast::kRotate=41.563;
+double const CYrast::kRotate=41.563;
 
 //RLDM constants
-float const CYrast::x1h[11][6]={
+double const CYrast::x1h[11][6]={
 {0.0,0.0,0.0,0.0,0.0,0.0},
 {-0.0057,-0.0058,-0.006,-0.0061,-0.0062,-0.0063},
 {-0.0193,-0.0203,-0.0211,-0.022,-0.023,-0.0245},
@@ -31,7 +31,7 @@ float const CYrast::x1h[11][6]={
 {0.0,0.0,0.0,0.0,0.0,0.0},
 {0.0,0.0,0.0,0.0,0.0,0.0}};
 
-float const CYrast::x2h[11][6]={
+double const CYrast::x2h[11][6]={
 {0.0,0.0,0.0,0.0,0.0,0.0},
 {-0.0018,-0.0019,-0.00215,-0.0024,-0.0025,-0.003},
 {-0.0063,-0.00705,-0.0076,-0.0083,-0.0091,-0.0095},
@@ -44,7 +44,7 @@ float const CYrast::x2h[11][6]={
 {-0.1528,-0.171,-0.1907,-0.2104,-0.2301,-0.2498}
 ,{0.0,0.0,0.0,0.0,0.0,0.0}};
 
-float const CYrast::x3h[20][10]={
+double const CYrast::x3h[20][10]={
 {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0},
 {-0.00012,-0.00014,-0.00016,-0.00018,-0.0002,-0.00024,-0.00029,-0.00036,
 -0.00065,-0.00089},
@@ -74,7 +74,7 @@ float const CYrast::x3h[20][10]={
 {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0}};
 
 
-float const CYrast::x1b[11][6]={
+double const CYrast::x1b[11][6]={
 {0.28,.243,.221,.208,.195,.18},
 {.211,.186,.17,.1506,.136,.12},
 {0.152,.131,.1155,.096,.0795,.0625},
@@ -87,7 +87,7 @@ float const CYrast::x1b[11][6]={
 {.0,.0,.0,.0,.0,.0},
 {0.,0.,0.,0.,0.,0.}};
 
-float const CYrast::x2b[11][6]={
+double const CYrast::x2b[11][6]={
 {.18,.1695,.1515,.133,.1155,.0949},
 {.1495,.1363,.1165,.099,.0815,.0594},
 {.12,.1032,.0864,.0678,.0469,.028},
@@ -101,7 +101,7 @@ float const CYrast::x2b[11][6]={
 {0.,0.,0.,0.,0.,0.}};
 
 
-float const CYrast::x3b[20][10]={
+double const CYrast::x3b[20][10]={
 {.0949,.0755,.0564,.0382,.0223,.0121,.00588,.00242,.00069,.0001},
 {.0873,.0684,.049,.0306,.0162,.0074,.00267,.00055,0.,0.},
 {.0801,.061,.0418,.0235,.0108,.00373,.00071,0.,0.,0.},
@@ -372,21 +372,21 @@ double const CYrast::b[8][5][5]={
 
 
 
-float const CYrast::hbarc=197.32858;
-float const CYrast::alfinv=137.035982;
-float const CYrast::srznw=1.16;
-float const CYrast::aknw=2.3;
-float const CYrast::bb=0.99;
-float const CYrast::um=931.5016;
-float const CYrast::elm=0.51104;
-float const CYrast::spdlt=2.99792458e23;
-float const CYrast::asnw=21.13;
-float const CYrast::kx[8]={0.0,0.08299,0.1632,0.2435,0.3217,0.402
+double const CYrast::hbarc=197.32858;
+double const CYrast::alfinv=137.035982;
+double const CYrast::srznw=1.16;
+double const CYrast::aknw=2.3;
+double const CYrast::bb=0.99;
+double const CYrast::um=931.5016;
+double const CYrast::elm=0.51104;
+double const CYrast::spdlt=2.99792458e23;
+double const CYrast::asnw=21.13;
+double const CYrast::kx[8]={0.0,0.08299,0.1632,0.2435,0.3217,0.402
 			    ,0.51182,0.617422};
-float const CYrast::ky[6]={0.0,0.02,0.05,0.10,0.15,0.20};
-float const CYrast::ka[11]={0.0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1.};
-float const CYrast::r0=1.225;
-float const CYrast::sep=2.;
+double const CYrast::ky[6]={0.0,0.02,0.05,0.10,0.15,0.20};
+double const CYrast::ka[11]={0.0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1.};
+double const CYrast::r0=1.225;
+double const CYrast::sep=2.;
 
 
 
@@ -448,84 +448,84 @@ CYrast* CYrast::instance()
  * \param iA is the mass number
  * \param fL is the angular momentum in hbar
  */
-float CYrast::getYrastRLDM(int iZ, int iA, float fL)
+double CYrast::getYrastRLDM(int iZ, int iA, double fL)
 {
-    const float fZ = (float)iZ;
-    const float fA = (float)iA;
-    const float fN = fA - fZ;
+    const double fZ = (double)iZ;
+    const double fA = (double)iA;
+    const double fN = fA - fZ;
 
-    const float asym = (fN - fZ) / fA;
-    float paren = 1.0f - 1.7826f * (asym * asym);
+    const double asym = (fN - fZ) / fA;
+    double paren = 1.0f - 1.7826f * (asym * asym);
     if (paren <= 0.0f) paren = 0.1f;
 
     // Replace pow(fA, 2/3), pow(fA, 5/3), pow(fA, 7/3) using cbrt
-    const float a13 = cbrtf(fA);          // A^(1/3)
-    const float a23 = a13 * a13;          // A^(2/3)
-    const float a53 = fA * a23;           // A^(5/3) = A * A^(2/3)
-    const float a73 = (fA * fA) * a13;    // A^(7/3) = A^2 * A^(1/3)
+    const double a13 = cbrt(fA);          // A^(1/3)
+    const double a23 = a13 * a13;          // A^(2/3)
+    const double a53 = fA * a23;           // A^(5/3) = A * A^(2/3)
+    const double a73 = (fA * fA) * a13;    // A^(7/3) = A^2 * A^(1/3)
 
-    const float eso = 17.9439f * paren * a23;
-    const float x   = 0.019655f * fZ * (fZ / fA) / paren;
+    const double eso = 17.9439f * paren * a23;
+    const double x   = 0.019655f * fZ * (fZ / fA) / paren;
 
-    const float fL2 = fL * fL;
-    const float ero = 34.548f * fL2 / a53;
-    const float y   = 1.9254f * fL2 / (paren * a73);
+    const double fL2 = fL * fL;
+    const double ero = 34.548f * fL2 / a53;
+    const double y   = 1.9254f * fL2 / (paren * a73);
 
     int ix = (int)(20.0f * x + 1.0f);
-    const float bx = 20.0f * x + 1.0f;
-    const float dx = bx - (float)ix;
+    const double bx = 20.0f * x + 1.0f;
+    const double dx = bx - (double)ix;
 
-    float hf = 0.0f;
+    double hf = 0.0f;
 
     if (x <= 0.25f)
     {
-        float by = 10.0f * y + 1.0f;
+        double by = 10.0f * y + 1.0f;
         if (by > 9.0f) by = 9.0f;
         if (by < 1.0f) by = 1.0f;
 
         const int iy = (int)by;
-        const float dy = by - (float)iy;
+        const double dy = by - (double)iy;
 
-        const float h1 = (x1h[iy - 1][ix] - x1h[iy - 1][ix - 1]) * dx + x1h[iy - 1][ix - 1];
+        const double h1 = (x1h[iy - 1][ix] - x1h[iy - 1][ix - 1]) * dx + x1h[iy - 1][ix - 1];
 
         // NOTE: kept your original expression (it has x1h[iy][ix]-x1h[iy][ix] which is 0)
-        const float h2 = (x1h[iy][ix] - x1h[iy][ix]) * dx + x1h[iy][ix];
+        const double h2 = (x1h[iy][ix] - x1h[iy][ix]) * dx + x1h[iy][ix];
 
         hf = (h2 - h1) * dy + h1;
     }
     else if (x < 0.5f)
     {
-        float by = 20.0f * y + 1.0f;
+        double by = 20.0f * y + 1.0f;
         if (by > 11.0f) by = 10.0f;
         if (by < 1.0f)  by = 1.0f;
 
         ix = ix - 5;
 
         const int iy = (int)by;
-        const float dy = by - (float)iy;
+        const double dy = by - (double)iy;
 
-        const float h1 = (x2h[iy - 1][ix] - x2h[iy - 1][ix - 1]) * dx + x2h[iy - 1][ix - 1];
-        const float h2 = (x2h[iy][ix]     - x2h[iy][ix - 1])     * dx + x2h[iy][ix - 1];
+        const double h1 = (x2h[iy - 1][ix] - x2h[iy - 1][ix - 1]) * dx + x2h[iy - 1][ix - 1];
+        const double h2 = (x2h[iy][ix]     - x2h[iy][ix - 1])     * dx + x2h[iy][ix - 1];
 
         hf = (h2 - h1) * dy + h1;
     }
     else
     {
-        float xx = x;
+        double xx = x;
         if (xx > 0.94999999f) xx = 0.949999999f;
 
         ix = (int)(20.0f * xx + 1.0f);
         ix = ix - 10;
 
-        float by = 100.0f * y + 1.0f;
+        double by = 100.0f * y + 1.0f;
         if (by > 19.0f) by = 19.0f;
         if (by < 1.0f)  by = 1.0f;
 
         const int iy = (int)by;
-        const float dy = by - (float)iy;
+        const double dy = by - (double)iy;
 
-        const float h1 = (x3h[iy - 1][ix] - x3h[iy - 1][ix - 1]) * dx + x3h[iy - 1][ix - 1];
-        const float h2 = (x3h[iy][ix]     - x3h[iy][ix - 1])     * dx + x3h[iy][ix - 1];
+        const double h1 = (x3h[iy - 1][ix] - x3h[iy - 1][ix - 1]) * dx + x3h[iy - 1][ix - 1];
+        const double h2 = (x3h[iy][ix]     - x3h[iy][ix - 1])     * dx + x3h[iy][ix - 1];
 
         hf = (h2 - h1) * dy + h1;
     }
@@ -558,7 +558,7 @@ void CYrast::lpoly(double x, int n, double* pl)
  * value for a spherical nucleus
  * \param J is the angular momentum
  */
-float CYrast::getBsSierk(float J)
+double CYrast::getBsSierk(double J)
 {
     const double xa = A / 320.0;
     const double JJ = (double)J / Jmax;
@@ -580,7 +580,7 @@ float CYrast::getBsSierk(float J)
                 bs += b[izz][iaa][ill] * pzz[izz] * paa[iaa] * pl[2 * ill];
 
     if (bs < 1.0) bs = 1.0;
-    return (float)bs;
+    return (double)bs;
 }
 
 //**************************************
@@ -591,7 +591,7 @@ float CYrast::getBsSierk(float J)
  * \param iZ is proton number
  * \param iA is the mass number
  */
-float CYrast::getJmaxSierk(int iZ, int iA)
+double CYrast::getJmaxSierk(int iZ, int iA)
 {
     if (iZ < 19 || iZ > 111)
     {
@@ -624,7 +624,7 @@ float CYrast::getJmaxSierk(int iZ, int iA)
         for (int k = 0; k < 7; k++)
             Jmax += emxcof[i][k] * pz[k] * pa[i];
 
-    return (float)Jmax;
+    return (double)Jmax;
 }
 
 //******************************************
@@ -633,7 +633,7 @@ float CYrast::getJmaxSierk(int iZ, int iA)
  * The function getJmaxSierk() must be called beforehand
  * \param J is the angular momentum in hbar
  */
-float CYrast::getBarrierFissionSierk(float J)
+double CYrast::getBarrierFissionSierk(double J)
 {
     const double dJ = (double)J;
 
@@ -648,7 +648,7 @@ float CYrast::getBarrierFissionSierk(float J)
         for (int k = 0; k < 7; k++)
             bfis += elzcof[i][k] * pz[k] * pa[i];
 
-    if (dJ < 1.0) return (float)bfis;
+    if (dJ < 1.0) return (double)bfis;
 
     double J80 = 0.0;
     double J20 = 0.0;
@@ -678,47 +678,47 @@ float CYrast::getBarrierFissionSierk(float J)
     }
     else
     {
-        const float x = (float)(J20 / Jmax);
-        const float y = (float)(J80 / Jmax);
+        const double x = (double)(J20 / Jmax);
+        const double y = (double)(J80 / Jmax);
 
-        const float x2 = x * x;
-        const float x4 = x2 * x2;
-        const float x5 = x4 * x;
+        const double x2 = x * x;
+        const double x4 = x2 * x2;
+        const double x5 = x4 * x;
 
-        const float y2 = y * y;
-        const float y4 = y2 * y2;
-        const float y5 = y4 * y;
+        const double y2 = y * y;
+        const double y4 = y2 * y2;
+        const double y5 = y4 * y;
 
-        const float ym1 = (y - 1.0f);
-        const float xm1 = (x - 1.0f);
+        const double ym1 = (y - 1.0f);
+        const double xm1 = (x - 1.0f);
 
-        const float aj = (-20.0f * x5 + 25.0f * x4 - 4.0f) * (ym1 * ym1) * y2;
-        const float ak = (-20.0f * y5 + 25.0f * y4 - 1.0f) * (xm1 * xm1) * x2;
+        const double aj = (-20.0f * x5 + 25.0f * x4 - 4.0f) * (ym1 * ym1) * y2;
+        const double ak = (-20.0f * y5 + 25.0f * y4 - 1.0f) * (xm1 * xm1) * x2;
 
-        const float oneMinusX = (1.0f - x);
-        const float oneMinusY = (1.0f - y);
-        const float t = (oneMinusX * oneMinusY * x * y);
-        const float q = 0.2f / ((y - x) * (t * t));
+        const double oneMinusX = (1.0f - x);
+        const double oneMinusY = (1.0f - y);
+        const double t = (oneMinusX * oneMinusY * x * y);
+        const double q = 0.2f / ((y - x) * (t * t));
 
-        const float qa = q * (aj * y - ak * x);
-        const float qb = -q * (aj * (2.0f * y + 1.0f) - ak * (2.0f * x + 1.0f));
+        const double qa = q * (aj * y - ak * x);
+        const double qb = -q * (aj * (2.0f * y + 1.0f) - ak * (2.0f * x + 1.0f));
 
-        const float zzz = (float)(dJ / Jmax);
-        const float z2 = zzz * zzz;
-        const float z4 = z2 * z2;
-        const float z5 = z4 * zzz;
+        const double zzz = (double)(dJ / Jmax);
+        const double z2 = zzz * zzz;
+        const double z4 = z2 * z2;
+        const double z5 = z4 * zzz;
 
-        const float a1 = 4.0f * z5 - 5.0f * z4 + 1.0f;
-        const float a2 = qa * (2.0f * zzz + 1.0f);
+        const double a1 = 4.0f * z5 - 5.0f * z4 + 1.0f;
+        const double a2 = qa * (2.0f * zzz + 1.0f);
 
-        const float zm1 = (zzz - 1.0f);
+        const double zm1 = (zzz - 1.0f);
         bfis *= (double)(a1 + zm1 * (a2 + qb * zzz) * z2 * zm1);
     }
 
     if (bfis <= 0.0) bfis = 0.0;
-    if (J > (float)Jmax) bfis = 0.0;
+    if (J > (double)Jmax) bfis = 0.0;
 
-    return (float)bfis;
+    return (double)bfis;
 }
 
 //*****************************************
@@ -727,7 +727,7 @@ float CYrast::getBarrierFissionSierk(float J)
  * Units are in MeV. The function getJmaxSierk must be called beforehand.
  * \param J is the angular momentum
  */
-float CYrast::getYrastSierk(float J)
+double CYrast::getYrastSierk(double J)
 {
     if (Z > 102.0 && J > 0.0f)
     {
@@ -753,7 +753,7 @@ float CYrast::getYrastSierk(float J)
                 Erot += egscof[k][l][m] * pz[l] * pa[k] * pl[2 * m];
 
     if (Erot < 0.0) Erot = 0.0;
-    return (float)Erot;
+    return (double)Erot;
 }
 
 //*****************************************************
@@ -763,7 +763,7 @@ float CYrast::getYrastSierk(float J)
  * of Sierk. The function getJmaxSierk must be called beforehand.
  * \param J is the angular momentum
  */
-float CYrast::getMomentOfInertiaSierk(float J)
+double CYrast::getMomentOfInertiaSierk(double J)
 {
     const double JJ = (double)J / Jmax;
 
@@ -919,13 +919,13 @@ float CYrast::getMomentOfInertiaSierk(float J)
     }
 
     if (momInertiaMid > momInertiaMax) momInertiaMid = momInertiaMax;
-    momInertiaMid = max(momInertiaMid, (float)0.0);
+    momInertiaMid = max(momInertiaMid, (double)0.0);
 
     // momInertiaSphere = 0.4 * r0^2 * A^(5/3)
     const double A13 = cbrt(A);
     const double A23 = A13 * A13;
     const double A53 = A * A23;
-    const float momInertiaSphere = (float)(0.4 * (r0 * r0) * A53);
+    const double momInertiaSphere = (double)(0.4 * (r0 * r0) * A53);
 
     momInertiaMax *= momInertiaSphere;
     momInertiaMid *= momInertiaSphere;
@@ -941,78 +941,78 @@ float CYrast::getMomentOfInertiaSierk(float J)
  * \param iA is the mass number
  * \param fJ is the angular momentum
  */
-float CYrast::getBarrierFissionRLDM(int iZ, int iA, float fJ)
+double CYrast::getBarrierFissionRLDM(int iZ, int iA, double fJ)
 {
-    const float A = (float)iA;
-    const float Z = (float)iZ;
-    const float N = A - Z;
+    const double A = (double)iA;
+    const double Z = (double)iZ;
+    const double N = A - Z;
 
-    const float asym = (N - Z) / A;
-    float paren = 1.0f - 1.7826f * (asym * asym);
+    const double asym = (N - Z) / A;
+    double paren = 1.0f - 1.7826f * (asym * asym);
 
-    const float a13 = cbrtf(A);
-    const float a23 = a13 * a13;
-    const float a73 = (A * A) * a13; // A^(7/3)
+    const double a13 = cbrt(A);
+    const double a23 = a13 * a13;
+    const double a73 = (A * A) * a13; // A^(7/3)
 
-    const float eso = 17.9439f * paren * a23;
-    const float x   = 0.019655f * Z * (Z / A) / paren;
+    const double eso = 17.9439f * paren * a23;
+    const double x   = 0.019655f * Z * (Z / A) / paren;
 
-    const float fJ2 = fJ * fJ;
-    const float y   = 1.9254f * fJ2 / (paren * a73);
+    const double fJ2 = fJ * fJ;
+    const double y   = 1.9254f * fJ2 / (paren * a73);
 
     int ix = (int)(20.0f * x + 0.999f);
-    const float bx = 20.0f * x + 0.999f;
-    const float dx = bx - (float)ix;
+    const double bx = 20.0f * x + 0.999f;
+    const double dx = bx - (double)ix;
 
-    float bf = 0.0f;
+    double bf = 0.0f;
 
     if (x <= 0.25f)
     {
-        float by = 10.0f * y + 0.999f;
+        double by = 10.0f * y + 0.999f;
         if (by > 9.0f) by = 9.0f;
         if (by < 1.0f) by = 1.0f;
 
         const int iy = (int)by;
-        const float dy = by - (float)iy;
+        const double dy = by - (double)iy;
 
-        const float b2 = (x1b[iy][ix]     - x1b[iy][ix - 1])     * dx + x1b[iy][ix - 1];
-        const float b1 = (x1b[iy - 1][ix] - x1b[iy - 1][ix - 1]) * dx + x1b[iy - 1][ix - 1];
+        const double b2 = (x1b[iy][ix]     - x1b[iy][ix - 1])     * dx + x1b[iy][ix - 1];
+        const double b1 = (x1b[iy - 1][ix] - x1b[iy - 1][ix - 1]) * dx + x1b[iy - 1][ix - 1];
 
         bf = (b2 - b1) * dy + b1;
     }
     else if (x <= 0.5f)
     {
-        float by = 20.0f * y + 0.999f;
+        double by = 20.0f * y + 0.999f;
         if (by > 11.0f) by = 11.0f;
         if (by < 1.0f)  by = 1.0f;
 
         ix = ix - 5;
 
         const int iy = (int)by;
-        const float dy = by - (float)iy;
+        const double dy = by - (double)iy;
 
-        const float b1 = (x2b[iy - 1][ix] - x2b[iy - 1][ix - 1]) * dx + x2b[iy - 1][ix - 1];
-        const float b2 = (x2b[iy][ix]     - x2b[iy][ix - 1])     * dx + x2b[iy][ix - 1];
+        const double b1 = (x2b[iy - 1][ix] - x2b[iy - 1][ix - 1]) * dx + x2b[iy - 1][ix - 1];
+        const double b2 = (x2b[iy][ix]     - x2b[iy][ix - 1])     * dx + x2b[iy][ix - 1];
 
         bf = (b2 - b1) * dy + b1;
     }
     else
     {
-        float xx = x;
+        double xx = x;
         if (xx > 0.95f) xx = 0.95f;
 
         ix = (int)(20.0f * xx + 0.999f);
         ix = ix - 10;
 
-        float by = 100.0f * y + 0.999f;
+        double by = 100.0f * y + 0.999f;
         if (by > 19.0f) by = 19.0f;
         if (by < 1.0f)  by = 1.0f;
 
         const int iy = (int)by;
-        const float dy = by - (float)iy;
+        const double dy = by - (double)iy;
 
-        const float b1 = (x3b[iy - 1][ix] - x3b[iy - 1][ix - 1]) * dx + x3b[iy - 1][ix - 1];
-        const float b2 = (x3b[iy][ix]     - x3b[iy][ix - 1])     * dx + x3b[iy][ix - 1];
+        const double b1 = (x3b[iy - 1][ix] - x3b[iy - 1][ix - 1]) * dx + x3b[iy - 1][ix - 1];
+        const double b2 = (x3b[iy][ix]     - x3b[iy][ix - 1])     * dx + x3b[iy][ix - 1];
 
         bf = (b2 - b1) * dy + b1;
     }
@@ -1024,7 +1024,7 @@ float CYrast::getBarrierFissionRLDM(int iZ, int iA, float fJ)
 /**
  * Cubic polynomial used in 2D cubic spline interpolation
  */
-float CYrast::cubic(float a, float b, float c, float d, float e, float f)
+double CYrast::cubic(double a, double b, double c, double d, double e, double f)
 {
     // no pow here already
     return a + f * (e * c + f * (3.0f * (b - a) - (d + 2.0f * c) * e
@@ -1039,50 +1039,50 @@ float CYrast::cubic(float a, float b, float c, float d, float e, float f)
  * \param iA0 is the mass number
  * \param fJ0 is the angular momentum in hbar
  */
-void CYrast::prepareAsyBarrier(int iZ0, int iA0, float fJ0)
+void CYrast::prepareAsyBarrier(int iZ0, int iA0, double fJ0)
 {
     iZ = iZ0;
     iA = iA0;
     fJ = fJ0;
 
-    const float A = (float)iA;
-    const float Z = (float)iZ;
+    const double A = (double)iA;
+    const double Z = (double)iZ;
 
     Narray = (int)(A / 2.0f);
 
     int ia = -1;
 
-    const float ac = 0.6f * hbarc / alfinv / srznw;
+    const double ac = 0.6f * hbarc / alfinv / srznw;
 
     // pow(A,1/3) and pow(A,2/3)
-    const float A13 = cbrtf(A);
-    const float A23 = A13 * A13;
+    const double A13 = cbrt(A);
+    const double A23 = A13 * A13;
 
-    const float rz = srznw * A13;
+    const double rz = srznw * A13;
 
-    const float asym = (A - 2.0f * Z) / A;
-    float cs = asnw * (1.0f - aknw * (asym * asym));
+    const double asym = (A - 2.0f * Z) / A;
+    double cs = asnw * (1.0f - aknw * (asym * asym));
 
     // (bb/(1.4142*srznw))^3  and (Z/A)^2
-    const float tbb = bb / (1.4142f * srznw);
-    const float tbb3 = tbb * tbb * tbb;
+    const double tbb = bb / (1.4142f * srznw);
+    const double tbb3 = tbb * tbb * tbb;
 
-    const float ZoverA = Z / A;
-    const float ZoverA2 = ZoverA * ZoverA;
+    const double ZoverA = Z / A;
+    const double ZoverA2 = ZoverA * ZoverA;
 
-    const float delcs =
+    const double delcs =
         45.0f * hbarc / (8.0f * srznw * alfinv) * tbb3 * ZoverA2;
 
     cs = cs + delcs;
 
-    const float esz = cs * A23;
+    const double esz = cs * A23;
 
-    const float emz = um * A - elm * Z;
+    const double emz = um * A - elm * Z;
 
     // zsqoa = Z^2 / A (avoid pow)
-    const float zsqoa = (Z * Z) / A;
+    const double zsqoa = (Z * Z) / A;
 
-    float x = ac * zsqoa / (2.0f * cs);
+    double x = ac * zsqoa / (2.0f * cs);
 
     if (x > 0.61743f)
     {
@@ -1111,30 +1111,30 @@ void CYrast::prepareAsyBarrier(int iZ0, int iA0, float fJ0)
         abort();
     }
 
-    const float tz = rz * sqrtf(emz / esz) / spdlt;
-    const float elz = esz * tz;
-    const float elzohb = elz / 6.582173e-22f;
+    const double tz = rz * sqrt(emz / esz) / spdlt;
+    const double elz = esz * tz;
+    const double elzohb = elz / 6.582173e-22f;
 
     // y = 1.25 * (fJ/elzohb)^2
-    const float ratio = fJ / elzohb;
-    float y = 1.25f * (ratio * ratio);
+    const double ratio = fJ / elzohb;
+    double y = 1.25f * (ratio * ratio);
 
     //----------find normalization factor-------------------
-    float sadf;
+    double sadf;
 
     if (Z >= 19.0f)
     {
         // polynomial in x: replace pow(x,n) with multiplies
-        const float x2 = x * x;
-        const float x3 = x2 * x;
-        const float x4 = x2 * x2;
-        const float x5 = x4 * x;
+        const double x2 = x * x;
+        const double x3 = x2 * x;
+        const double x4 = x2 * x2;
+        const double x5 = x4 * x;
 
-        const float sad0 =
+        const double sad0 =
             -5.5286e-2f + 190.03f * x + 235.189f * x2
             - 2471.249f * x3 + 4266.905f * x4 - 2576.048f * x5;
 
-        float bfis;
+        double bfis;
         if (x >= 0.6174f)
             bfis = 13.86f; // more fissile than 194Hg
         else
@@ -1147,13 +1147,13 @@ void CYrast::prepareAsyBarrier(int iZ0, int iA0, float fJ0)
     }
     else
     {
-        const float x2 = x * x;
-        const float x3 = x2 * x;
+        const double x2 = x * x;
+        const double x3 = x2 * x;
 
-        const float ess = 2376.0f * x - 6062.4f * x2 + 8418.3f * x3;
+        const double ess = 2376.0f * x - 6062.4f * x2 + 8418.3f * x3;
 
         // sadf = (esz/ess)^2.12  -> keep pow (non-integer exponent)
-        sadf = powf(esz / ess, 2.12f);
+        sadf = pow(esz / ess, 2.12f);
     }
 
     //-----select subroutines for cubic-spline interpolation--
@@ -1161,7 +1161,7 @@ void CYrast::prepareAsyBarrier(int iZ0, int iA0, float fJ0)
     // find nearest knots for interpolation
     int iy = 1;
     bool yExtrapolation = false;
-    float yy = 0.0f;
+    double yy = 0.0f;
 
     if (y > ky[5])
     {
@@ -1193,22 +1193,22 @@ void CYrast::prepareAsyBarrier(int iZ0, int iA0, float fJ0)
     // now y is between knots ky[iy] & ky[iy+1] and x is
     // between knots kx[ix] & kx[ix+1]
 
-    const float Dkx = kx[ix + 1] - kx[ix];
-    const float Rx  = (x - kx[ix]) / Dkx;
+    const double Dkx = kx[ix + 1] - kx[ix];
+    const double Rx  = (x - kx[ix]) / Dkx;
 
-    const float Dky = ky[iy + 1] - ky[iy];
-    const float Ry  = (y - ky[iy]) / Dky;
+    const double Dky = ky[iy + 1] - ky[iy];
+    const double Ry  = (y - ky[iy]) / Dky;
 
-    float Dka = 0.0f;
-    float C0 = 0.0f;
-    float C1 = 0.0f;
-    float C2 = 0.0f;
-    float C3 = 0.0f;
+    double Dka = 0.0f;
+    double C0 = 0.0f;
+    double C1 = 0.0f;
+    double C2 = 0.0f;
+    double C3 = 0.0f;
 
     //--- fill array with saddle point energies-------
     for (int ii = Narray; ii > 0; ii--)
     {
-        const float alpha = (A - 2.0f * (float)ii) / A;
+        const double alpha = (A - 2.0f * (double)ii) / A;
 
         if (alpha >= ka[ia + 1])
         {
@@ -1218,16 +1218,16 @@ void CYrast::prepareAsyBarrier(int iZ0, int iA0, float fJ0)
                 ia++;
             }
 
-            float k1 = cubic(c[iy][ix][0][ia][0],     c[iy][ix + 1][0][ia][0],
+            double k1 = cubic(c[iy][ix][0][ia][0],     c[iy][ix + 1][0][ia][0],
                              c[iy][ix][1][ia][0],     c[iy][ix + 1][1][ia][0], Dkx, Rx);
 
-            float k2 = cubic(c[iy][ix][0][ia + 1][0], c[iy][ix + 1][0][ia + 1][0],
+            double k2 = cubic(c[iy][ix][0][ia + 1][0], c[iy][ix + 1][0][ia + 1][0],
                              c[iy][ix][1][ia + 1][0], c[iy][ix + 1][1][ia + 1][0], Dkx, Rx);
 
-            float k3 = cubic(c[iy][ix][0][ia][1],     c[iy][ix + 1][0][ia][1],
+            double k3 = cubic(c[iy][ix][0][ia][1],     c[iy][ix + 1][0][ia][1],
                              c[iy][ix][1][ia][1],     c[iy][ix + 1][1][ia][1], Dkx, Rx);
 
-            float k4 = cubic(c[iy][ix][0][ia + 1][1], c[iy][ix + 1][0][ia + 1][1],
+            double k4 = cubic(c[iy][ix][0][ia + 1][1], c[iy][ix + 1][0][ia + 1][1],
                              c[iy][ix][1][ia + 1][1], c[iy][ix + 1][1][ia + 1][1], Dkx, Rx);
 
             Dka = ka[ia + 1] - ka[ia];
@@ -1258,52 +1258,51 @@ void CYrast::prepareAsyBarrier(int iZ0, int iA0, float fJ0)
             }
         }
 
-        const float Ra = (alpha - ka[ia]) / Dka;
+        const double Ra = (alpha - ka[ia]) / Dka;
 
         // replace pow(Ra,2/3) with multiplies
-        const float Ra2 = Ra * Ra;
-        const float Ra3 = Ra2 * Ra;
+        const double Ra2 = Ra * Ra;
+        const double Ra3 = Ra2 * Ra;
 
         sadArray[ii] = (C0 + C1 * Ra + C2 * Ra2 + C3 * Ra3) * sadf;
 
         // extrapolation beyond last y knot
         if (yExtrapolation)
         {
-            const float A1 = (float)ii;
-            const float A2 = A - A1;
+            const double A1 = (double)ii;
+            const double A2 = A - A1;
 
-            const float A1_13 = cbrtf(A1);
-            const float A2_13 = cbrtf(A2);
+            const double A1_13 = cbrt(A1);
 
-            const float r1 = A1_13 * r0;
+            const double r1 = A1_13 * r0;
 
             // NOTE: your original code had pow(A2,1/2) here (likely a bug),
             // but I keep it exactly as-is: A2^(1/2)
-            const float r2 = sqrtf(A2) * r0;
+            const double r2 = sqrt(A2) * r0;
 
-            const float Areduced = A1 * A2 / A;
+            const double Areduced = A1 * A2 / A;
 
-            const float r1_2 = r1 * r1;
-            const float r2_2 = r2 * r2;
+            const double r1_2 = r1 * r1;
+            const double r2_2 = r2 * r2;
 
-            const float sum = (r1 + r2 + sep);
-            const float sum2 = sum * sum;
+            const double sum = (r1 + r2 + sep);
+            const double sum2 = sum * sum;
 
-            const float MomInertia =
+            const double MomInertia =
                 0.4f * A1 * r1_2 + 0.4f * A2 * r2_2 + Areduced * sum2;
 
-            const float fJ2 = fJ * fJ;
+            const double fJ2 = fJ * fJ;
             sadArray[ii] += fJ2 * (1.0f - y / yy) / (2.0f * MomInertia) * kRotate;
         }
     }
 
     for (int ii = 5; ii <= Narray; ii++)
     {
-        const float A1 = (float)ii;
-        const float A2 = A - A1;
+        const double A1 = (double)ii;
+        const double A2 = A - A1;
 
-        const float Z1 = (A1 / A) * Z;
-        const float Z2 = Z - Z1;
+        const double Z1 = (A1 / A) * Z;
+        const double Z2 = Z - Z1;
 
         const int ia1 = (int)A1;
         const int ia2 = (int)A2;
@@ -1313,7 +1312,7 @@ void CYrast::prepareAsyBarrier(int iZ0, int iA0, float fJ0)
 
         const int iz2 = (int)Z2;
 
-        float Mass1 = mass->getLDM(iz1, ia1);
+        double Mass1 = mass->getLDM(iz1, ia1);
 
         // turn off decays outside bounds
         if (Mass1 == -1000.0f)
@@ -1322,10 +1321,10 @@ void CYrast::prepareAsyBarrier(int iZ0, int iA0, float fJ0)
             continue;
         }
 
-        float tmp = mass->getLDM(iz1 + 1, ia1);
-        Mass1 += (tmp - Mass1) * (Z1 - (float)iz1);
+        double tmp = mass->getLDM(iz1 + 1, ia1);
+        Mass1 += (tmp - Mass1) * (Z1 - (double)iz1);
 
-        float Mass2 = mass->getLDM(iz2, ia2);
+        double Mass2 = mass->getLDM(iz2, ia2);
 
         // turn off decays outside bounds
         if (Mass2 == -1000.0f)
@@ -1335,12 +1334,12 @@ void CYrast::prepareAsyBarrier(int iZ0, int iA0, float fJ0)
         }
 
         tmp = mass->getLDM(iz2 + 1, ia2);
-        Mass2 += (tmp - Mass2) * (Z2 - (float)iz2);
+        Mass2 += (tmp - Mass2) * (Z2 - (double)iz2);
 
-        const float r1 = r0 * cbrtf(A1);
-        const float r2 = r0 * cbrtf(A2);
+        const double r1 = r0 * cbrt(A1);
+        const double r2 = r0 * cbrt(A2);
 
-        const float Ecoul = Z1 * Z2 * 1.44f / (r1 + r2 + sep);
+        const double Ecoul = Z1 * Z2 * 1.44f / (r1 + r2 + sep);
 
         sadArrayZA[ii] = sadArray[ii] - Mass1 - Mass2 - Ecoul;
     }
@@ -1362,19 +1361,19 @@ void CYrast::printAsyBarrier()
  * have the same Z/A as the parent nucleus
  * \param A1 is the mass number of one of the nascient fragments
  */
-float CYrast::getSaddlePointEnergy(float A1)
+double CYrast::getSaddlePointEnergy(double A1)
 {
-    if (A1 > (float)iA / 2.0f) A1 = (float)iA - A1;
+    if (A1 > (double)iA / 2.0f) A1 = (double)iA - A1;
 
     const int iA1 = (int)A1;
 
-    const float Esaddle1 = sadArray[iA1];
+    const double Esaddle1 = sadArray[iA1];
 
     if (2 * iA1 + 1 >= iA) return Esaddle1;
 
-    const float Esaddle2 = sadArray[iA1 + 1];
+    const double Esaddle2 = sadArray[iA1 + 1];
 
-    return Esaddle1 + (Esaddle2 - Esaddle1) * (A1 - (float)iA1) + addBar;
+    return Esaddle1 + (Esaddle2 - Esaddle1) * (A1 - (double)iA1) + addBar;
 }
 
 //***********************************************
@@ -1384,7 +1383,7 @@ float CYrast::getSaddlePointEnergy(float A1)
  * \param iZ1 is the proton number
  * \param iA1 is the mass number
  */
-float CYrast::getSaddlePointEnergy(int iZ1, int iA1)
+double CYrast::getSaddlePointEnergy(int iZ1, int iA1)
 {
     const int iZ2 = iZ - iZ1;
     const int iA2 = iA - iA1;
@@ -1392,13 +1391,13 @@ float CYrast::getSaddlePointEnergy(int iZ1, int iA1)
     int iAmin = iA1;
     if (iA2 < iAmin) iAmin = iA2;
 
-    const float mass1 = mass->getLDM(iZ1, iA1);
-    const float mass2 = mass->getLDM(iZ2, iA2);
+    const double mass1 = mass->getLDM(iZ1, iA1);
+    const double mass2 = mass->getLDM(iZ2, iA2);
 
-    const float r1 = r0 * cbrtf((float)iA1);
-    const float r2 = r0 * cbrtf((float)iA2);
+    const double r1 = r0 * cbrt((double)iA1);
+    const double r2 = r0 * cbrt((double)iA2);
 
-    const float Ecoul = 1.44f * (float)iZ1 * (float)iZ2 / (r1 + r2 + sep);
+    const double Ecoul = 1.44f * (double)iZ1 * (double)iZ2 / (r1 + r2 + sep);
 
     return sadArrayZA[iAmin] + mass1 + mass2 + Ecoul + addBar;
 }
@@ -1412,26 +1411,26 @@ float CYrast::getSaddlePointEnergy(int iZ1, int iA1)
  * \param iA is the mass number
  * \param fJ is the angular momentum
  */
-float CYrast::getYrastModel(int iZ, int iA, float fJ)
+double CYrast::getYrastModel(int iZ, int iA, double fJ)
 {
     if (iZ < 19 || iZ > 102) return getYrastRLDM(iZ, iA, fJ);
 
     getJmaxSierk(iZ, iA);
 
-    if (fJ < (float)Jmax - deltaJ) return getYrastSierk(fJ);
+    if (fJ < (double)Jmax - deltaJ) return getYrastSierk(fJ);
 
-    float MInertia = getMomentOfInertiaSierk((float)Jmax - deltaJ);
+    double MInertia = getMomentOfInertiaSierk((double)Jmax - deltaJ);
 
     // Sierk routine has given negative inertias for very exotic nuclei
     if (MInertia <= 0.0f)
     {
-        const float R = r0 * cbrtf((float)iA);
-        MInertia = 0.4f * (float)iA * (R * R);
+        const double R = r0 * cbrt((double)iA);
+        MInertia = 0.4f * (double)iA * (R * R);
     }
 
-    const float fJ2 = fJ * fJ;
-    const float J0  = (float)Jmax - deltaJ;
-    const float J02 = J0 * J0;
+    const double fJ2 = fJ * fJ;
+    const double J0  = (double)Jmax - deltaJ;
+    const double J02 = J0 * J0;
 
     return getYrastSierk(fJ - deltaJ)
            + 0.5f * (fJ2 - J02) / MInertia * kRotate;
@@ -1446,16 +1445,16 @@ float CYrast::getYrastModel(int iZ, int iA, float fJ)
  * \param iA is the mass number
  * \param fJ is the angular momentum
  */
-float CYrast::getYrast(int iZ, int iA, float fJ)
+double CYrast::getYrast(int iZ, int iA, double fJ)
 {
     if (bForceSierk) return getYrastModel(iZ, iA, fJ);
 
-    const float fJChange = 0.319f * (float)iA;
+    const double fJChange = 0.319f * (double)iA;
 
     if (fJ < fJChange) return getYrastModel(iZ, iA, fJ);
 
-    const float r1 = getYrastModel(iZ, iA, fJChange);
-    const float r2 = getYrastModel(iZ, iA, fJChange + 1.0f);
+    const double r1 = getYrastModel(iZ, iA, fJChange);
+    const double r2 = getYrastModel(iZ, iA, fJChange + 1.0f);
 
     return r1 + (fJ - fJChange) * (r2 - r1);
 }
@@ -1467,7 +1466,7 @@ float CYrast::getYrast(int iZ, int iA, float fJ)
  * \param iA is the mass number
  * \param fJ is the angular momentum
  */
-float CYrast::getSymmetricSaddleEnergy(int iZ, int iA, float fJ)
+double CYrast::getSymmetricSaddleEnergy(int iZ, int iA, double fJ)
 {
     if (iZ > 102)
         return getYrast(iZ, iA, fJ) + getBarrierFissionRLDM(iZ, iA, fJ);
@@ -1499,10 +1498,10 @@ void CYrast::printParameters()
  * \param iZ is the proton number
  * \param iA is the mass number
  */
-float CYrast::WignerEnergy(int iZ, int iA)
+double CYrast::WignerEnergy(int iZ, int iA)
 {
-    const float azero = 2.693f;
-    const float absI = fabsf((float)(iA - 2 * iZ) / (float)iA);
+    const double azero = 2.693f;
+    const double absI = fabs((double)(iA - 2 * iZ) / (double)iA);
 
     if (absI > 0.35f) return 6.716f + azero;
 

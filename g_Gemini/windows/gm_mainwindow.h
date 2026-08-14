@@ -23,17 +23,17 @@ public:
 
     int iZCN;// proton number of compound nucleus
     int iACN;//  mass number of compound nucleus
-    float fEx;//excitation energy of compound nucleus
-    float fJ;//  spin of compound nucleus
+    double fEx;//excitation energy of compound nucleus
+    double fJ;//  spin of compound nucleus
     int num_casc;
 
     int Zp ; // proton number of projectile
     int Ap; // mass number of projectile
     int Zt; // proton number of target
     int At; //mass number of target
-    float Elab; // lab energy in MeV
-    float dif; //diffuseness of fusion spin distribution in hbar
-    float l0;
+    double Elab; // lab energy in MeV
+    double dif; //diffuseness of fusion spin distribution in hbar
+    double l0;
     int length;
     int num_events;
     int spinOption;

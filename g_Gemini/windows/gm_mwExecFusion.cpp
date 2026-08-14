@@ -95,22 +95,22 @@ void MainWindow::execute_fusion()
     CFus fus(Zp,Ap,Zt,At,Elab,dif);
 
     CNucleus CN(fus.iZcn,fus.iAcn); //constructor
-    float ffEx = fus.Ex;             //excitation energy of compound nucleus
+    double ffEx = fus.Ex;             //excitation energy of compound nucleus
 
     if(spinOption==1) l0 = fus.getBassL();  // get maximum spin from Bass model
 
     //construct fusion spin distribution
 
     int lmax = (int)l0 +5;  // maxium spin considered
-    float prob[301];
+    double prob[301];
     lmax = qMin(300,lmax);
-    float sum = 0.;
+    double sum = 0.;
 
     for (int l=0;l<=lmax;l++)
     {
-        prob[l] =  (float)(2*l+1);
+        prob[l] =  (double)(2*l+1);
 
-        if (dif > 0.) prob[l] /= (1.+exp(((float)l-l0)/dif));
+        if (dif > 0.) prob[l] /= (1.+exp(((double)l-l0)/dif));
         else if ( l > l0)  prob[l] = 0.;
 
         sum += prob[l];
@@ -122,7 +122,7 @@ void MainWindow::execute_fusion()
         if (l > 0) prob[l] += prob[l-1];
     }
 
-    float xfus = sum*fus.plb;
+    double xfus = sum*fus.plb;
 
     CN.setEvapMode(_optEvap);  // force a fully Hauser-Feshbach calculation
 
@@ -141,25 +141,25 @@ void MainWindow::execute_fusion()
     //cout << "cone printing parameters" << std::endl;
     //define and zero events parameters
 
-    float total = 0.;
-    float Nfission = 0.;
-    float Nimf = 0.;
-    float neutPreSad = 0.;
-    float neutSaddleToScission = 0.;
-    float neutHeavy = 0.;
-    float neutLight = 0.;
+    double total = 0.;
+    double Nfission = 0.;
+    double Nimf = 0.;
+    double neutPreSad = 0.;
+    double neutSaddleToScission = 0.;
+    double neutHeavy = 0.;
+    double neutLight = 0.;
 
-    float imf_total = 0;
-    float sym_total = 0;
+    double imf_total = 0;
+    double sym_total = 0;
 
-    float Ares = 0.;
-    float Zres = 0.;
-    float resTotal = 0.;
-    float neutMultEv = 0.;
-    float protMultEv = 0.;
-    float alpMultEv = 0.;
+    double Ares = 0.;
+    double Zres = 0.;
+    double resTotal = 0.;
+    double neutMultEv = 0.;
+    double protMultEv = 0.;
+    double alpMultEv = 0.;
 
-    float gammaEnergy = 0.;
+    double gammaEnergy = 0.;
 
     length = 101; // for hash;
     Residual resid[101];
@@ -182,34 +182,34 @@ void MainWindow::execute_fusion()
     gammaAngular.z = 0;
     gammaAngular.n = 0;
 
-    const float betaCN = std::sqrt(
+    const double betaCN = std::sqrt(
         2.0f * (Elab * Ap / (Ap + At)) / (931.49432f * (Ap + At))
         );
 
     auto computeKinematics = [&](CNucleus *particle,
-                                 float &keLab,
-                                 float &thetaLabDeg,
-                                 float &vzLab,
-                                 float &vxy,
-                                 float &cmEnergy)
+                                 double &keLab,
+                                 double &thetaLabDeg,
+                                 double &vzLab,
+                                 double &vxy,
+                                 double &cmEnergy)
     {
-        float *vel = particle->getVelocityVector();
+        double *vel = particle->getVelocityVector();
 
-        const float vx = vel[0] / 30.f;
-        const float vy = vel[1] / 30.f;
-        const float vzLocal = vel[2] / 30.f;
+        const double vx = vel[0] / 30.f;
+        const double vy = vel[1] / 30.f;
+        const double vzLocal = vel[2] / 30.f;
         vzLab = vzLocal + betaCN;
         vxy = std::sqrt(vx * vx + vy * vy);
-        const float massMeV = particle->iA * 931.49432f;
+        const double massMeV = particle->iA * 931.49432f;
 
-        const float betaTot = std::sqrt(vx * vx + vy * vy + vzLab * vzLab);
+        const double betaTot = std::sqrt(vx * vx + vy * vy + vzLab * vzLab);
         thetaLabDeg = 0.f;
         if (betaTot > 0.f)
         {
-            float c = vzLab / betaTot;
+            double c = vzLab / betaTot;
             if (c > 1.f) c = 1.f;
             if (c < -1.f) c = -1.f;
-            thetaLabDeg = static_cast<float>(std::acos(c) * 57.29577951308232);
+            thetaLabDeg = static_cast<double>(std::acos(c) * 57.29577951308232);
         }
 
         keLab = 0.5f * massMeV * (vx * vx + vy * vy + vzLab * vzLab);
@@ -228,7 +228,7 @@ void MainWindow::execute_fusion()
 
         //--------------------------------------------------------------
         //choose the spin of the CN from the determed spin distribution
-        float ran = CN.ran->Rndm();
+        double ran = CN.ran->Rndm();
         int l = 0;
         for (;;)
         {
@@ -238,7 +238,7 @@ void MainWindow::execute_fusion()
         //-------------------------------------------------------------------
 
         //specify the excitation energy and spin
-        CN.setCompoundNucleus(ffEx,(float)l);
+        CN.setCompoundNucleus(ffEx,(double)l);
 
         //---------------------------------------------------------------------- IMF begin
         //if you are interested in IMF emission at low excitation energy
@@ -268,7 +268,7 @@ void MainWindow::execute_fusion()
         CNucleus *products = CN.getProducts(Nfrag-1);
 
         // the weight will be unity unless setWeightIMF is called
-        float weight = products->getWeightFactor();
+        double weight = products->getWeightFactor();
 
         const bool isSymmetricFission = CN.isSymmetricFission();
         const bool isAsymmetricFission = CN.isAsymmetricFission();
@@ -305,11 +305,11 @@ void MainWindow::execute_fusion()
             {
                 if (imfProducts->iZ > zMaxEvap)
                 {
-                    float keLab = 0.f;
-                    float thetaLabDeg = 0.f;
-                    float vzLab = 0.f;
-                    float vxy = 0.f;
-                    float cmEnergy = 0.f;
+                    double keLab = 0.f;
+                    double thetaLabDeg = 0.f;
+                    double vzLab = 0.f;
+                    double vxy = 0.f;
+                    double cmEnergy = 0.f;
                     computeKinematics(imfProducts, keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
                     addAngularSample(imfAngularByZN,
                                      imfProducts->iZ,
@@ -349,14 +349,14 @@ void MainWindow::execute_fusion()
             Ares += products->iA;
             Zres += products->iZ;
             resTotal += weight;
-            const float eventGammaEnergy = products->getSumGammaEnergy();
+            const double eventGammaEnergy = products->getSumGammaEnergy();
             gammaEnergy += weight * eventGammaEnergy;
 
-            float keLab = 0.f;
-            float thetaLabDeg = 0.f;
-            float vzLab = 0.f;
-            float vxy = 0.f;
-            float cmEnergy = 0.f;
+            double keLab = 0.f;
+            double thetaLabDeg = 0.f;
+            double vzLab = 0.f;
+            double vxy = 0.f;
+            double cmEnergy = 0.f;
 
             computeKinematics(products, keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
 
@@ -390,11 +390,11 @@ void MainWindow::execute_fusion()
             if (products->iZ == 0 && products->iA == 1 && isResidue)  //neutrons
             {
                 neutMultEv += weight;
-                float keLab = 0.f;
-                float thetaLabDeg = 0.f;
-                float vzLab = 0.f;
-                float vxy = 0.f;
-                float cmEnergy = 0.f;
+                double keLab = 0.f;
+                double thetaLabDeg = 0.f;
+                double vzLab = 0.f;
+                double vxy = 0.f;
+                double cmEnergy = 0.f;
                 computeKinematics(products, keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
                 addAngularSample(neutronAngular, keLab, thetaLabDeg, vzLab, vxy,
                                  cmEnergy);
@@ -404,11 +404,11 @@ void MainWindow::execute_fusion()
                 if(products->iA == 1 )
                 {
                     protMultEv += weight;
-                    float keLab = 0.f;
-                    float thetaLabDeg = 0.f;
-                    float vzLab = 0.f;
-                    float vxy = 0.f;
-                    float cmEnergy = 0.f;
+                    double keLab = 0.f;
+                    double thetaLabDeg = 0.f;
+                    double vzLab = 0.f;
+                    double vxy = 0.f;
+                    double cmEnergy = 0.f;
                     computeKinematics(products, keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
                     addAngularSample(protonAngular, keLab, thetaLabDeg, vzLab, vxy,
                                       cmEnergy);
@@ -419,11 +419,11 @@ void MainWindow::execute_fusion()
                 if( products->iA == 4)
                 {
                     alpMultEv += weight;
-                    float keLab = 0.f;
-                    float thetaLabDeg = 0.f;
-                    float vzLab = 0.f;
-                    float vxy = 0.f;
-                    float cmEnergy = 0.f;
+                    double keLab = 0.f;
+                    double thetaLabDeg = 0.f;
+                    double vzLab = 0.f;
+                    double vxy = 0.f;
+                    double cmEnergy = 0.f;
                     computeKinematics(products, keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
                     addAngularSample(alphaAngular, keLab, thetaLabDeg, vzLab, vxy,
                                      cmEnergy);
@@ -441,7 +441,7 @@ void MainWindow::execute_fusion()
 
     //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW  cascade BEGIN
     int _INPUT = 1;
-    float Sconst = xfus/float(qMax(1, counter));
+    double Sconst = xfus/double(qMax(1, counter));
 
     if(file_cs) {
         fprintf(file_cs,"!-title- Zcomp  Ncomp  Energy  CSfus  Input _AJNUC\n");
@@ -503,7 +503,7 @@ void MainWindow::execute_fusion()
     results += "<tr><th align=\"left\">TOTAL</th><td align=\"center\"><b>" + QString::number(imf_total+sym_total+countResidue) + "<b></td></tr>";
     results += "</table>;";
     //------------------------------------------------------
-    results += buildMergedYieldTableHtml("Yields of Residual Nuclei and IMF Particles",
+    results += buildMergedYieldTableHtml("Yields of Residual Nuclei and IMF Particles ",
                                          resid,
                                          length,
                                          countResidue,

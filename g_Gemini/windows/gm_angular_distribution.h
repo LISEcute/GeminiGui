@@ -13,61 +13,61 @@ struct AngularDistEntry
 {
     int z = 0;
     int n = 0;
-    std::vector<float> kineticEnergy;
-    std::vector<float> thetaDeg;
-    std::vector<float> vz;
-    std::vector<float> vxy;
-    std::vector<float> cmEnergy;
-    std::vector<float> weight;
+    std::vector<double> kineticEnergy;
+    std::vector<double> thetaDeg;
+    std::vector<double> vz;
+    std::vector<double> vxy;
+    std::vector<double> cmEnergy;
+    std::vector<double> weight;
 };
 
 void addAngularSample(AngularDistEntry &entry,
-                      float kineticEnergy,
-                      float thetaDeg,
-                      float vz,
-                      float vxy);
+                      double kineticEnergy,
+                      double thetaDeg,
+                      double vz,
+                      double vxy);
 
 void addAngularSample(AngularDistEntry &entry,
-                      float kineticEnergy,
-                      float thetaDeg,
-                      float vz,
-                      float vxy,
-                      float cmEnergy);
+                      double kineticEnergy,
+                      double thetaDeg,
+                      double vz,
+                      double vxy,
+                      double cmEnergy);
 
 void addAngularSample(AngularDistEntry &entry,
-                      float kineticEnergy,
-                      float thetaDeg,
-                      float vz,
-                      float vxy,
-                      float cmEnergy,
-                      float weight);
+                      double kineticEnergy,
+                      double thetaDeg,
+                      double vz,
+                      double vxy,
+                      double cmEnergy,
+                      double weight);
 
 void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
                       int z,
                       int n,
-                      float kineticEnergy,
-                      float thetaDeg,
-                      float vz,
-                      float vxy);
+                      double kineticEnergy,
+                      double thetaDeg,
+                      double vz,
+                      double vxy);
 
 void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
                       int z,
                       int n,
-                      float kineticEnergy,
-                      float thetaDeg,
-                      float vz,
-                      float vxy,
-                      float cmEnergy);
+                      double kineticEnergy,
+                      double thetaDeg,
+                      double vz,
+                      double vxy,
+                      double cmEnergy);
 
 void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
                       int z,
                       int n,
-                      float kineticEnergy,
-                      float thetaDeg,
-                      float vz,
-                      float vxy,
-                      float cmEnergy,
-                      float weight);
+                      double kineticEnergy,
+                      double thetaDeg,
+                      double vz,
+                      double vxy,
+                      double cmEnergy,
+                      double weight);
 
 QString buildEmittedParticleCMSpectraHtmlGemini(
     const AngularDistEntry &neutronEntry,

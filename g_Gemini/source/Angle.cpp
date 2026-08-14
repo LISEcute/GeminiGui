@@ -5,12 +5,12 @@ using namespace std;
 // following line is needed in ROOT version
 //ClassImp(CAngle)
 
-float const CAngle::pi=acos(-1.);
+double const CAngle::pi=acos(-1.);
 
 /**
  * Constructor
  */
-CAngle::CAngle(float theta0, float phi0)
+CAngle::CAngle(double theta0, double phi0)
 {
   theta = theta0;
   phi = phi0;
@@ -42,18 +42,18 @@ CAngle CAngle::transform(CAngle angle1, CAngle angle2)
 
   // rotate vector in x-y plane by -phi2
   // and find cartesian coordinates
-  float xp = sin(angle1.theta)*cos(angle1.phi-angle2.phi);
-  float yp = sin(angle1.theta)*sin(angle1.phi-angle2.phi);
-  float zp = cos(angle1.theta);
+  double xp = sin(angle1.theta)*cos(angle1.phi-angle2.phi);
+  double yp = sin(angle1.theta)*sin(angle1.phi-angle2.phi);
+  double zp = cos(angle1.theta);
 
   // rotate vector in z-x plane by theta2
-  float zt = zp*cos(angle2.theta) - xp*sin(angle2.theta);
-  float xt = xp*cos(angle2.theta) + zp*sin(angle2.theta);
-  float yt = yp;
+  double zt = zp*cos(angle2.theta) - xp*sin(angle2.theta);
+  double xt = xp*cos(angle2.theta) + zp*sin(angle2.theta);
+  double yt = yp;
 
   // rotate vector in x-y plane back by +phi2
   // and find spherical coordinates
-  float theta3, phi3;
+  double theta3, phi3;
   if (xt == 0.0 && yt == 0.0) phi3 = 0.;
   else
    {

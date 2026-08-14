@@ -22,7 +22,7 @@ void MainWindow::execute_compound()
 {
     QString filename_cs =  FFileName.split(".",Qt::SkipEmptyParts).at(0) + ".cs4";
 
-    float _SIGMA = 100;
+    double _SIGMA = 100;
     FILE *file_cs;
     file_cs=fopen(filename_cs.toStdString().c_str(),"wt");
     int _INPUT = 2;
@@ -42,11 +42,11 @@ void MainWindow::execute_compound()
     iZCN = ui->edit_ZCN->text().toInt();
     iACN = ui->edit_ACN->text().toInt();
     CNucleus CN(iZCN,iACN); //constructor
-    fEx = ui->edit_Ex->text().toFloat();
-    fJ =  ui->edit_J->text().toFloat();
+    fEx = ui->edit_Ex->text().toDouble();
+    fJ =  ui->edit_J->text().toDouble();
     CN.setCompoundNucleus(fEx,fJ); //specify the excitation energy and spin
     CN.setVelocityCartesian(); // set initial CN velocity to zero
-    CAngle spin(CNucleus::pi/2,(float)0.);
+    CAngle spin(CNucleus::pi/2,(double)0.);
     CN.setSpinAxis(spin); //set the direction of the CN spin vector
 
     if(file_cs) {
@@ -74,35 +74,35 @@ void MainWindow::execute_compound()
         {
         resid[i].count = 0;}
         int countResidue = 0;
-        float SIG = 0;
-        float SIG_ER = 0;
+        double SIG = 0;
+        double SIG_ER = 0;
         CN.setEvapMode(1);
 
-        float total = 0.;
-        float Nfission = 0.;
-        float Nimf = 0.;
-        float neutPreSad = 0.;
-        float hell = 0.;
-        float neutSaddleToScission = 0.;
-        float neutHeavy = 0.;
-        float neutLight = 0.;
+        double total = 0.;
+        double Nfission = 0.;
+        double Nimf = 0.;
+        double neutPreSad = 0.;
+        double hell = 0.;
+        double neutSaddleToScission = 0.;
+        double neutHeavy = 0.;
+        double neutLight = 0.;
 
-        float imf_total = 0;
-        float sym_total = 0;
+        double imf_total = 0;
+        double sym_total = 0;
 
-//        float Ares = 0.;
-//        float Zres = 0.;
-        float resTotal = 0.;
-        float neutMultEv = 0.;
-        float protMultEv = 0.;
-        float alpMultEv = 0.;
-        float gammaEnergy = 0.;
-        float sum3 = 0.;
-        float sum4 = 0.;
-        float sum5 = 0.;
-        float sum6 = 0.;
+//        double Ares = 0.;
+//        double Zres = 0.;
+        double resTotal = 0.;
+        double neutMultEv = 0.;
+        double protMultEv = 0.;
+        double alpMultEv = 0.;
+        double gammaEnergy = 0.;
+        double sum3 = 0.;
+        double sum4 = 0.;
+        double sum5 = 0.;
+        double sum6 = 0.;
 
-        //float Sconst = xfus/(float)num_casc;
+        //double Sconst = xfus/(double)num_casc;
         //qDebug() << "num_casc = " << num_casc;
   //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW  cascade BEGIN
         for (int i=0;i<num_casc;i++)
@@ -133,7 +133,7 @@ void MainWindow::execute_compound()
             // fragments produced in decay
             CNucleus * products = CN.getProducts(Nfrag-1);
             //products->useAME = useAMEmass;
-            float weight = products->getWeightFactor();
+            double weight = products->getWeightFactor();
 
         //CNucleus * products = CN.getProducts(0); //set pointer to first
         //stable product
@@ -232,9 +232,9 @@ void MainWindow::execute_compound()
 /*    results += "<tr><th style=\"color:green;\">Result</th><th style=\"color:green;\">Number</th><th style=\"color:green;\">Cross section</th></tr>";// + QString::number(imf_total) + "</td></tr>";
     results += "<tr><th>Intermediate Mass Fragments</th><td>" + QString::number(imf_total) + "</td><td>" + QString::number(imf_total/num_casc)+ "</td></tr>";
     results += "<tr><th>Symmetric Fission</th><td>" + QString::number(sym_total) + "</td><td>" + QString::number(sym_total/num_casc)+ "</td></tr>";
-    results += "<tr><th>Residual Nuclei</th><td>" + QString::number(countResidue) + "</td><td>" + QString::number((float)countResidue/(float)num_casc)+ "</td></tr>";
+    results += "<tr><th>Residual Nuclei</th><td>" + QString::number(countResidue) + "</td><td>" + QString::number((double)countResidue/(double)num_casc)+ "</td></tr>";
 */
-    //float _SIGMA = resTotal*Sconst;
+    //double _SIGMA = resTotal*Sconst;
     results += "</table>;";
 
         //CN.reset();
@@ -249,20 +249,20 @@ void MainWindow::execute_compound()
         {
         //if(residualCount[i] != 0){
             if(resid[i].count != 0){
-           // SIG = 100*(float)residualCount[i]/countResidue;
-                SIG = 100*(float)resid[i].count/countResidue;
+           // SIG = 100*(double)residualCount[i]/countResidue;
+                SIG = 100*(double)resid[i].count/countResidue;
             SIG_ER = sqrt(SIG);
            // results += "<tr><td>" + QString::number(residualZ[i])+ "</td><td style=\"font-weight:bold\">" + QString::fromStdString(residualName[i]) + "</td><td>" + QString::number(residualCount[i]) + "</td><td>" +
-             //       QString::number(100*(float)residualCount[i]/countResidue,'f',1) +"%</td><td>" +QString::number(100*(float)residualCount[i]/countResidue,'f',1) + "</td></tr>";
+             //       QString::number(100*(double)residualCount[i]/countResidue,'f',1) +"%</td><td>" +QString::number(100*(double)residualCount[i]/countResidue,'f',1) + "</td></tr>";
             results += "<tr><td>" + QString::number(resid[i].Z)+ "</td><td style=\"font-weight:bold\">" + QString::fromStdString(resid[i].name) + "</td><td>" + QString::number(resid[i].count) + "</td><td>" +
-                              QString::number(100*(float)resid[i].count/countResidue,'f',1) +"%</td><td>" +  "</td></tr>";
+                              QString::number(100*(double)resid[i].count/countResidue,'f',1) +"%</td><td>" +  "</td></tr>";
 
             /** add code for .cs4 here OR move file writing to cs_file.cpp or other file (better option filereadwrite.cpp) **/
             //fprintf(file_cs,"\n%d %d %10.3g %10.3g",residualZ[i],residualN[i],SIG,SIG_ER);
             fprintf(file_cs,"\n%d %d %10.3g %10.3g",resid[i].Z,resid[i].A-resid[i].Z,SIG,SIG_ER);
         }
     }
-    results += "<tr><td></td><td colspan=\"1\" style=\"font-weight:bold; color:green;\">Total</td><td>"+ QString::number(countResidue) + "</td><td></td></tr></table>";// + QString::number(sum*fus.plb*(float)countResidue)+ "</td></tr></table>";
+    results += "<tr><td></td><td colspan=\"1\" style=\"font-weight:bold; color:green;\">Total</td><td>"+ QString::number(countResidue) + "</td><td></td></tr></table>";// + QString::number(sum*fus.plb*(double)countResidue)+ "</td></tr></table>";
 
  //   results += "</table>";
 
@@ -318,12 +318,12 @@ void MainWindow::execute_fusion()
     Zt = ui->edit_ZT->text().toInt();
     Ap = ui->edit_AP->text().toInt();
     At = ui->edit_AT->text().toInt();
-    Elab = ui->edit_ExP->text().toFloat();
-    dif = ui->edit_dif->text().toFloat();
+    Elab = ui->edit_ExP->text().toDouble();
+    dif = ui->edit_dif->text().toDouble();
     CFus fus(Zp,Ap,Zt,At,Elab,dif);
 
     if(ui->radioButton->isChecked()){
-        l0 = ui->edit_max_spin->text().toFloat(); //get maximum spin from paper?
+        l0 = ui->edit_max_spin->text().toDouble(); //get maximum spin from paper?
         }
     else {
         l0 = fus.getBassL();  // get maximum spin from Bass model
@@ -332,16 +332,16 @@ void MainWindow::execute_fusion()
 
     int lmax = (int)l0 +5;  // maxium spin considered
     // const int llmax = lmax;
-    //float prob[lmax+1];
+    //double prob[lmax+1];
 
-    float prob[101];
-    float sum = 0.;
+    double prob[101];
+    double sum = 0.;
 
     for (int l=0;l<=lmax;l++)
         {
-        prob[l] =  (float)(2*l+1);
+        prob[l] =  (double)(2*l+1);
 
-             if (dif > 0.) prob[l] /= (1.+exp(((float)l-l0)/dif));
+             if (dif > 0.) prob[l] /= (1.+exp(((double)l-l0)/dif));
         else if ( l > l0)  prob[l] = 0.;
 
         sum += prob[l];
@@ -354,7 +354,7 @@ void MainWindow::execute_fusion()
         }
 
     CNucleus CNN(fus.iZcn,fus.iAcn); //constructor
-    float ffEx = fus.Ex;             //excitation energy of compound nucleus
+    double ffEx = fus.Ex;             //excitation energy of compound nucleus
 
     results += "<h3 style=\"color:blue;\">Starting Conditions</h3>";
     results += "<table cellpadding=5><tr><th></th><th>Z</th><th> N</th><th>A</th><th style=\"font-weight:bold\"><sup>A </sup>El</th></tr>";
@@ -392,7 +392,7 @@ void MainWindow::execute_fusion()
     results += " E<sub>X</sub> = " + QString::number(ffEx) + " &nbsp; Critical spin = " + QString::number(l0, 'f' ,1)  + " &#8463;<br>";
     // results += " fusion xsection = " + QString::number(sum*fus.plb) + " mb <br>";
 
-    float xfus = sum*fus.plb;
+    double xfus = sum*fus.plb;
 
     CNN.setEvapMode(1);  // force a fully Hauser-Feshbach calculation
    // ui->textBrowser->setText(results);
@@ -412,36 +412,36 @@ void MainWindow::execute_fusion()
     //cout << "cone printing parameters" << Qt::endl;
     //define and zero events parameters
 
-    float total = 0.;
-    float Nfission = 0.;
-    float Nimf = 0.;
-    float hell = 0.;
-    float neutPreSad = 0.;
-    float neutSaddleToScission = 0.;
-    float neutHeavy = 0.;
-    float neutLight = 0.;
+    double total = 0.;
+    double Nfission = 0.;
+    double Nimf = 0.;
+    double hell = 0.;
+    double neutPreSad = 0.;
+    double neutSaddleToScission = 0.;
+    double neutHeavy = 0.;
+    double neutLight = 0.;
 
-    float imf_total = 0;
-    float sym_total = 0;
+    double imf_total = 0;
+    double sym_total = 0;
 
-    float Ares = 0.;
-    float Zres = 0.;
-    float resTotal = 0.;
-    float neutMultEv = 0.;
-    float protMultEv = 0.;
-    float alpMultEv = 0.;
-    float gammaEnergy = 0.;
+    double Ares = 0.;
+    double Zres = 0.;
+    double resTotal = 0.;
+    double neutMultEv = 0.;
+    double protMultEv = 0.;
+    double alpMultEv = 0.;
+    double gammaEnergy = 0.;
 
 
-    float sum3 = 0.;
-    float sum4 = 0.;
-    float sum5 = 0.;
-    float sum6 = 0.;
+    double sum3 = 0.;
+    double sum4 = 0.;
+    double sum5 = 0.;
+    double sum6 = 0.;
 
     length = 101; // for hash;
 
     int Nevents = ui->num_Events->text().toInt();
-    float Sconst = xfus/(float)Nevents;
+    double Sconst = xfus/(double)Nevents;
     //int residualCount[length];
 
     Residual resid[101];
@@ -463,7 +463,7 @@ void MainWindow::execute_fusion()
         progress.setValue(i);
         qApp->processEvents();
         //choose the spin of the CN from the determed spin distribution
-        float ran = CNN.ran.Rndm();
+        double ran = CNN.ran.Rndm();
         int l = 0;
         for (;;)
             {
@@ -472,7 +472,7 @@ void MainWindow::execute_fusion()
             }
 
         //specify the excitation energy and spin
-        CNN.setCompoundNucleus(ffEx,(float)l);
+        CNN.setCompoundNucleus(ffEx,(double)l);
 
         //if you are interested in IMF emission at low excitation energy
         //then turn IMF weighting on
@@ -496,7 +496,7 @@ void MainWindow::execute_fusion()
         CNucleus * products = CNN.getProducts(Nfrag-1);
         //products->useAME = useAMEmass;
         // the weight will be unity unless setWeightIMF is called
-        float weight = products->getWeightFactor();
+        double weight = products->getWeightFactor();
 
         //cout << "weight factor = " << weight << Qt::endl;
 
@@ -589,10 +589,10 @@ void MainWindow::execute_fusion()
     results += "<tr><th>Residual Nuclei</th><td>" + QString::number(countResidue) + "</td><td>" + QString::number(resTotal*Sconst)+ "</td></tr>";
 
  */
-    float _SIGMA = resTotal*Sconst;
+    double _SIGMA = resTotal*Sconst;
 
-    float SIG = 0;
-    float SIG_ER = 0;
+    double SIG = 0;
+    double SIG_ER = 0;
     results += "<tr><th>TOTAL</th><td><b>" + QString::number(imf_total+sym_total+countResidue) + "<b></td></tr>";
     results += "</table><p>&nbsp;</p>";
     results += "<h3 align=\"center\" style=\"color: blue\"> Yields of Residual Nuclei </h3>";
@@ -618,14 +618,14 @@ void MainWindow::execute_fusion()
          {
          if(resid[i].count != 0)
             {
-            //SIG = sum*fus.plb*(float)residualCount[i]/countResidue;
-            SIG     = xfus *      (float)resid[i].count  / countResidue;
-            SIG_ER =  SIG /  sqrt((float)resid[i].count);
+            //SIG = sum*fus.plb*(double)residualCount[i]/countResidue;
+            SIG     = xfus *      (double)resid[i].count  / countResidue;
+            SIG_ER =  SIG /  sqrt((double)resid[i].count);
             results += "<tr>"
                        "<td>" + QString::number(resid[i].Z) + "</td>"
                        "<td style=\"font-weight:bold\">" + QString::fromStdString(resid[i].name) + "</td>"
                        "<td>" + QString::number(resid[i].count) + "</td>"
-                       "<td>" + QString::number(100*(float)resid[i].count/countResidue,'f',1) +"%</td>"
+                       "<td>" + QString::number(100*(double)resid[i].count/countResidue,'f',1) +"%</td>"
                        "<td>" + QString::number(SIG   ,'f',2) + "</td>"
                        "<td>" + QString::number(SIG_ER,'f',2) + "</td>"
                        "</tr>";

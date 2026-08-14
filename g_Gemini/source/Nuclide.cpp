@@ -81,7 +81,7 @@ strGChemName = QString(sGCN.c_str());
 /**
  * Returns the excess mass of the nuclide
  */
-float CNuclide::getExcessMass()
+double CNuclide::getExcessMass()
 {
   fExpMass = mass->getExpMass(iZ,iA); // no this line in new original source
   return fExpMass;

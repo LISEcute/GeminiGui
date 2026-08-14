@@ -2,15 +2,15 @@
 
 #include <QString>
 #include <QFile>
-float CSigBarDist::width=1.;
-float const CSigBarDist::width0=1.5;
+double CSigBarDist::width=1.;
+double const CSigBarDist::width0=1.5;
 
 //****************************************************************
 /**
    * constructor
    /param sName0 is the name of the files containing fitted coeff.
   */
-CSigBarDist::CSigBarDist(const QString& sName0, float Zp0, float Ap0)
+CSigBarDist::CSigBarDist(const QString& sName0, double Zp0, double Ap0)
 {
 
   Zp = Zp0;
@@ -61,12 +61,12 @@ CSigBarDist::~CSigBarDist()
  \param fEk is the kinetic energy of the evaporated particle
  \param temp is temperature of daughter in MeV
  */
-float CSigBarDist::getInverseXsec(float fEk, float temp)
+double CSigBarDist::getInverseXsec(double fEk, double temp)
 {
   if (one || temp <= 0. || width == 0.)
     return sigCharged[1]->getInverseXsec(fEk);
-  float deltaR = sqrt(temp)*width;
-  float ee[3];
+  double deltaR = sqrt(temp)*width;
+  double ee[3];
   for (int i=0;i<3;i++)
     {
       ee[i] = sigCharged[i]->getInverseXsec(fEk);
@@ -75,15 +75,15 @@ float CSigBarDist::getInverseXsec(float fEk, float temp)
 
 
   /*
-  float c1 = (ee[2]-ee[0])/2./width0;
-  float c2 = (ee[2]+ee[0]-2.*ee[1])/pow(width0,2)/2.;
-  float s0 =  ee[1] + deltaR*c1 + c2*pow(deltaR,2);
-  float s1 = ee[1];
-  float s2 = ee[1] - deltaR*c1 + c2*pow(deltaR,2);
+  double c1 = (ee[2]-ee[0])/2./width0;
+  double c2 = (ee[2]+ee[0]-2.*ee[1])/pow(width0,2)/2.;
+  double s0 =  ee[1] + deltaR*c1 + c2*pow(deltaR,2);
+  double s1 = ee[1];
+  double s2 = ee[1] - deltaR*c1 + c2*pow(deltaR,2);
   return (s0+s1+s2)/3.;
   */
-  float c2 = (ee[2] + ee[0] - 2.f*ee[1]) / (width0*width0) / 2.f;
-  float out = ee[1] + 2.f/3.f * c2 * (deltaR*deltaR);
+  double c2 = (ee[2] + ee[0] - 2.f*ee[1]) / (width0*width0) / 2.f;
+  double out = ee[1] + 2.f/3.f * c2 * (deltaR*deltaR);
 
   if (out < 0.) out = 0.;
   return out;
@@ -93,7 +93,7 @@ float CSigBarDist::getInverseXsec(float fEk, float temp)
  * set the parameter controlling the width of the barrier distribution
 \param width00 - radial shift is \f$ \Delta R= \sqrt T* width00 \f$
  */
-void CSigBarDist::setBarWidth(float width00)
+void CSigBarDist::setBarWidth(double width00)
 {
   width = width00;
 }
@@ -101,7 +101,7 @@ void CSigBarDist::setBarWidth(float width00)
 /**
  * returns the parameter controlling the width of the barrier dist
  */
-float CSigBarDist::getBarWidth()
+double CSigBarDist::getBarWidth()
 {
   return width;
 }
@@ -119,7 +119,7 @@ void CSigBarDist::printParameters()
    *  prepares for a series of opertions for a given iZ
    /param iZ0 is proton number of daughter
    */
-void CSigBarDist::prepare(float Z0, float A0)
+void CSigBarDist::prepare(double Z0, double A0)
 {
   Z = Z0;
   A = A0;
@@ -132,7 +132,7 @@ void CSigBarDist::prepare(float Z0, float A0)
 /**
    * returns the barrier in MeV
    */
-float CSigBarDist::getBarrier()
+double CSigBarDist::getBarrier()
 {
   return sigCharged[1]->getBarrier();
 }

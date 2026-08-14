@@ -2,8 +2,8 @@
 
 #include <QFile>
 #include <QDebug>
-float CTlBarDist::width=1.;
-float const CTlBarDist::width0=1.5;
+double CTlBarDist::width=1.;
+double const CTlBarDist::width0=1.5;
 
 //****************************************************************
   /**
@@ -57,14 +57,14 @@ CTlBarDist::~CTlBarDist()
 /param fEk is the kinetic energy in MeV of the evaporated particle
 /param temp is the temperature in MeV of daughter
   */ 
-float CTlBarDist::getTl(int iL, float fEk, float temp)
+double CTlBarDist::getTl(int iL, double fEk, double temp)
 {
   if (one || temp <= 0. || width == 0.) return tlArray[1]->getTl(iL,fEk);
   if (tlArray[0]->iZMin >= iZ) return tlArray[1]->getTl(iL,fEk);
   if (tlArray[2]->iZMin >= iZ) return tlArray[1]->getTl(iL,fEk);
 
-  float deltaR = sqrt(temp)*width;
-  float ee[3];
+  double deltaR = sqrt(temp)*width;
+  double ee[3];
   for (int i=0;i<3;i++) ee[i] = tlArray[i]->getTermInExp(iL,fEk);
 
 
@@ -105,13 +105,13 @@ float CTlBarDist::getTl(int iL, float fEk, float temp)
     }
   
 
-  float c1 = (ee[2]-ee[0])/2./width0;
-    float c2 = (ee[2]+ee[0]-2.*ee[1])/(width0*width0)/2.;
+  double c1 = (ee[2]-ee[0])/2./width0;
+    double c2 = (ee[2]+ee[0]-2.*ee[1])/(width0*width0)/2.;
 
 
-  float Tl = 1./(1.+exp(ee[1]));
-  //float eee = ee[1] + deltaR*(c1 + c2*deltaR);
-  float eee = ee[1] + deltaR*c1 + c2*(deltaR*deltaR);
+  double Tl = 1./(1.+exp(ee[1]));
+  //double eee = ee[1] + deltaR*(c1 + c2*deltaR);
+  double eee = ee[1] + deltaR*c1 + c2*(deltaR*deltaR);
   Tl += 1./(1.+exp(eee));
   //eee = ee[1] - deltaR*(c1 - c2*deltaR);
   eee = ee[1] - deltaR*c1 + c2*(deltaR*deltaR);
@@ -130,14 +130,14 @@ float CTlBarDist::getTl(int iL, float fEk, float temp)
 /param fEk is the kinetic energy in MeV of the evaporated particle
 /param temp is the temperature in MeV of daughter
   */ 
-float CTlBarDist::getTlLow(int iL, float fEk, float temp)
+double CTlBarDist::getTlLow(int iL, double fEk, double temp)
 {
   if (one || temp <= 0. || width == 0.) return tlArray[1]->getTl(iL,fEk);
   if (tlArray[0]->iZMin >= iZ) return tlArray[1]->getTl(iL,fEk);
   if (tlArray[2]->iZMin >= iZ) return tlArray[1]->getTl(iL,fEk);
 
-  float deltaR = sqrt(temp)*width;
-  float ee[3];
+  double deltaR = sqrt(temp)*width;
+  double ee[3];
   for (int i=0;i<3;i++) ee[i] = tlArray[i]->getTermInExp(iL,fEk);
 
 
@@ -178,12 +178,12 @@ float CTlBarDist::getTlLow(int iL, float fEk, float temp)
     }
   
 
-  float c1 = (ee[2]-ee[0])/2./width0;
-  float c2 = (ee[2]+ee[0]-2.*ee[1])/(width0*width0)/2.;
+  double c1 = (ee[2]-ee[0])/2./width0;
+  double c2 = (ee[2]+ee[0]-2.*ee[1])/(width0*width0)/2.;
 
 
-  float eee = ee[1] + deltaR*c1 + c2*(deltaR*deltaR);
-  float Tl = 1./(1.+exp(eee));
+  double eee = ee[1] + deltaR*c1 + c2*(deltaR*deltaR);
+  double Tl = 1./(1.+exp(eee));
   return Tl;
 
 }
@@ -197,14 +197,14 @@ float CTlBarDist::getTlLow(int iL, float fEk, float temp)
 /param fEk is the kinetic energy in MeV of the evaporated particle
 /param temp is the temperature in MeV of daughter
   */ 
-float CTlBarDist::getTlHigh(int iL, float fEk, float temp)
+double CTlBarDist::getTlHigh(int iL, double fEk, double temp)
 {
   if (one || temp <= 0. || width == 0.) return tlArray[1]->getTl(iL,fEk);
   if (tlArray[0]->iZMin >= iZ) return tlArray[1]->getTl(iL,fEk);
   if (tlArray[2]->iZMin >= iZ) return tlArray[1]->getTl(iL,fEk);
 
-  float deltaR = sqrt(temp)*width;
-  float ee[3];
+  double deltaR = sqrt(temp)*width;
+  double ee[3];
   for (int i=0;i<3;i++) ee[i] = tlArray[i]->getTermInExp(iL,fEk);
 
 
@@ -245,12 +245,12 @@ float CTlBarDist::getTlHigh(int iL, float fEk, float temp)
     }
   
 
-  float c1 = (ee[2]-ee[0])/2./width0;
-  float c2 = (ee[2]+ee[0]-2.*ee[1])/(width0*width0)/2.;
+  double c1 = (ee[2]-ee[0])/2./width0;
+  double c2 = (ee[2]+ee[0]-2.*ee[1])/(width0*width0)/2.;
 
 
-  float eee = ee[1] - deltaR*c1 + c2*(deltaR*deltaR);
-  float Tl = 1./(1.+exp(eee));
+  double eee = ee[1] - deltaR*c1 + c2*(deltaR*deltaR);
+  double Tl = 1./(1.+exp(eee));
   return Tl;
 
 }
@@ -263,14 +263,14 @@ float CTlBarDist::getTlHigh(int iL, float fEk, float temp)
  \param fEk is the kinetic energy of the evaporated particle
  \param temp is temperature of daughter in MeV
  */
-float CTlBarDist::getInverseXsec(float fEk, float temp)
+double CTlBarDist::getInverseXsec(double fEk, double temp)
 {
-  float tot = 0.;
-  float xmax = 0.;
+  double tot = 0.;
+  double xmax = 0.;
   int iL = 0;
   for(;;)
     {
-      float x = (float)(2*iL+1)*getTl(iL,fEk,temp);
+      double x = (double)(2*iL+1)*getTl(iL,fEk,temp);
       xmax = max(x,xmax);
       tot += x;
       if (x < xmax*.01) break;
@@ -284,7 +284,7 @@ float CTlBarDist::getInverseXsec(float fEk, float temp)
  * set the parameter controlling the width of the barrier distribution
 \param width00 - radial shift is \f$ \Delta R= \sqrt T* width00 \f$
  */
-void CTlBarDist::setBarWidth(float width00)
+void CTlBarDist::setBarWidth(double width00)
 {
   width = width00;
 }
@@ -292,7 +292,7 @@ void CTlBarDist::setBarWidth(float width00)
 /**
  * returns the parameter controlling the width of the barrier dist
  */
-float CTlBarDist::getBarWidth()
+double CTlBarDist::getBarWidth()
 {
   return width;
 }

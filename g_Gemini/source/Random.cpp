@@ -37,7 +37,7 @@ CRandom::~CRandom()
  */
 double CRandom::Rndm()
 {
-  return  (float)rand()/(float)RAND_MAX;
+  return  (double)rand()/(double)RAND_MAX;
 //  return  0.2;
 }
 //***********************
@@ -46,9 +46,9 @@ double CRandom::Rndm()
 \param mean is the mean value of the Gaussian distribution
 \param sigma is the standard deviation of the distribution
 */
-float CRandom::Gaus(float mean, float sigma)
+double CRandom::Gaus(double mean, double sigma)
 {
-  float r;
+  double r;
   if (one)
   {
     x = sqrt(-2.*log(Rndm()+1.e-37));
@@ -70,7 +70,7 @@ float CRandom::Gaus(float mean, float sigma)
  * returns a decay time in zs sampled from a exponential distribution
 \param width is the total decay width in MeV
 */
-float CRandom::expDecayTime(float width)
+double CRandom::expDecayTime(double width)
 {
   // returns a time from an exponential decay distribution
   //consistent with the total decay width
@@ -86,10 +86,10 @@ float CRandom::expDecayTime(float width)
 \param width is the Full Width Half max of the distribution
 */
 
-float CRandom::BreitWigner(float mean, float width)
+double CRandom::BreitWigner(double mean, double width)
 {
-  float xx = (1.-2.*Rndm())*pi/2.;
-  float yy = tan(xx)/2.;
+  double xx = (1.-2.*Rndm())*pi/2.;
+  double yy = tan(xx)/2.;
 
   return yy*width + mean;
 }

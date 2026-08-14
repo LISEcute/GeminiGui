@@ -487,7 +487,7 @@ bool hasAngularSamples(const std::map<std::pair<int, int>, AngularDistEntry> &en
 
 void appendEntryToAccum(PaceAngularAccum &acc, const AngularDistEntry &entry)
 {
-    const int n = std::min(entry.kineticEnergy.size(), entry.thetaDeg.size());
+    const int n = static_cast<int>(std::min(entry.kineticEnergy.size(), entry.thetaDeg.size()));
     for (int i = 0; i < n; ++i)
         addToPaceAccum(acc, entry.kineticEnergy[i], entry.thetaDeg[i], sampleWeightAt(entry, i));
 }
@@ -548,7 +548,7 @@ std::vector<PlotTableEntry> buildPlotTableListPACE(
     for (const auto &it : entries)
     {
         const AngularDistEntry &e = it.second;
-        const int m = std::min(e.kineticEnergy.size(), e.thetaDeg.size());
+        const int m = static_cast<int>(std::min(e.kineticEnergy.size(), e.thetaDeg.size()));
 
         int selectedIndex = -1;
         for (int i = 0; i < (int)selected.size(); ++i)
@@ -611,7 +611,7 @@ std::vector<PlotTableEntry> buildPlotTableListPACE(
         all.vxy.insert(all.vxy.end(), e.vxy.begin(), e.vxy.end());
         all.cmEnergy.insert(all.cmEnergy.end(), e.cmEnergy.begin(), e.cmEnergy.end());
         for (int i = 0; i < int(e.kineticEnergy.size()); ++i)
-            all.weight.push_back(float(sampleWeightAt(e, i)));
+            all.weight.push_back(double(sampleWeightAt(e, i)));
     }
 
     PlotTableEntry tAll;
@@ -685,12 +685,12 @@ struct CMSpectraSeries
 
 void fillCMSpectraSeries(CMSpectraSeries &series, const AngularDistEntry &entry)
 {
-    const std::vector<float> &energies =
+    const std::vector<double> &energies =
         entry.cmEnergy.empty() ? entry.kineticEnergy : entry.cmEnergy;
 
     double weightedEnergy = 0.0;
 
-    for (float energy : energies)
+    for (double energy : energies)
     {
         if (energy < 0.0f) continue;
 
@@ -1936,7 +1936,7 @@ protected:
 
         const bool useCmEnergy =
             (m_plotKind == PlotCountsVsEnergy && !m_entry.cmEnergy.empty());
-        const std::vector<float> &energySamples =
+        const std::vector<double> &energySamples =
             useCmEnergy ? m_entry.cmEnergy : m_entry.kineticEnergy;
 
         const int n = (m_plotKind == PlotCountsVsEnergy)
@@ -2035,7 +2035,7 @@ protected:
             if (useDataEnergyBins)
             {
                 double maxEnergy = 0.0;
-                for (float energy : energySamples)
+                for (double energy : energySamples)
                 {
                     if (std::isfinite(double(energy)) && energy > 0.0f)
                         maxEnergy = std::max(maxEnergy, double(energy));
@@ -2823,31 +2823,31 @@ private:
 }
 
 void addAngularSample(AngularDistEntry &entry,
-                      float kineticEnergy,
-                      float thetaDeg,
-                      float vz,
-                      float vxy)
+                      double kineticEnergy,
+                      double thetaDeg,
+                      double vz,
+                      double vxy)
 {
     addAngularSample(entry, kineticEnergy, thetaDeg, vz, vxy, kineticEnergy);
 }
 
 void addAngularSample(AngularDistEntry &entry,
-                      float kineticEnergy,
-                      float thetaDeg,
-                      float vz,
-                      float vxy,
-                      float cmEnergy)
+                      double kineticEnergy,
+                      double thetaDeg,
+                      double vz,
+                      double vxy,
+                      double cmEnergy)
 {
     addAngularSample(entry, kineticEnergy, thetaDeg, vz, vxy, cmEnergy, 1.0f);
 }
 
 void addAngularSample(AngularDistEntry &entry,
-                      float kineticEnergy,
-                      float thetaDeg,
-                      float vz,
-                      float vxy,
-                      float cmEnergy,
-                      float weight)
+                      double kineticEnergy,
+                      double thetaDeg,
+                      double vz,
+                      double vxy,
+                      double cmEnergy,
+                      double weight)
 {
     entry.kineticEnergy.push_back(kineticEnergy);
     entry.thetaDeg.push_back(thetaDeg);
@@ -2860,10 +2860,10 @@ void addAngularSample(AngularDistEntry &entry,
 void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
                       int z,
                       int n,
-                      float kineticEnergy,
-                      float thetaDeg,
-                      float vz,
-                      float vxy)
+                      double kineticEnergy,
+                      double thetaDeg,
+                      double vz,
+                      double vxy)
 {
     const std::pair<int, int> key(z, n);
     AngularDistEntry &e = entries[key];
@@ -2875,11 +2875,11 @@ void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
 void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
                       int z,
                       int n,
-                      float kineticEnergy,
-                      float thetaDeg,
-                      float vz,
-                      float vxy,
-                      float cmEnergy)
+                      double kineticEnergy,
+                      double thetaDeg,
+                      double vz,
+                      double vxy,
+                      double cmEnergy)
 {
     addAngularSample(entries, z, n, kineticEnergy, thetaDeg, vz, vxy, cmEnergy, 1.0f);
 }
@@ -2887,12 +2887,12 @@ void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
 void addAngularSample(std::map<std::pair<int, int>, AngularDistEntry> &entries,
                       int z,
                       int n,
-                      float kineticEnergy,
-                      float thetaDeg,
-                      float vz,
-                      float vxy,
-                      float cmEnergy,
-                      float weight)
+                      double kineticEnergy,
+                      double thetaDeg,
+                      double vz,
+                      double vxy,
+                      double cmEnergy,
+                      double weight)
 {
     const std::pair<int, int> key(z, n);
     AngularDistEntry &e = entries[key];
@@ -2912,10 +2912,10 @@ QString buildEmittedParticleCMSpectraHtmlGemini(
 
     auto fillParticle = [&](int mode, const AngularDistEntry &entry)
     {
-        const std::vector<float> &energies =
+        const std::vector<double> &energies =
             entry.cmEnergy.empty() ? entry.kineticEnergy : entry.cmEnergy;
 
-        for (float energy : energies)
+        for (double energy : energies)
         {
             if (energy < 0.0f) continue;
 
@@ -3098,7 +3098,7 @@ QString buildAngularDistributionHtmlPACEStyle(
     for (const auto &it : entries)
     {
         const AngularDistEntry &e = it.second;
-        const int m = std::min(e.kineticEnergy.size(), e.thetaDeg.size());
+        const int m = static_cast<int>(std::min(e.kineticEnergy.size(), e.thetaDeg.size()));
 
         int selectedIndex = -1;
         for (int i = 0; i < (int)selected.size(); ++i)
@@ -3236,7 +3236,7 @@ AngularDistributionWidget::AngularDistributionWidget(const QString &htmlContent,
     QTextBrowser *text = new QTextBrowser;
     text->setOpenLinks(false);
     text->setLineWrapMode(QTextEdit::NoWrap);
-    text->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    text->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     text->setHtml(htmlContent);
     connect(text, SIGNAL(anchorClicked(QUrl)), this, SLOT(link_clicked(QUrl)));
     layout->addWidget(text);

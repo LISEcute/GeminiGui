@@ -36,10 +36,10 @@ class CFus
 {
 public:
 
-    CFus(float plb0,float dif0);
+    CFus(double plb0,double dif0);
     CFus(int iZprojectile, int iAprojectile,
-         int iZtarget, int iAtarget, float ELab, float dif0);
-    void init(float plb0,float dif0);
+         int iZtarget, int iAtarget, double ELab, double dif0);
+    void init(double plb0,double dif0);
 
 CNuclide p,t,c; //Oleg
 
@@ -48,45 +48,45 @@ CNuclide p,t,c; //Oleg
   int iAp; //!<projectle mass number
   int iZt; //!<target proton number
   int iAt; //!<target mass number
-  float fElab; //!< lab energy in MeV
-  float R12; //!< sum of radii
-  float U; //!< reduced mass
-  float A; //!< const for Coulomb potential 
-  float B; //!< const for centrifugal potential
-  float C; //!< nuclear potential constant
-  static float const D; //!< Bass potential parameter
-  static float const E; //!< Bass potential parameter
-  static float const G; //!< Bass potential parameter
-  static float const H; //!< Bass potential parameter
-  float E1; //!< critical energy 1 in Bass Model
-  float E2; //!< critical energy 2 in Bass Model
+  double fElab; //!< lab energy in MeV
+  double R12; //!< sum of radii
+  double U; //!< reduced mass
+  double A; //!< const for Coulomb potential 
+  double B; //!< const for centrifugal potential
+  double C; //!< nuclear potential constant
+  static double const D; //!< Bass potential parameter
+  static double const E; //!< Bass potential parameter
+  static double const G; //!< Bass potential parameter
+  static double const H; //!< Bass potential parameter
+  double E1; //!< critical energy 1 in Bass Model
+  double E2; //!< critical energy 2 in Bass Model
 
-  float MAX; //!< maximum L for fusion barrier
+  double MAX; //!< maximum L for fusion barrier
 
-  float CL1; //!< angular momentum assocaited with E1
-  float CL2; //!< angular momentum associated with E2
-  float W[300]; //!< fusion barrier for each L
+  double CL1; //!< angular momentum assocaited with E1
+  double CL2; //!< angular momentum associated with E2
+  double W[300]; //!< fusion barrier for each L
 
-  float F(float R,float AL);
-  float FF(float R,float AL);
-  float  FFF(float R,float AL);
-  float  FFFF(float R, float AL);
+  double F(double R,double AL);
+  double FF(double R,double AL);
+  double  FFF(double R,double AL);
+  double  FFFF(double R, double AL);
 
 
  public:
 
-  float plb; //!< pi-lambdabar-squared in mb
-  float dif; //!<diffuseness
-  float Ecm; //!<reaction center of mass energy in MeV
-  float vcm; //!<Compound nucleus velocity in cm/ns
-  float vbeam; //!<beam velocity in cm/ns
-  float Ex; //!< excitation energy
+  double plb; //!< pi-lambdabar-squared in mb
+  double dif; //!<diffuseness
+  double Ecm; //!<reaction center of mass energy in MeV
+  double vcm; //!<Compound nucleus velocity in cm/ns
+  double vbeam; //!<beam velocity in cm/ns
+  double Ex; //!< excitation energy
   int iZcn; //!< compound nucleus atomic number
   int iAcn;//!< compound nucleus mass number
-  float getL0(float xsection);
-  float getBassL(); 
-  float getBassXsec(); 
-  float Qval; //added by MPK 7/30/2015
+  double getL0(double xsection);
+  double getBassL(); 
+  double getBassXsec(); 
+  double Qval; //added by MPK 7/30/2015
   //following is needed in ROOT version
   //ClassDef(CFus,1); //Gemini CFus
 };

@@ -2,7 +2,7 @@
 
 int const CAngleDist::maxL = 20;
 int const CAngleDist::nAngle = 90;
-float const CAngleDist::pi= acos(-1.);
+double const CAngleDist::pi= acos(-1.);
 
 //**********************************************************
 /**
@@ -11,14 +11,14 @@ float const CAngleDist::pi= acos(-1.);
 CAngleDist::CAngleDist()
 {
   ran = CRandom::instance();
-  dist = new float* [maxL];
+  dist = new double* [maxL];
   for (int i=0;i<maxL;i++)
     {
-      dist[i] = new float [nAngle];
+      dist[i] = new double [nAngle];
 
       for (int j=0;j<nAngle;j++)
 	{
-          float theta = (float)(j+1)/180.*pi;
+          double theta = (double)(j+1)/180.*pi;
           dist[i][j] = pow(sin(theta),2*i+1);
           if (j > 0) dist[i][j] += dist[i][j-1];
 	}
@@ -54,11 +54,11 @@ CAngleDist::~CAngleDist()
  * 90 degrees is returned
  \param l is the orbital angular-momentum quantum number
  */
-float CAngleDist::getTheta(int l)
+double CAngleDist::getTheta(int l)
 {
   if (l >=maxL) return pi/2.;
 
-  float xran = ran->Rndm();
+  double xran = ran->Rndm();
   int i=0;
   for (;;)
     {
@@ -66,7 +66,7 @@ float CAngleDist::getTheta(int l)
       i++;
       if (i == nAngle) break;
     }
-  float theta = ((float)(i) + ran->Rndm())*pi/180.;
+  double theta = ((double)(i) + ran->Rndm())*pi/180.;
   if (ran->Rndm() > 0.5) theta = pi - theta;
 
   return theta;

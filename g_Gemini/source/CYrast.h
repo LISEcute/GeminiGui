@@ -24,12 +24,12 @@ class CYrast
   static CYrast *fInstance; //!< instance member to make this class a singleton
   static double const pi; //!< 3.14159
   //needed by getYrastRLDM
-  static float const x1h[11][6]; //!< number for RLDM
-  static float const x2h[11][6]; //!< numbers for RLDM
-  static float const x3h[20][10]; //!< number for RLDM
-  static float const x1b[11][6]; //!<numbers for RLDM
-  static float const x2b[11][6]; //!<numbers for RLDM
-  static float const x3b[20][10]; //!<numbers for RLDM
+  static double const x1h[11][6]; //!< number for RLDM
+  static double const x2h[11][6]; //!< numbers for RLDM
+  static double const x3h[20][10]; //!< number for RLDM
+  static double const x1b[11][6]; //!<numbers for RLDM
+  static double const x2b[11][6]; //!<numbers for RLDM
+  static double const x3b[20][10]; //!<numbers for RLDM
   //needed by Sierk functions
   static double const emncof[4][5]; //!< used in Sierk functions
   static double const elmcof[4][5]; //!<used in Sierk functions
@@ -59,62 +59,62 @@ class CYrast
   double pa[7]; //!<used in Sierk routines
   double pz[7];  //!<used in Sierk routines
   //needed by saddlefit
-  float c[6][8][2][11][2]; //!< coeff for sadfits
-  float cubic(float,float,float,float,float,float);
+  double c[6][8][2][11][2]; //!< coeff for sadfits
+  double cubic(double,double,double,double,double,double);
 
   static bool first; //!< only write out barrier warning once
   int Narray; //!< number of elements in array of asymmetric barriers
-  static float const hbarc; //!< used for asymmetric barriers
-  static float const alfinv;//!< used for asymmetric barriers
-  static float const srznw;//!< used for asymmetric barriers
-  static float const aknw;//!< used for asymmetric barriers
-  static float const bb;//!< used for asymmetric barriers
-  static float const um;//!< used for asymmetric barriers
-  static float const elm;//!< used for asymmetric barriers
-  static float const spdlt;//!< used for asymmetric barriers
-  static float const asnw;//!< used for asymmetric barriers
-  static float const kx[8];//!< used for asymmetric barriers
-  static float const ky[6];//!< used for asymmetric barriers
-  static float const ka[11];//!< used for asymmetric barriers
-  static float const r0; //!< radius parameter
-  static float const sep; //!<separation id fm between fragments
+  static double const hbarc; //!< used for asymmetric barriers
+  static double const alfinv;//!< used for asymmetric barriers
+  static double const srznw;//!< used for asymmetric barriers
+  static double const aknw;//!< used for asymmetric barriers
+  static double const bb;//!< used for asymmetric barriers
+  static double const um;//!< used for asymmetric barriers
+  static double const elm;//!< used for asymmetric barriers
+  static double const spdlt;//!< used for asymmetric barriers
+  static double const asnw;//!< used for asymmetric barriers
+  static double const kx[8];//!< used for asymmetric barriers
+  static double const ky[6];//!< used for asymmetric barriers
+  static double const ka[11];//!< used for asymmetric barriers
+  static double const r0; //!< radius parameter
+  static double const sep; //!<separation id fm between fragments
   static bool bForceSierk; //!<separation id fm between fragments
   static double addBar; //!<extrapolated Sierk barrier increase by this amount
 
-  float sadArray[300]; //!< array stores the conditional saddle energies
-  float sadArrayZA[300]; //!< array stores saddle energies after correction
+  double sadArray[300]; //!< array stores the conditional saddle energies
+  double sadArrayZA[300]; //!< array stores saddle energies after correction
   CMass * mass; //!< class for mass defects
-  static float const deltaJ; //!< used to extend sierk barrier to higher J
-  static float const kRotate; //!< constant for rotional energy
+  static double const deltaJ; //!< used to extend sierk barrier to higher J
+  static double const kRotate; //!< constant for rotional energy
   int iZ; //!< proton number
   int iA; //!<mass number
-  float fJ; //!< spin
+  double fJ; //!< spin
  public:
   static CYrast *instance(); //!< instance member to make this class a singleton
   double Jmax;  //!< max spin where the fission barrier exists
-  float getYrast(int,int,float);
-  float getYrastModel(int,int,float);
-  float getYrastRLDM(int,int,float);
-  float getYrastSierk(float);
-  float getJmaxSierk(int,int);
-  float getBarrierFissionSierk(float);
-  float getSymmetricSaddleEnergy(int,int,float);
-  float getBarrierFissionRLDM(int,int,float);
-  float getBsSierk(float);
+  double getYrast(int,int,double);
+  double getYrastModel(int,int,double);
+  double getYrastRLDM(int,int,double);
+  double getYrastSierk(double);
+  double getJmaxSierk(int,int);
+  double getBarrierFissionSierk(double);
+  double getSymmetricSaddleEnergy(int,int,double);
+  double getBarrierFissionRLDM(int,int,double);
+  double getBsSierk(double);
   static void forceSierk(bool=1);
   static void printParameters();
-  void prepareAsyBarrier(int, int, float);
+  void prepareAsyBarrier(int, int, double);
   void printAsyBarrier();
-  float getSaddlePointEnergy(int,int);
-  float getSaddlePointEnergy(float);
-  float getMomentOfInertiaSierk(float);
-  float WignerEnergy(int iZ, int iA);
+  double getSaddlePointEnergy(int,int);
+  double getSaddlePointEnergy(double);
+  double getMomentOfInertiaSierk(double);
+  double WignerEnergy(int iZ, int iA);
 
-  float momInertiaMin; //!< minimum saddle-point moment of inertia 
-  float momInertiaMid; //!< intermediate saddle-point moment of inertia
-  float momInertiaMax; //!< maximum saddle-point moment of inertia
-  // float sumPair;
-  //float sumShell;
-  //float viola(float,float,float,float);
+  double momInertiaMin; //!< minimum saddle-point moment of inertia 
+  double momInertiaMid; //!< intermediate saddle-point moment of inertia
+  double momInertiaMax; //!< maximum saddle-point moment of inertia
+  // double sumPair;
+  //double sumShell;
+  //double viola(double,double,double,double);
 };
 #endif

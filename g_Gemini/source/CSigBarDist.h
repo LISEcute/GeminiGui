@@ -21,19 +21,19 @@ class CSigBarDist
  private:
   CSigCharged* sigCharged[3]; //!< arrays for standard radii and +- width0
   bool one; //!< if true, no distribution, just standard radius is used
-  static float width; //!< width paramter determines shifted radii
-  static float const width0; //!< results readin from file for this shift
-  float Z; //!< calls to getInverseXsec refer to this residual proton number
-  float A; //!< calls to getInverseXsec refer to this residual mass number
-  float Zp; //!<proton number of evaporated particle
-  float Ap; //!<mass number of evaporated particle
+  static double width; //!< width paramter determines shifted radii
+  static double const width0; //!< results readin from file for this shift
+  double Z; //!< calls to getInverseXsec refer to this residual proton number
+  double A; //!< calls to getInverseXsec refer to this residual mass number
+  double Zp; //!<proton number of evaporated particle
+  double Ap; //!<mass number of evaporated particle
  public:
-  CSigBarDist(const QString&, float Zp0, float Ap0 );
+  CSigBarDist(const QString&, double Zp0, double Ap0 );
   ~CSigBarDist();
-  float getInverseXsec(float fEk, float temp);
-  static void setBarWidth(float width00);
-  static float getBarWidth();
+  double getInverseXsec(double fEk, double temp);
+  static void setBarWidth(double width00);
+  static double getBarWidth();
   static void printParameters();
-  void prepare(float Z, float A);
-  float getBarrier();
+  void prepare(double Z, double A);
+  double getBarrier();
 };

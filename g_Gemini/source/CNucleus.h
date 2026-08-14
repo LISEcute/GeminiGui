@@ -32,7 +32,7 @@ using namespace std;
  */
 struct SStoreSub
 {
-  float gamma; //!< weight factor for the orbital amgular momentum
+  double gamma; //!< weight factor for the orbital amgular momentum
   short unsigned L; //!< orbital angular momentum
 };
 
@@ -62,12 +62,12 @@ typedef vector<SStore>::const_iterator SStoreIter;
  */
 struct SStoreChan
 {
-  float S2; //!< spin of daughter
-  float Ek; //!< kinetic energy of evaporated particle (MeV)
-  float Ex; //!< excitation energy of daughter (MeV)
-  float gamma; //!< partial decay width for this subchannel (MeV)
-  float temp; //!< temperature of daughter (MeV)
-  float UPA; //!< thermal excitation energy per nucleus of daughter (MeV)
+  double S2; //!< spin of daughter
+  double Ek; //!< kinetic energy of evaporated particle (MeV)
+  double Ex; //!< excitation energy of daughter (MeV)
+  double gamma; //!< partial decay width for this subchannel (MeV)
+  double temp; //!< temperature of daughter (MeV)
+  double UPA; //!< thermal excitation energy per nucleus of daughter (MeV)
   short unsigned L; //!< orbital angular momentum of evaporated particle
 };
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
@@ -89,105 +89,105 @@ public:
 
     CNucleus();
     CNucleus(int iZ,int iA);
-    CNucleus(int iZ,int iA, float fEx, float fJ);
+    CNucleus(int iZ,int iA, double fEx, double fJ);
     ~CNucleus();
     static CNucleus* acquire(int iZ,int iA);
-    static CNucleus* acquire(int iZ,int iA, float fEx, float fJ);
+    static CNucleus* acquire(int iZ,int iA, double fEx, double fJ);
     static void release(CNucleus* nucleus);
 
     static CYrast *yrast; //!< gives fission barriers and rotational energies
     static CLevelDensity *levelDensity; //!< gives level densities
 
  protected:
-  float Ecoul; //!< Coulomb barrier (HauserFeshbach)
+  double Ecoul; //!< Coulomb barrier (HauserFeshbach)
 
   bool notStatistical; //!< this does not decay statistically, evap. frag. only
 
   short unsigned notStatisticalMode;//!< specifies type of nonStatisical decay
-  float fPairing; //!< pairing energy
-  float fShell; //!<shell correction
-  float fU0; //!< thermal excitation energy
-  float Erot; //!<yrast energy
-  float Jmax; //!< max spin with a fission barrier
-  float fMInertia; //!< spherical moment of inertia
-  float logLevelDensity; //!< store the log of the level density of the nucleus
-  float temp; //!< nuclear temperature
+  double fPairing; //!< pairing energy
+  double fShell; //!<shell correction
+  double fU0; //!< thermal excitation energy
+  double Erot; //!<yrast energy
+  double Jmax; //!< max spin with a fission barrier
+  double fMInertia; //!< spherical moment of inertia
+  double logLevelDensity; //!< store the log of the level density of the nucleus
+  double temp; //!< nuclear temperature
   int fissionZ; //!< proton number of fission fragment
   int fissionA; //!< mass number of fission fragment
   int fissioningZ; //!< proton number of fission parent
   int fissioningA; //!< mass number of fission parent
   int iZ1_IMF_Max; //!< maximum Z for IMF emission
 
-  float fissionU; //!< thermal excitation energy of both fission fragments
-  float EdefScission; //!< deformation energy of the scission configuration
+  double fissionU; //!< thermal excitation energy of both fission fragments
+  double EdefScission; //!< deformation energy of the scission configuration
 
   bool saddleToSciss; //!< indicated decay during saddle-to-scission transition
-  float timeSinceSaddle; //!< stores the time since the saddle was crossed
-  float timeSinceStart; //!< stores the time since the decay began
+  double timeSinceSaddle; //!< stores the time since the saddle was crossed
+  double timeSinceStart; //!< stores the time since the decay began
 
   void saddleToScission();
   void massAsymmetry(bool);
   bool needSymmetricFission; //!< indicated the Bohr-Wheeler width is needed
   static bool const noSymmetry;//!< true - old gemini with Morreto for all 
-  float timeScission; //!< time required to go from saddle to scission
-  static float const viscosity_scission; //!< viscosity during saddleTosciss
-  static float const viscosity_saddle; //!< viscosity  during saddleTosciss
-  static float timeTransient; //!< transient fission delay 
-  static float fissionScaleFactor; //!< fission width scaled by this factor
-  static float barAdd; //!< adds to Sierk fission barrier
+  double timeScission; //!< time required to go from saddle to scission
+  static double const viscosity_scission; //!< viscosity during saddleTosciss
+  static double const viscosity_saddle; //!< viscosity  during saddleTosciss
+  static double timeTransient; //!< transient fission delay 
+  static double fissionScaleFactor; //!< fission width scaled by this factor
+  static double barAdd; //!< adds to Sierk fission barrier
   static unsigned iPoint; //!< pointer to array of stable fragments
   static int iHF; //!< set evaporation mode 
   int HF; //!< evaporation mode chosen for a given decay
   static bool noIMF; //!< no imf emission is considered
   static bool BohrWheeler; //!< no imf emission is considered
-  float selectJ(float,float,float,float);
+  double selectJ(double,double,double,double);
 
   static short unsigned Zshell; //!< enforce shell effects in evaporation
   CScission scission; //!< gives scission energeis, etc
   static CGdr * GDR ; //!< uder defined GDR line shape
   bool  bStable; //!< indicated this nucleus is particle-stable
-  static float const r0; //!< radius const (fm)
-  static float const sep; //!< separation between fragments
-  static float threshold; //!< used to turn off unlikey evaporations
+  static double const r0; //!< radius const (fm)
+  static double const sep; //!< separation between fragments
+  static double threshold; //!< used to turn off unlikey evaporations
   void initializeDefaults();
   void initialize(int iZ0, int iA0);
-  void initialize(int iZ0, int iA0, float fEx0, float fJ0);
+  void initialize(int iZ0, int iA0, double fEx0, double fJ0);
   static vector<CNucleus*> recycled;
 
   CAngle spin; //!< orientation of the spin axis
-  float velocity[3]; //!< velocity vector of nucleus in cm/ns 
-  float momentum[3]; //!< momentum vector in MeV/c
-  float qVal; //added by MPK 7/30/2015
+  double velocity[3]; //!< velocity vector of nucleus in cm/ns 
+  double momentum[3]; //!< momentum vector in MeV/c
+  double qVal; //added by MPK 7/30/2015
 
   static CEvap *evap; //!< stores info on evaporated particles
 
 
   CLightP * lightP; //!< points to the light-particle decay mode
-  float S2Loop(float Ekvalue);
-  float S2Width(float Ekvalue);
-  float EkWidth(float ek);
+  double S2Loop(double Ekvalue);
+  double S2Width(double Ekvalue);
+  double EkWidth(double ek);
   void getSpin( bool saddle);
 
-  float EkLoop();
-  float getSumTl(float,float);
-  float getWidthZA(float,short);
+  double EkLoop();
+  double getSumTl(double,double);
+  double getWidthZA(double,short);
   void angleEvap();
   void angleIsotropic();
   void angleGamma();
-  float S2Start; //!< Hauser-Feshback spin of daughter
-  float UMin; //!< min thermal excitation energy in Hauser-Feshbach
-  float EcostMin; //!<the min of the energetic cost of emitting light particles
+  double S2Start; //!< Hauser-Feshback spin of daughter
+  double UMin; //!< min thermal excitation energy in Hauser-Feshbach
+  double EcostMin; //!<the min of the energetic cost of emitting light particles
   static short unsigned const lMaxQuantum; //!< number of l-waves to store angular dist
-  static float de;//!< kinetic-energy interval for integrating in Hauser-Feshb
+  static double de;//!< kinetic-energy interval for integrating in Hauser-Feshb
   int lMin; //!< minimum orbital AM for Hauser-Feshbach
   int lMax;//!< maximum orbital AM for Hauser-Feshbach
-  float lPlusSMax; //!< max value of l+S of evaporated particle
-  float lPlusSMin; //!< min value of l+S of evaporated particle
-  float rResidue; //!< radius of daughter
-  float rLightP; //!< radius of evaporated particle
-  //float fMInertiaOrbit; //!< moment of Inertia for orbital motion
-  float S2; //!< spin of daughter
-  float EYrast2; //!< rotational energy of daughter
+  double lPlusSMax; //!< max value of l+S of evaporated particle
+  double lPlusSMin; //!< min value of l+S of evaporated particle
+  double rResidue; //!< radius of daughter
+  double rLightP; //!< radius of evaporated particle
+  //double fMInertiaOrbit; //!< moment of Inertia for orbital motion
+  double S2; //!< spin of daughter
+  double EYrast2; //!< rotational energy of daughter
   SStoreEvap * storeEvap; //!< information of evap sub channels
   SStoreSub * storeSub; //!< store info on l distribution
 
@@ -198,38 +198,38 @@ public:
   short unsigned EvapA1; //!< mass number of evaporated particle
   short unsigned EvapL; //!< orbital AM of evaporated particle
   short unsigned EvapMode; //!< ID number of evap channel 
-  float EvapEx1; //!< excitation ennergy of evap. particle
-  float EvapEx2; //!< excitation energy of daughter after evap.
-  float EvapS2; //!< spin of daughter after evap
-  float EvapS1; //!< spin of evaporated particle
-  float EvapEk; //!< kinetic energy of evaporated particle (MeV)
-  float EvapLPlusS; //!< toatl spin plus orbital AM of evaporated particle
+  double EvapEx1; //!< excitation ennergy of evap. particle
+  double EvapEx2; //!< excitation energy of daughter after evap.
+  double EvapS2; //!< spin of daughter after evap
+  double EvapS1; //!< spin of evaporated particle
+  double EvapEk; //!< kinetic energy of evaporated particle (MeV)
+  double EvapLPlusS; //!< toatl spin plus orbital AM of evaporated particle
 
   static CAngleDist angleDist; //!< selects angular distributions of decays
 
-  float GammaEx;//!< excitation energy after gamma emission
-  float GammaJ; //!< spin after gamma emission
+  double GammaEx;//!< excitation energy after gamma emission
+  double GammaJ; //!< spin after gamma emission
   int GammaL; //!< gamma type E1=1, E2 = 2
 
-  static float const gammaInhibition[3]; 
+  static double const gammaInhibition[3]; 
 //!<scaling of gamma width from Weisskopf value
-  static float const wue[3]; //!<coeff for Weisskopf units (gamma decay)
+  static double const wue[3]; //!<coeff for Weisskopf units (gamma decay)
   void binaryDecay();
-  void exciteScission(float,float,bool sym=1);
-  float asyFissionWidth();
-  float asyFissionWidthZA();
-  float asyFissionWidthBW();
+  void exciteScission(double,double,bool sym=1);
+  double asyFissionWidth();
+  double asyFissionWidthZA();
+  double asyFissionWidthBW();
   void force8Be();
   void force5Li();
   void force5He();
   void force9B();
 
-  float evaporationWidthSS();
-  float gammaWidth();
-  float gammaWidthE1GDR();
-  float gammaWidthMultipole(int);
-  float hauserFeshbach(int);
-  float weiskopf( bool saddle);
+  double evaporationWidthSS();
+  double gammaWidth();
+  double gammaWidthE1GDR();
+  double gammaWidthMultipole(int);
+  double hauserFeshbach(int);
+  double weiskopf( bool saddle);
   void  asyFissionDivide();
   void recursiveDecay();
 
@@ -258,14 +258,14 @@ public:
   //!< number of neutrons emitted between saddle and scission
 
 
-  static float const kRotate; //!< constant to calculated rotational energy
+  static double const kRotate; //!< constant to calculated rotational energy
   void split(CAngle);
 
-  float sigma2; //!< variance of fission mass distribution
-  float symSaddlePoint;//!< symmetric saddle point energy
-  static float sumGammaEnergy; //!< store the energy emitted in gamma rays
+  double sigma2; //!< variance of fission mass distribution
+  double symSaddlePoint;//!< symmetric saddle point energy
+  static double sumGammaEnergy; //!< store the energy emitted in gamma rays
 
- static  vector <float> GammaRayEnergy; //!< store each gamma ray energy
+ static  vector <double> GammaRayEnergy; //!< store each gamma ray energy
   static int  nGammaRays;  //!< number of emitted gamma rays
 
   static bool  GDRParam; //!< if true, the standard formula for GDR decay width is used, if false the parametrized version
@@ -275,31 +275,28 @@ public:
 
 
   bool abortEvent; //!< abort the event
-  float evaporationWidth();
-  float BohrWheelerWidth();
-  float LestoneFissionWidth();
-  float LestoneCorrection(float Usaddle, float momInertiaEff,short iAfAn);
+  double evaporationWidth();
+  double BohrWheelerWidth();
+  double LestoneFissionWidth();
+  double LestoneCorrection(double Usaddle, double momInertiaEff,short iAfAn);
  // static CRandom ran; //!< pointer to random number generator
-  static float const pi; //!< 3.14159
+  static double const pi; //!< 3.14159
   static double const EkFraction; // !< calculates the Ek spectra down to this
                                  // fraction of the maximum
   //functions
-  float getSumGammaEnergy();
+  double getSumGammaEnergy();
   int   getnGammaRays(); //get number of emitted gamma rays
-  float getGammaRayEnergy(int number); // get gamma ray energy
-  float getTime();
+  double getGammaRayEnergy(int number); // get gamma ray energy
+  double getTime();
   QString printHtml();
-  void setNewIsotope(int iZ0, int iA0, float fEx0, float fJ0); 
+  void setNewIsotope(int iZ0, int iA0, double fEx0, double fJ0); 
 
-  void setCompoundNucleus(float fEx0,float fJ0);
-  void setCompoundNucleus(float fEx0,double dJ0);
-  void setCompoundNucleus(double dEx0,float fJ0);
-  void setCompoundNucleus(double dEx0,double dJ0);
+  void setCompoundNucleus(double fEx0,double fJ0);
 
   void setSpinAxis(CAngle angle);
   void setSpinAxisDegrees(CAngle angle);
-  void setVelocityPolar(float =0.,float=0.,float=0.);
-  void setVelocityCartesian(float vx=0.,float vy=0.,float vz=0.);
+  void setVelocityPolar(double =0.,double=0.,double=0.);
+  void setVelocityCartesian(double vx=0.,double vy=0.,double vz=0.);
 
   void reset();
   static void resetGlobal();
@@ -322,28 +319,25 @@ public:
   int getZmaxEvap();
 
 
-  void excite(float,float);
-  void excite(float,double);
-  void excite(double,float);
   void excite(double,double);
-  void excite(float);
+  void excite(double);
 
-  float getTheta();
-  float getThetaDegrees();
+  double getTheta();
+  double getThetaDegrees();
   CAngle getAngle();
   CAngle getAngleDegrees();
-  float getKE();
-  float getVelocity();
-  float getMomentum();
-  float* getVelocityVector();
-  float* getMomentumVector();
+  double getKE();
+  double getVelocity();
+  double getMomentum();
+  double* getVelocityVector();
+  double* getMomentumVector();
 
-  static void setTimeTransient(float time);
-  static void setFissionScaleFactor(float factor);
-  static void setBarWidth(float width);
-  static void setDeltaE(float de0);
-  static void setThreshold(float threshold0);
-  static void setAddToFisBarrier(float barAdd0);
+  static void setTimeTransient(double time);
+  static void setFissionScaleFactor(double factor);
+  static void setBarWidth(double width);
+  static void setDeltaE(double de0);
+  static void setThreshold(double threshold0);
+  static void setAddToFisBarrier(double barAdd0);
   static void setNoIMF();
   static void setYesIMF();
   static void setLestone();
@@ -352,12 +346,12 @@ public:
   static void setEvapMode(int iHF0=2);
 static void setUserGDR(bool mode = true);
 
-  static float getTimeTransient();
-  static float getFissionScaleFactor();
-  static float getBarWidth();
-  static float getDeltaE();
-  static float getThreshold();
-  static float getAddToFisBarrier();
+  static double getTimeTransient();
+  static double getFissionScaleFactor();
+  static double getBarWidth();
+  static double getDeltaE();
+  static double getThreshold();
+  static double getAddToFisBarrier();
 
   void decay();
   bool isAsymmetricFission();
@@ -371,10 +365,10 @@ static void setUserGDR(bool mode = true);
   int getMultPostHeavy();
   int getMultPreSaddle();
   int getMultSaddleToScission();
-  float getFissionTimeSymmetric(float & timeScission);
-  float getFissionTimeAsymmetric();
-  float getDecayWidth();
-  float getLogLevelDensity();
+  double getFissionTimeSymmetric(double & timeScission);
+  double getFissionTimeAsymmetric();
+  double getDecayWidth();
+  double getLogLevelDensity();
   int origin; //!< specifies the origin of the fragment, prefission, post , etc
   int origin2; //!< specifies the origin of the fragment, prefission, post , etc
   void printParameters();

@@ -18,7 +18,7 @@ using namespace std;
  */
 struct SAngTl
 {
-  float  coef[7]; //!< fit parameters
+  double  coef[7]; //!< fit parameters
 };
 
 /**
@@ -44,15 +44,15 @@ class CTlArray
 protected:
   SZcoef zcoef; //!< structure to store coefficients parametrizating Tl's
   QString sName; //!< name of file containg Tl parameters
-  float shift; //!< energy shift used in the parametrization
+  double shift; //!< energy shift used in the parametrization
   SAngTl *trans; //!<pointer to coefficents for a select iZ
 
  public:
   CTlArray(const QString& );
-  float getTermInExp(int iL,float fEk);
+  double getTermInExp(int iL,double fEk);
   void  prepare(int iZ);
-  float getTl(int iL ,float fEk);
-  float getInverseXsec(float fEk);
+  double getTl(int iL ,double fEk);
+  double getInverseXsec(double fEk);
   int iZMin;  //!< the minimum Z-value for coefficinets are stored
 };
 

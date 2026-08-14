@@ -16,14 +16,14 @@ using namespace std;
  */
 struct SDecay
 {
-  float Ek; //!< kinetic energy released in secoardy decay (MeV)
-  float S1; //!< spin of one of the secondary particles
-  float S2; //!< spin of the other secondary particle
-  float lPlusS1; //!< spin + orbital AM of the first secondary particle
+  double Ek; //!< kinetic energy released in secoardy decay (MeV)
+  double S1; //!< spin of one of the secondary particles
+  double S2; //!< spin of the other secondary particle
+  double lPlusS1; //!< spin + orbital AM of the first secondary particle
   short unsigned Z1; //!<proton number of the first secondary particle
   short unsigned A1; //!< mass number of the first secondary particle
   short unsigned L; //!< orbital angular momentum of the decay
-  float gamma; //!< width of the state im MeV
+  double gamma; //!< width of the state im MeV
 };
 
 
@@ -49,7 +49,7 @@ class CEvap
   SDecay * decay; //!<information on secondary decay of evaporated particles
 
   ~CEvap();
-  float * prob; //!< probability for decay
+  double * prob; //!< probability for decay
 };
 
 #endif
