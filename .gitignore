@@ -9,3 +9,4 @@ LibraryDebugConsole.*
 *.a
 *.lib
 .idea/
+.DS_Store
