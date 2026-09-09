@@ -4,7 +4,6 @@
 #include <QMainWindow>
 #include <QTabWidget>
 
-
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 namespace Ui {
 class MainWindow;
@@ -64,6 +63,7 @@ public:
 
 private:
     void printGeminiProperties(QString &results);
+    void showRuntime(qint64 elapsedMs);
 
 private slots:
     void on_actionExecute_triggered();

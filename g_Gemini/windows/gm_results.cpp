@@ -5,6 +5,7 @@
 #include <QToolBar>
 #include <QAction>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QTextStream>
 #include <QPrintDialog>
 #include <QPrinter>
@@ -12,6 +13,7 @@
 #include <QTextBrowser>
 #include <QPainter>
 #include <QDialog>
+#include <QLabel>
 #include <QUrl>
 #include <algorithm>
 #include <cmath>
@@ -20,6 +22,7 @@
 
 
 extern QString FFileNameHtml;
+extern qint64 GeminiResultRuntimeMs;
 
 namespace {
 
@@ -257,6 +260,13 @@ void Result_Widget::init(QString result_string,
     QToolBar *toolbar = new QToolBar;
 
     toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    if (GeminiResultRuntimeMs >= 0)
+    {
+        QLabel *runtimeLabel = new QLabel("runtime " + QString::number(GeminiResultRuntimeMs / 1000.0, 'f', 2) + " s", toolbar);
+        runtimeLabel->setStyleSheet("QLabel { color: #555; font-size: 10px; padding: 1px 8px 1px 4px; }");
+        toolbar->addWidget(runtimeLabel);
+        GeminiResultRuntimeMs = -1;
+    }
     QAction *saveAction = new QAction(QIcon(":/save29.png"),"&Save",this);
     toolbar->addAction(saveAction);
     connect(saveAction, SIGNAL(triggered()),this, SLOT(save_clicked()));
@@ -272,6 +282,9 @@ void Result_Widget::init(QString result_string,
 
     QTextBrowser *text = new QTextBrowser;
     text->setOpenLinks(false);
+    text->setLineWrapMode(QTextEdit::NoWrap);
+    text->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    text->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     text->setHtml(result_string);
     tabHtml << result_string;
     connect(text, SIGNAL(anchorClicked(QUrl)), this, SLOT(link_clicked(QUrl)));
@@ -336,8 +349,9 @@ void Result_Widget::init(QString result_string,
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 void Result_Widget::save_clicked()
 {
+    const QString defaultFileName = currentDefaultFileName();
     QString filename = QFileDialog::getSaveFileName(this, tr("Save File"),
-                                                    FFileNameHtml,tr("Gemini results (*.html)"));
+                                                    defaultFileName,tr("Gemini results (*.html)"));
     if(filename.size() > 0)
         {
         QFile f(filename);
@@ -385,6 +399,26 @@ QString Result_Widget::currentHtml() const
         return tabHtml[index];
 
     return result;
+}
+
+QString Result_Widget::currentDefaultFileName() const
+{
+    QFileInfo fileInfo(FFileNameHtml);
+    QString suffix = "_results";
+
+    if (tabs)
+    {
+        const QString tabLabel = tabs->tabText(tabs->currentIndex());
+        if (tabLabel.contains("IMF", Qt::CaseInsensitive))
+            suffix = "_angIMF";
+        else if (tabLabel.contains("Residual", Qt::CaseInsensitive))
+            suffix = "_angRESID";
+    }
+
+    const QString extension = fileInfo.suffix().isEmpty()
+                                  ? QString()
+                                  : "." + fileInfo.suffix();
+    return fileInfo.path() + "/" + fileInfo.completeBaseName() + suffix + extension;
 }
 
 void Result_Widget::openYieldPlotWindow()

@@ -74,6 +74,7 @@ private:
               const AngularResultTab *imfAngular,
               const YieldPlotData *yieldPlot);
     QString currentHtml() const;
+    QString currentDefaultFileName() const;
     void openYieldPlotWindow();
 
     QString result;

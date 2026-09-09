@@ -3,7 +3,7 @@
 #include <QFile>
 #include <QString>
 
-CGdr* CGdr::fInstance = 0; 
+thread_local CGdr* CGdr::fInstance = 0; 
 
 
 /**
@@ -73,4 +73,3 @@ CGdr* CGdr::instance()
     }
   return fInstance;
 }
-

@@ -1,8 +1,9 @@
 #include "CRandom.h"
+#include <chrono>
 
 
 
-CRandom* CRandom::fInstance = 0;
+thread_local CRandom* CRandom::fInstance = 0;
 /**
  * Makes an instance of CRandom
  */
@@ -18,6 +19,9 @@ CRandom* CRandom::instance()
  * COnstructor for CRandom
  */
 CRandom::CRandom()
+    : generator(static_cast<unsigned int>(
+          std::chrono::high_resolution_clock::now().time_since_epoch().count())),
+      uniform(0.0, 1.0)
 {
 
   pi = acos(-1.);
@@ -25,6 +29,13 @@ CRandom::CRandom()
   angle = 0.;
   x = 0.;
 
+}
+
+void CRandom::seedCurrentThread(unsigned int seed)
+{
+  CRandom *random = instance();
+  random->generator.seed(seed);
+  random->one = true;
 }
 
 CRandom::~CRandom()
@@ -37,7 +48,7 @@ CRandom::~CRandom()
  */
 double CRandom::Rndm()
 {
-  return  (double)rand()/(double)RAND_MAX;
+  return uniform(generator);
 //  return  0.2;
 }
 //***********************

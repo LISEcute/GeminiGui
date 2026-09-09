@@ -6,7 +6,7 @@
 #include <cmath>
 #include <iostream>
 
-CLevelDensity* CLevelDensity::fInstance = 0;
+thread_local CLevelDensity* CLevelDensity::fInstance = 0;
 
 bool  CLevelDensity::normal = true;
 

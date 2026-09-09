@@ -22,21 +22,21 @@ double const WignerAdd = 7.; //adding factor for the Wigner Energy
 bool          CNucleus::noIMF = 0;
 bool          CNucleus::BohrWheeler = 1;
 
-CYrast        *CNucleus::yrast;
-CLevelDensity *CNucleus::levelDensity;
+thread_local CYrast        *CNucleus::yrast;
+thread_local CLevelDensity *CNucleus::levelDensity;
 CAngleDist    CNucleus::angleDist;
 double         CNucleus::de = 1.0;
-CGdr* CNucleus::GDR;
+thread_local CGdr* CNucleus::GDR;
 
-vector<CNucleus*> CNucleus::allProducts;
-vector<CNucleus*> CNucleus::stableProducts;
-vector<CNucleus*> CNucleus::recycled;
+thread_local vector<CNucleus*> CNucleus::allProducts;
+thread_local vector<CNucleus*> CNucleus::stableProducts;
+thread_local vector<CNucleus*> CNucleus::recycled;
 double const CNucleus::r0=1.16;
 double const CNucleus::sep=2.;
 double const CNucleus::pi=acos(-1.);
 short unsigned CNucleus::Zshell = 2;
 short unsigned const CNucleus:: lMaxQuantum = 50;
-CEvap *CNucleus::evap;
+thread_local CEvap *CNucleus::evap;
 double const CNucleus::gammaInhibition[3]={0.,.025,9.};
 double const CNucleus::wue[3]={0.,6.8e-8,4.9e-14};//gives weisskopf units in MeV
 double const CNucleus::viscosity_scission = 1.;
@@ -44,16 +44,16 @@ double const CNucleus::viscosity_saddle = 1.5;
 double CNucleus::timeTransient = 0.;
 //double CNucleus::fissionScaleFactor = 2.46;
 double CNucleus::fissionScaleFactor = 1.00;
-double CNucleus::sumGammaEnergy = 0.;
+thread_local double CNucleus::sumGammaEnergy = 0.;
 double CNucleus::barAdd = 0.;
 double const CNucleus::kRotate = 41.563;
 bool const CNucleus::noSymmetry = 1; // no symmetric fission calculated in
 // asyFissionWidth if there is a fission peak
-unsigned CNucleus::iPoint = -1;
+thread_local unsigned CNucleus::iPoint = -1;
 double CNucleus::threshold = .001;
 
-vector <double> CNucleus::GammaRayEnergy;
-int CNucleus::nGammaRays = 0;
+thread_local vector <double> CNucleus::GammaRayEnergy;
+thread_local int CNucleus::nGammaRays = 0;
 bool CNucleus::GDRParam = false; // switch on GDR parametrized version
 
 template<typename T, typename X>
@@ -61,6 +61,32 @@ class CompareGammaToX {
 public:
     bool operator()(T const &t, X const &x) const { return t.gamma<x; }
 };
+
+SStoreEvapIter selectEvapChannel(const SStoreEvapVector &channels, double width, double xran)
+{
+    if (channels.empty() || !std::isfinite(width) || width <= 0.)
+    {
+        return channels.end();
+    }
+
+    if (!std::isfinite(xran)) xran = 0.;
+    if (xran < 0.) xran = 0.;
+    if (xran >= 1.) xran = std::nextafter(1., 0.);
+
+    const double total = std::isfinite(channels.back().gamma) && channels.back().gamma > 0.
+                             ? channels.back().gamma
+                             : width;
+    const double target = xran * total;
+    SStoreEvapIter selectedChannel = std::lower_bound(channels.begin(),
+                                                      channels.end(),
+                                                      target,
+                                                      CompareGammaToX<SStoreEvap, double>());
+    if (selectedChannel == channels.end())
+    {
+        selectedChannel = channels.end() - 1;
+    }
+    return selectedChannel;
+}
 
 //*****************************************************
 CNucleus::CNucleus()
@@ -3143,10 +3169,11 @@ double CNucleus::gammaWidthMultipole(int iMode)
         return 0.;
     }
     double xran = ran->Rndm();
-    SStoreEvapIter selectedChannel = std::lower_bound(storeEvap.begin(),
-                                                      storeEvap.end(),
-                                                      xran*width,
-                                                      CompareGammaToX<SStoreEvap, double>());
+    SStoreEvapIter selectedChannel = selectEvapChannel(storeEvap, width, xran);
+    if (selectedChannel == storeEvap.end())
+    {
+        return 0.;
+    }
 
     //choose gamma energy and excitation energy of residual
     double e; // gamma ray energy
@@ -3270,10 +3297,11 @@ double CNucleus::gammaWidthE1GDR()
     }
 
     double xran = ran->Rndm();
-    SStoreEvapIter selectedChannel = std::lower_bound(storeEvap.begin(),
-                                                      storeEvap.end(),
-                                                      xran*width,
-                                                      CompareGammaToX<SStoreEvap, double>());
+    SStoreEvapIter selectedChannel = selectEvapChannel(storeEvap, width, xran);
+    if (selectedChannel == storeEvap.end())
+    {
+        return 0.;
+    }
     double e = selectedChannel->energy;
     e += deltaE*(0.5*ran->Rndm());
     if (e < 0.) e=0.;
@@ -4490,10 +4518,14 @@ void CNucleus::getSpin(bool saddle)
         double xran = 1.5;
         while(floor(xran) > 0.5)xran = ran->Rndm();
 
-        SStoreEvapIter selectedChannel = std::lower_bound(lightP->storeEvap.begin(),
-                                                          lightP->storeEvap.end(),
-                                                          xran*lightP->width,
-                                                          CompareGammaToX<SStoreEvap, double>());
+        SStoreEvapIter selectedChannel = selectEvapChannel(lightP->storeEvap,
+                                                           lightP->width,
+                                                           xran);
+        if (selectedChannel == lightP->storeEvap.end())
+        {
+            abortEvent = 1;
+            return;
+        }
 
         double Ek,Ex;
         int iTry = 0;
@@ -4552,10 +4584,14 @@ void CNucleus::getSpin(bool saddle)
     //now for HF == 0
     //choose the residue spin and evaporated particles energy;
     double xran = ran->Rndm();
-    SStoreEvapIter selectedChannel = std::lower_bound(lightP->storeEvap.begin(),
-                                                      lightP->storeEvap.end(),
-                                                      xran*lightP->width,
-                                                      CompareGammaToX<SStoreEvap, double>());
+    SStoreEvapIter selectedChannel = selectEvapChannel(lightP->storeEvap,
+                                                       lightP->width,
+                                                       xran);
+    if (selectedChannel == lightP->storeEvap.end())
+    {
+        abortEvent = 1;
+        return;
+    }
 
     double Ek,Ex;
     int iTry = 0;
@@ -4644,10 +4680,14 @@ void CNucleus::getSpin(bool saddle)
         double xran = 1.5;
         while(floor(xran) > 0.5)xran = ran->Rndm();
 
-        SStoreEvapIter selectedChannel = std::lower_bound(lightP->storeEvap.begin(),
-                                                          lightP->storeEvap.end(),
-                                                          xran*width,
-                                                          CompareGammaToX<SStoreEvap, double>());
+        SStoreEvapIter selectedChannel = selectEvapChannel(lightP->storeEvap,
+                                                           width,
+                                                           xran);
+        if (selectedChannel == lightP->storeEvap.end())
+        {
+            abortEvent = 1;
+            return;
+        }
 
         EvapS2 = selectedChannel->spin;
         if (lightP->odd) EvapS2 += 0.5;

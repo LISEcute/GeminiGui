@@ -8,7 +8,7 @@
 
 #include <QDebug>
 
-CYrast* CYrast::fInstance = 0;  // singleton
+thread_local CYrast* CYrast::fInstance = 0;  // per-thread instance
 
 double CYrast::addBar = 0.;
 double const CYrast::pi=acos(-1.);

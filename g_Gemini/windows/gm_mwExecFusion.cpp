@@ -2,9 +2,20 @@
 #include "ui_gm_mainwindow.h"
 
 #include <QDateTime>
+#include <QElapsedTimer>
+#include <QEventLoop>
 #include <QFileInfo>
+#include <QFuture>
+#include <QFutureWatcher>
 #include <QProgressDialog>
+#include <QThread>
+#include <QtConcurrent>
+#include <array>
+#include <atomic>
+#include <chrono>
+#include <cmath>
 #include <map>
+#include <vector>
 #include "g_Gemini/source/CNucleus.h"
 #include "g_Gemini/source/CFus.h"
 #include "gm_results.h"
@@ -72,7 +83,418 @@ QString resultWindowTitle(const QString &projectileName,
     return "Gemini: Results ("
            + superscriptLeadingMassNumber(projectileName) + "_"
            + superscriptLeadingMassNumber(targetName) + "_"
-           + QString::number(energyMeV, 'f', 0) + ")";
+           + QString::number(energyMeV, 'f', 0) + "MeV)";
+}
+
+struct FusionRunParams
+{
+    int zCN = 0;
+    int aCN = 0;
+    int projectileA = 0;
+    int targetA = 0;
+    double excitationMeV = 0.0;
+    double labEnergyMeV = 0.0;
+    double betaCN = 0.0;
+    bool useIMF = false;
+    bool useIMFEnhancement = false;
+    int evapMode = 2;
+    std::vector<double> spinCdf;
+};
+
+struct FusionChunkJob
+{
+    int begin = 0;
+    int end = 0;
+    unsigned int seed = 1;
+};
+
+struct FusionSummary
+{
+    int attemptedEvents = 0;
+    int acceptedEvents = 0;
+    double total = 0.0;
+    double nFission = 0.0;
+    double nImf = 0.0;
+    double neutPreSad = 0.0;
+    double neutSaddleToScission = 0.0;
+    double neutHeavy = 0.0;
+    double neutLight = 0.0;
+    double imfTotal = 0.0;
+    double symTotal = 0.0;
+    double aRes = 0.0;
+    double zRes = 0.0;
+    double resTotal = 0.0;
+    double neutMultEv = 0.0;
+    double protMultEv = 0.0;
+    double alpMultEv = 0.0;
+    double gammaEnergy = 0.0;
+    int countResidue = 0;
+    std::array<Residual, 101> residues;
+    std::map<std::pair<int, int>, AngularDistEntry> angularDistByZN;
+    std::map<std::pair<int, int>, AngularDistEntry> imfAngularByZN;
+    AngularDistEntry neutronAngular;
+    AngularDistEntry protonAngular;
+    AngularDistEntry alphaAngular;
+    AngularDistEntry gammaAngular;
+
+    FusionSummary()
+    {
+        for (Residual &residue : residues)
+        {
+            residue.Z = 0;
+            residue.A = 0;
+            residue.count = 0;
+            residue.name.clear();
+        }
+        neutronAngular.z = 0;
+        neutronAngular.n = 1;
+        protonAngular.z = 1;
+        protonAngular.n = 0;
+        alphaAngular.z = 2;
+        alphaAngular.n = 2;
+        gammaAngular.z = 0;
+        gammaAngular.n = 0;
+    }
+};
+
+void appendAngularEntry(AngularDistEntry &target, const AngularDistEntry &source)
+{
+    target.z = source.z;
+    target.n = source.n;
+    target.kineticEnergy.insert(target.kineticEnergy.end(),
+                                source.kineticEnergy.begin(),
+                                source.kineticEnergy.end());
+    target.thetaDeg.insert(target.thetaDeg.end(),
+                           source.thetaDeg.begin(),
+                           source.thetaDeg.end());
+    target.vz.insert(target.vz.end(), source.vz.begin(), source.vz.end());
+    target.vxy.insert(target.vxy.end(), source.vxy.begin(), source.vxy.end());
+    target.cmEnergy.insert(target.cmEnergy.end(),
+                           source.cmEnergy.begin(),
+                           source.cmEnergy.end());
+    target.weight.insert(target.weight.end(), source.weight.begin(), source.weight.end());
+}
+
+void mergeAngularMap(std::map<std::pair<int, int>, AngularDistEntry> &target,
+                     const std::map<std::pair<int, int>, AngularDistEntry> &source)
+{
+    for (const auto &it : source)
+        appendAngularEntry(target[it.first], it.second);
+}
+
+void mergeFusionSummary(FusionSummary &target, const FusionSummary &source)
+{
+    target.attemptedEvents += source.attemptedEvents;
+    target.acceptedEvents += source.acceptedEvents;
+    target.total += source.total;
+    target.nFission += source.nFission;
+    target.nImf += source.nImf;
+    target.neutPreSad += source.neutPreSad;
+    target.neutSaddleToScission += source.neutSaddleToScission;
+    target.neutHeavy += source.neutHeavy;
+    target.neutLight += source.neutLight;
+    target.imfTotal += source.imfTotal;
+    target.symTotal += source.symTotal;
+    target.aRes += source.aRes;
+    target.zRes += source.zRes;
+    target.resTotal += source.resTotal;
+    target.neutMultEv += source.neutMultEv;
+    target.protMultEv += source.protMultEv;
+    target.alpMultEv += source.alpMultEv;
+    target.gammaEnergy += source.gammaEnergy;
+    target.countResidue += source.countResidue;
+
+    for (int i = 0; i < int(target.residues.size()); ++i)
+    {
+        if (source.residues[i].count == 0) continue;
+        target.residues[i].count += source.residues[i].count;
+        target.residues[i].name = source.residues[i].name;
+        target.residues[i].Z = source.residues[i].Z;
+        target.residues[i].A = source.residues[i].A;
+    }
+
+    mergeAngularMap(target.angularDistByZN, source.angularDistByZN);
+    mergeAngularMap(target.imfAngularByZN, source.imfAngularByZN);
+    appendAngularEntry(target.neutronAngular, source.neutronAngular);
+    appendAngularEntry(target.protonAngular, source.protonAngular);
+    appendAngularEntry(target.alphaAngular, source.alphaAngular);
+    appendAngularEntry(target.gammaAngular, source.gammaAngular);
+}
+
+int hashResidueName(const std::string &name)
+{
+    int sum = 0;
+    for (char c : name) sum += c;
+    return (sum * int(name.length())) % 101;
+}
+
+void computeFusionKinematics(CNucleus *particle,
+                             double betaCN,
+                             double &keLab,
+                             double &thetaLabDeg,
+                             double &vzLab,
+                             double &vxy,
+                             double &cmEnergy)
+{
+    double *vel = particle->getVelocityVector();
+
+    const double vx = vel[0] / 30.f;
+    const double vy = vel[1] / 30.f;
+    const double vzLocal = vel[2] / 30.f;
+    vzLab = vzLocal + betaCN;
+    vxy = std::sqrt(vx * vx + vy * vy);
+    const double massMeV = particle->iA * 931.49432f;
+
+    const double betaTot = std::sqrt(vx * vx + vy * vy + vzLab * vzLab);
+    thetaLabDeg = 0.f;
+    if (betaTot > 0.f)
+    {
+        double c = vzLab / betaTot;
+        if (c > 1.f) c = 1.f;
+        if (c < -1.f) c = -1.f;
+        thetaLabDeg = static_cast<double>(std::acos(c) * 57.29577951308232);
+    }
+
+    keLab = 0.5f * massMeV * (vx * vx + vy * vy + vzLab * vzLab);
+    cmEnergy = 0.5f * massMeV * (vx * vx + vy * vy + vzLocal * vzLocal);
+}
+
+int chooseSpinFromCdf(const std::vector<double> &spinCdf)
+{
+    const double ran = CRandom::instance()->Rndm();
+    int l = 0;
+    while (l + 1 < int(spinCdf.size()) && ran >= spinCdf[l])
+        ++l;
+    return l;
+}
+
+FusionSummary simulateFusionChunk(const FusionRunParams &params,
+                                  const FusionChunkJob &job,
+                                  const std::atomic_bool *cancelled)
+{
+    CRandom::seedCurrentThread(job.seed);
+
+    FusionSummary summary;
+    CNucleus cn(params.zCN, params.aCN);
+
+    for (int event = job.begin; event < job.end; ++event)
+    {
+        if (cancelled && cancelled->load(std::memory_order_relaxed)) break;
+        summary.attemptedEvents++;
+
+        const int l = chooseSpinFromCdf(params.spinCdf);
+        cn.setCompoundNucleus(params.excitationMeV, double(l));
+
+        if (params.useIMFEnhancement)
+            cn.setWeightIMF();
+
+        cn.decay();
+
+        if (cn.abortEvent)
+        {
+            cn.reset();
+            continue;
+        }
+
+        const int nFrag = cn.getNumberOfProducts();
+        CNucleus *products = cn.getProducts(nFrag - 1);
+        const double weight = products->getWeightFactor();
+
+        const bool isSymmetricFission = cn.isSymmetricFission();
+        const bool isAsymmetricFission = cn.isAsymmetricFission();
+        const bool isResidue = cn.isResidue();
+
+        if (isSymmetricFission)
+        {
+            summary.symTotal++;
+            summary.nFission += weight;
+            products = cn.getProducts(0);
+            for (int i = 0; i < nFrag - 1; i++)
+            {
+                if (products->iZ == 0 && products->iA == 1)
+                {
+                    if (products->isSaddleToScission()) summary.neutSaddleToScission += weight;
+                    else if (products->origin == 0) summary.neutPreSad += weight;
+                    else if (products->origin == 2) summary.neutLight += weight;
+                    else if (products->origin == 3) summary.neutHeavy += weight;
+                }
+                products = cn.getProducts();
+            }
+        }
+
+        if (isAsymmetricFission)
+        {
+            summary.nImf += weight;
+            summary.imfTotal++;
+            const int zMaxEvap = cn.getZmaxEvap();
+
+            CNucleus *imfProducts = cn.getProducts(0);
+            for (int j = 0; j < nFrag && imfProducts; j++)
+            {
+                if (imfProducts->iZ > zMaxEvap)
+                {
+                    double keLab = 0.f;
+                    double thetaLabDeg = 0.f;
+                    double vzLab = 0.f;
+                    double vxy = 0.f;
+                    double cmEnergy = 0.f;
+                    computeFusionKinematics(imfProducts, params.betaCN,
+                                            keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
+                    addAngularSample(summary.imfAngularByZN,
+                                     imfProducts->iZ,
+                                     imfProducts->iA - imfProducts->iZ,
+                                     keLab,
+                                     thetaLabDeg,
+                                     vzLab,
+                                     vxy,
+                                     cmEnergy,
+                                     weight);
+                }
+                imfProducts = cn.getProducts();
+            }
+        }
+
+        summary.total += weight;
+
+        products = cn.getProducts(nFrag - 1);
+        if (isResidue)
+        {
+            const std::string productName = products->getName();
+            const int residueIndex = hashResidueName(productName);
+            Residual &residue = summary.residues[residueIndex];
+
+            residue.count++;
+            summary.countResidue++;
+            residue.name = productName;
+            residue.Z = products->iZ;
+            residue.A = products->iA;
+            summary.aRes += products->iA;
+            summary.zRes += products->iZ;
+            summary.resTotal += weight;
+            const double eventGammaEnergy = products->getSumGammaEnergy();
+            summary.gammaEnergy += weight * eventGammaEnergy;
+
+            double keLab = 0.f;
+            double thetaLabDeg = 0.f;
+            double vzLab = 0.f;
+            double vxy = 0.f;
+            double cmEnergy = 0.f;
+
+            computeFusionKinematics(products, params.betaCN,
+                                    keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
+
+            addAngularSample(summary.angularDistByZN,
+                             products->iZ,
+                             products->iA - products->iZ,
+                             keLab,
+                             thetaLabDeg,
+                             vzLab,
+                             vxy);
+
+            if (eventGammaEnergy > 0.f)
+            {
+                addAngularSample(summary.gammaAngular,
+                                 eventGammaEnergy,
+                                 thetaLabDeg,
+                                 0.0f,
+                                 0.0f,
+                                 eventGammaEnergy);
+            }
+        }
+
+        products = cn.getProducts(0);
+        for (int i = 0; i < nFrag - 1; i++)
+        {
+            if (products->iZ == 0 && products->iA == 1 && isResidue)
+            {
+                summary.neutMultEv += weight;
+                double keLab = 0.f;
+                double thetaLabDeg = 0.f;
+                double vzLab = 0.f;
+                double vxy = 0.f;
+                double cmEnergy = 0.f;
+                computeFusionKinematics(products, params.betaCN,
+                                        keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
+                addAngularSample(summary.neutronAngular, keLab, thetaLabDeg, vzLab, vxy,
+                                 cmEnergy);
+            }
+            else if (products->iZ == 1 && isResidue)
+            {
+                if(products->iA == 1 )
+                {
+                    summary.protMultEv += weight;
+                    double keLab = 0.f;
+                    double thetaLabDeg = 0.f;
+                    double vzLab = 0.f;
+                    double vxy = 0.f;
+                    double cmEnergy = 0.f;
+                    computeFusionKinematics(products, params.betaCN,
+                                            keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
+                    addAngularSample(summary.protonAngular, keLab, thetaLabDeg, vzLab, vxy,
+                                     cmEnergy);
+                }
+            }
+            else if (products->iZ == 2 && isResidue)
+            {
+                if(products->iA == 4)
+                {
+                    summary.alpMultEv += weight;
+                    double keLab = 0.f;
+                    double thetaLabDeg = 0.f;
+                    double vzLab = 0.f;
+                    double vxy = 0.f;
+                    double cmEnergy = 0.f;
+                    computeFusionKinematics(products, params.betaCN,
+                                            keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
+                    addAngularSample(summary.alphaAngular, keLab, thetaLabDeg, vzLab, vxy,
+                                     cmEnergy);
+                }
+            }
+            products = cn.getProducts();
+        }
+
+        cn.reset();
+        summary.acceptedEvents++;
+    }
+
+    cn.reset();
+    return summary;
+}
+
+struct FusionChunkRunner
+{
+    typedef FusionSummary result_type;
+
+    FusionRunParams params;
+    const std::atomic_bool *cancelled = nullptr;
+
+    FusionSummary operator()(const FusionChunkJob &job) const
+    {
+        return simulateFusionChunk(params, job, cancelled);
+    }
+};
+
+QVector<FusionChunkJob> makeFusionJobs(int eventCount)
+{
+    QVector<FusionChunkJob> jobs;
+    if (eventCount <= 0) return jobs;
+
+    const int idealThreads = std::max(1, QThread::idealThreadCount());
+    const int chunkCount = std::min(eventCount, idealThreads * 12);
+    const int chunkSize = (eventCount + chunkCount - 1) / chunkCount;
+    const unsigned int baseSeed = static_cast<unsigned int>(
+        std::chrono::high_resolution_clock::now().time_since_epoch().count());
+
+    for (int begin = 0, index = 0; begin < eventCount; begin += chunkSize, ++index)
+    {
+        FusionChunkJob job;
+        job.begin = begin;
+        job.end = std::min(eventCount, begin + chunkSize);
+        job.seed = baseSeed + 7919u * static_cast<unsigned int>(index + 1);
+        jobs.push_back(job);
+    }
+
+    return jobs;
 }
 
 }
@@ -186,258 +608,87 @@ void MainWindow::execute_fusion()
         2.0f * (Elab * Ap / (Ap + At)) / (931.49432f * (Ap + At))
         );
 
-    auto computeKinematics = [&](CNucleus *particle,
-                                 double &keLab,
-                                 double &thetaLabDeg,
-                                 double &vzLab,
-                                 double &vxy,
-                                 double &cmEnergy)
+    CN.setEvapMode(_optEvap);
+    if (_useIMF) CN.setYesIMF();
+    else CN.setNoIMF();
+
+    FusionRunParams params;
+    params.zCN = fus.iZcn;
+    params.aCN = fus.iAcn;
+    params.projectileA = Ap;
+    params.targetA = At;
+    params.excitationMeV = ffEx;
+    params.labEnergyMeV = Elab;
+    params.betaCN = betaCN;
+    params.useIMF = _useIMF;
+    params.useIMFEnhancement = _useIMF && _useIMFenh;
+    params.evapMode = _optEvap;
+    params.spinCdf.assign(prob, prob + lmax + 1);
+
+    QVector<FusionChunkJob> jobs = makeFusionJobs(num_events);
+    progress.setMaximum(std::max(1, int(jobs.size())));
+    progress.setLabelText("Calculating");
+
+    std::atomic_bool cancelled(false);
+    FusionChunkRunner runner;
+    runner.params = params;
+    runner.cancelled = &cancelled;
+
+    QElapsedTimer parallelTimer;
+    parallelTimer.start();
+
+    QFuture<FusionSummary> future = QtConcurrent::mapped(jobs, runner);
+
+    QFutureWatcher<FusionSummary> watcher;
+    watcher.setFuture(future);
+
+    while (!watcher.isFinished())
     {
-        double *vel = particle->getVelocityVector();
-
-        const double vx = vel[0] / 30.f;
-        const double vy = vel[1] / 30.f;
-        const double vzLocal = vel[2] / 30.f;
-        vzLab = vzLocal + betaCN;
-        vxy = std::sqrt(vx * vx + vy * vy);
-        const double massMeV = particle->iA * 931.49432f;
-
-        const double betaTot = std::sqrt(vx * vx + vy * vy + vzLab * vzLab);
-        thetaLabDeg = 0.f;
-        if (betaTot > 0.f)
+        if (progress.wasCanceled())
         {
-            double c = vzLab / betaTot;
-            if (c > 1.f) c = 1.f;
-            if (c < -1.f) c = -1.f;
-            thetaLabDeg = static_cast<double>(std::acos(c) * 57.29577951308232);
+            cancelled.store(true, std::memory_order_relaxed);
+            future.cancel();
         }
-
-        keLab = 0.5f * massMeV * (vx * vx + vy * vy + vzLab * vzLab);
-        cmEnergy = 0.5f * massMeV * (vx * vx + vy * vy + vzLocal * vzLocal);
-    };
-
-    //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW  cascade BEGIN
-    const int progressStep = std::max(1, num_events / 1000);
-    for (int i=0;i<num_events;i++)
-    {
-        if(progress.wasCanceled()){break;}
-        if (i % progressStep == 0 || i == num_events - 1) {
-            progress.setValue(i);
-            qApp->processEvents();
-        }
-
-        //--------------------------------------------------------------
-        //choose the spin of the CN from the determed spin distribution
-        double ran = CN.ran->Rndm();
-        int l = 0;
-        for (;;)
-        {
-            if (ran < prob[l]) break;
-            l++;
-        }
-        //-------------------------------------------------------------------
-
-        //specify the excitation energy and spin
-        CN.setCompoundNucleus(ffEx,(double)l);
-
-        //---------------------------------------------------------------------- IMF begin
-        //if you are interested in IMF emission at low excitation energy
-        //then turn IMF weighting on
-        if(_useIMF)  {
-            CN.setYesIMF();
-            if(_useIMFenh) CN.setWeightIMF();// turn on enhanced IMF emission
-        }
-        else CN.setNoIMF();
-        //---------------------------------------------------------------------- IMF end
-
-        CN.decay(); //decay the compound nucleus
-
-        if (CN.abortEvent)  //gemini had trouble with this event
-        {
-            CN.reset();
-            continue;
-        }
-
-
-        // number of stable fragments produced in the decay
-        int Nfrag = CN.getNumberOfProducts();
-
-        //set pointer to last fragment which is the evaporation residue
-        // if isResidue is true, otherwise the heavy fission fragment
-        // this should be the heaviest fragment produced
-        CNucleus *products = CN.getProducts(Nfrag-1);
-
-        // the weight will be unity unless setWeightIMF is called
-        double weight = products->getWeightFactor();
-
-        const bool isSymmetricFission = CN.isSymmetricFission();
-        const bool isAsymmetricFission = CN.isAsymmetricFission();
-        const bool isResidue = CN.isResidue();
-
-        if (isSymmetricFission)
-        {
-            sym_total++;
-            Nfission += weight;             //fission event
-            products = CN.getProducts(0);   // go to first evaporated particle
-            for (int i=0; i<Nfrag-1; i++)
-            {
-                if (products->iZ == 0 && products->iA == 1) // look for neutrons
-                {
-                    if (products->isSaddleToScission()) neutSaddleToScission += weight;
-                    else if (products->origin == 0) neutPreSad += weight;
-                    else if (products->origin == 2) neutLight += weight;
-                    else if (products->origin == 3) neutHeavy += weight;
-                }
-                // go to next particle
-                products = CN.getProducts();
-            }
-        }
-
-        //intermediate mass fragment
-        if (isAsymmetricFission)
-        {
-            Nimf += weight;
-            imf_total++;
-            const int zMaxEvap = CN.getZmaxEvap();
-
-            CNucleus *imfProducts = CN.getProducts(0);
-            for (int j = 0; j < Nfrag && imfProducts; j++)
-            {
-                if (imfProducts->iZ > zMaxEvap)
-                {
-                    double keLab = 0.f;
-                    double thetaLabDeg = 0.f;
-                    double vzLab = 0.f;
-                    double vxy = 0.f;
-                    double cmEnergy = 0.f;
-                    computeKinematics(imfProducts, keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
-                    addAngularSample(imfAngularByZN,
-                                     imfProducts->iZ,
-                                     imfProducts->iA - imfProducts->iZ,
-                                     keLab,
-                                     thetaLabDeg,
-                                     vzLab,
-                                     vxy,
-                                     cmEnergy,
-                                     weight);
-                }
-                imfProducts = CN.getProducts();
-            }
-        } //imf event
-
-        total += weight;
-
-        // cout << "fJ = " << products->fJ << std::endl;
-        // CAngle ang = products->getAngleDegrees();
-        // cout << "theta (deg) = " << products->getThetaDegrees() << std::endl;
-        // cout << "angle (deg): phi = " << ang.phi << " pi = " << ang.pi << " theta = " << ang.theta << std::endl;
-        // cout << "plb = " << fus.plb << std::endl;
-
-        //evaporation resiudes
-
-        if (isResidue)
-        {
-            const std::string productName = products->getName();
-            const int residueIndex = hash(productName);
-            Residual &residue = resid[residueIndex];
-
-            residue.count++;
-            countResidue++;
-            residue.name = productName;
-            residue.Z = products->iZ;
-            residue.A = products->iA;
-            Ares += products->iA;
-            Zres += products->iZ;
-            resTotal += weight;
-            const double eventGammaEnergy = products->getSumGammaEnergy();
-            gammaEnergy += weight * eventGammaEnergy;
-
-            double keLab = 0.f;
-            double thetaLabDeg = 0.f;
-            double vzLab = 0.f;
-            double vxy = 0.f;
-            double cmEnergy = 0.f;
-
-            computeKinematics(products, keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
-
-            addAngularSample(angularDistByZN,
-                             products->iZ,
-                             products->iA - products->iZ,
-                             keLab,
-                             thetaLabDeg,
-                             vzLab,
-                             vxy);
-
-            // Gamma angular-distribution sample.
-            // Gemini gives total gamma energy from the residue.
-            // It does not give individual gamma-ray direction here,
-            // so we attach the gamma energy to the residue lab angle.
-            if (eventGammaEnergy > 0.f)
-            {
-                addAngularSample(gammaAngular,
-                                 eventGammaEnergy,
-                                 thetaLabDeg,
-                                 0.0f,
-                                 0.0f,
-                                 eventGammaEnergy);
-            }
-        }
-        //============================================================= analysis BEGIN
-        products = CN.getProducts(0);  // go to first evaporated particle
-
-        for (int i=0;i<Nfrag-1;i++)
-        {
-            if (products->iZ == 0 && products->iA == 1 && isResidue)  //neutrons
-            {
-                neutMultEv += weight;
-                double keLab = 0.f;
-                double thetaLabDeg = 0.f;
-                double vzLab = 0.f;
-                double vxy = 0.f;
-                double cmEnergy = 0.f;
-                computeKinematics(products, keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
-                addAngularSample(neutronAngular, keLab, thetaLabDeg, vzLab, vxy,
-                                 cmEnergy);
-            }
-            else if (products->iZ == 1 && isResidue) //protons
-            {
-                if(products->iA == 1 )
-                {
-                    protMultEv += weight;
-                    double keLab = 0.f;
-                    double thetaLabDeg = 0.f;
-                    double vzLab = 0.f;
-                    double vxy = 0.f;
-                    double cmEnergy = 0.f;
-                    computeKinematics(products, keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
-                    addAngularSample(protonAngular, keLab, thetaLabDeg, vzLab, vxy,
-                                      cmEnergy);
-                }
-            }
-            else if (products->iZ == 2  && isResidue)//alpha particles
-            {
-                if( products->iA == 4)
-                {
-                    alpMultEv += weight;
-                    double keLab = 0.f;
-                    double thetaLabDeg = 0.f;
-                    double vzLab = 0.f;
-                    double vxy = 0.f;
-                    double cmEnergy = 0.f;
-                    computeKinematics(products, keLab, thetaLabDeg, vzLab, vxy, cmEnergy);
-                    addAngularSample(alphaAngular, keLab, thetaLabDeg, vzLab, vxy,
-                                     cmEnergy);
-                }
-            }
-            // go to next particle
-            products = CN.getProducts();
-        }
-        //============================================================= analysis END
-
-        //reset the compound nucleus for a new decay
-        CN.reset();
-        counter++;
+        progress.setValue(watcher.progressValue());
+        qApp->processEvents(QEventLoop::AllEvents, 50);
+        QThread::msleep(20);
     }
+
+    watcher.waitForFinished();
+    const qint64 parallelElapsedMs = parallelTimer.elapsed();
+    progress.setValue(progress.maximum());
+    showRuntime(parallelElapsedMs);
+
+    FusionSummary parallelSummary;
+    for (int i = 0; i < future.resultCount(); ++i)
+        mergeFusionSummary(parallelSummary, future.resultAt(i));
+
+    total = parallelSummary.total;
+    Nfission = parallelSummary.nFission;
+    Nimf = parallelSummary.nImf;
+    neutPreSad = parallelSummary.neutPreSad;
+    neutSaddleToScission = parallelSummary.neutSaddleToScission;
+    neutHeavy = parallelSummary.neutHeavy;
+    neutLight = parallelSummary.neutLight;
+    imf_total = parallelSummary.imfTotal;
+    sym_total = parallelSummary.symTotal;
+    Ares = parallelSummary.aRes;
+    Zres = parallelSummary.zRes;
+    resTotal = parallelSummary.resTotal;
+    neutMultEv = parallelSummary.neutMultEv;
+    protMultEv = parallelSummary.protMultEv;
+    alpMultEv = parallelSummary.alpMultEv;
+    gammaEnergy = parallelSummary.gammaEnergy;
+    countResidue = parallelSummary.countResidue;
+    counter = parallelSummary.acceptedEvents;
+    angularDistByZN = parallelSummary.angularDistByZN;
+    imfAngularByZN = parallelSummary.imfAngularByZN;
+    neutronAngular = parallelSummary.neutronAngular;
+    protonAngular = parallelSummary.protonAngular;
+    alphaAngular = parallelSummary.alphaAngular;
+    gammaAngular = parallelSummary.gammaAngular;
+    for (int i = 0; i < length; ++i)
+        resid[i] = parallelSummary.residues[i];
 
     //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW  cascade BEGIN
     int _INPUT = 1;

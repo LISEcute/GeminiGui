@@ -21,7 +21,7 @@ class CYrast
  private:
 
   CYrast();
-  static CYrast *fInstance; //!< instance member to make this class a singleton
+  static thread_local CYrast *fInstance; //!< per-thread instance
   static double const pi; //!< 3.14159
   //needed by getYrastRLDM
   static double const x1h[11][6]; //!< number for RLDM

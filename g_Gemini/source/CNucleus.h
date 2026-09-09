@@ -95,8 +95,8 @@ public:
     static CNucleus* acquire(int iZ,int iA, double fEx, double fJ);
     static void release(CNucleus* nucleus);
 
-    static CYrast *yrast; //!< gives fission barriers and rotational energies
-    static CLevelDensity *levelDensity; //!< gives level densities
+    static thread_local CYrast *yrast; //!< gives fission barriers and rotational energies
+    static thread_local CLevelDensity *levelDensity; //!< gives level densities
 
  protected:
   double Ecoul; //!< Coulomb barrier (HauserFeshbach)
@@ -135,7 +135,7 @@ public:
   static double timeTransient; //!< transient fission delay 
   static double fissionScaleFactor; //!< fission width scaled by this factor
   static double barAdd; //!< adds to Sierk fission barrier
-  static unsigned iPoint; //!< pointer to array of stable fragments
+  static thread_local unsigned iPoint; //!< pointer to array of stable fragments
   static int iHF; //!< set evaporation mode 
   int HF; //!< evaporation mode chosen for a given decay
   static bool noIMF; //!< no imf emission is considered
@@ -144,7 +144,7 @@ public:
 
   static short unsigned Zshell; //!< enforce shell effects in evaporation
   CScission scission; //!< gives scission energeis, etc
-  static CGdr * GDR ; //!< uder defined GDR line shape
+  static thread_local CGdr * GDR ; //!< uder defined GDR line shape
   bool  bStable; //!< indicated this nucleus is particle-stable
   static double const r0; //!< radius const (fm)
   static double const sep; //!< separation between fragments
@@ -152,14 +152,14 @@ public:
   void initializeDefaults();
   void initialize(int iZ0, int iA0);
   void initialize(int iZ0, int iA0, double fEx0, double fJ0);
-  static vector<CNucleus*> recycled;
+  static thread_local vector<CNucleus*> recycled;
 
   CAngle spin; //!< orientation of the spin axis
   double velocity[3]; //!< velocity vector of nucleus in cm/ns 
   double momentum[3]; //!< momentum vector in MeV/c
   double qVal; //added by MPK 7/30/2015
 
-  static CEvap *evap; //!< stores info on evaporated particles
+  static thread_local CEvap *evap; //!< stores info on evaporated particles
 
 
   CLightP * lightP; //!< points to the light-particle decay mode
@@ -241,10 +241,10 @@ public:
   //!< total number of possible  decay products from all decays
 
 
-  static vector<CNucleus *> allProducts;
+  static thread_local vector<CNucleus *> allProducts;
   //!< array of pointer to all decay products (stable or intermediate) 
 
-  static vector<CNucleus *> stableProducts;
+  static thread_local vector<CNucleus *> stableProducts;
   //!< array of pointers to all stable decay products for all CN decays
 
 
@@ -263,10 +263,10 @@ public:
 
   double sigma2; //!< variance of fission mass distribution
   double symSaddlePoint;//!< symmetric saddle point energy
-  static double sumGammaEnergy; //!< store the energy emitted in gamma rays
+  static thread_local double sumGammaEnergy; //!< store the energy emitted in gamma rays
 
- static  vector <double> GammaRayEnergy; //!< store each gamma ray energy
-  static int  nGammaRays;  //!< number of emitted gamma rays
+ static thread_local vector <double> GammaRayEnergy; //!< store each gamma ray energy
+  static thread_local int  nGammaRays;  //!< number of emitted gamma rays
 
   static bool  GDRParam; //!< if true, the standard formula for GDR decay width is used, if false the parametrized version
 

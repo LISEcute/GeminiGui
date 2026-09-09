@@ -36,7 +36,7 @@ class CEvap
 {
  protected:
   CEvap();
-  static CEvap *fInstance; //!< instance member to make this class a singleton
+  static thread_local CEvap *fInstance; //!< per-thread instance
   CTlBarDist ** tlArray; //!< arrays of objects generating transmission coef.
   CSigBarDist ** sigBarDist; //!< arrays of objects generating inverse cross section
   int nTl; //!< number of transmission coef generating objects

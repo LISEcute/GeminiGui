@@ -3,7 +3,7 @@
 #include <iostream>
 #include <QTextStream>
 #include <QFile>
-CEvap* CEvap::fInstance = 0;
+thread_local CEvap* CEvap::fInstance = 0;
 
 double const r0 = 1.16;
 /**

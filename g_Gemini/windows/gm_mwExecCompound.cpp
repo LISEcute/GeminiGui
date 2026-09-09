@@ -1,8 +1,17 @@
 #include "gm_mainwindow.h"
 #include "ui_gm_mainwindow.h"
 
+#include <QElapsedTimer>
+#include <QEventLoop>
+#include <QFuture>
+#include <QFutureWatcher>
 #include <QProgressDialog>
+#include <QThread>
+#include <QtConcurrent>
 #include <algorithm>
+#include <array>
+#include <atomic>
+#include <chrono>
 #include <cmath>
 #include <map>
 #include <vector>
@@ -373,6 +382,256 @@ YieldPlotData buildYieldPlotData(Residual *resid,
 
     return buildYieldPlotDataFromCounts(residualYieldCountsByZ(resid, length), imfByZ);
 }
+
+namespace {
+
+struct CompoundRunParams
+{
+    int zCN = 0;
+    int aCN = 0;
+    double excitationMeV = 0.0;
+    double spin = 0.0;
+    bool useIMF = false;
+    bool useIMFEnhancement = false;
+};
+
+struct CompoundChunkJob
+{
+    int begin = 0;
+    int end = 0;
+    unsigned int seed = 1;
+};
+
+struct CompoundSummary
+{
+    int attemptedEvents = 0;
+    int acceptedEvents = 0;
+    double total = 0.0;
+    double nFission = 0.0;
+    double nImf = 0.0;
+    double neutPreSad = 0.0;
+    double neutSaddleToScission = 0.0;
+    double neutHeavy = 0.0;
+    double neutLight = 0.0;
+    double imfTotal = 0.0;
+    double symTotal = 0.0;
+    double aRes = 0.0;
+    double zRes = 0.0;
+    double resTotal = 0.0;
+    double neutMultEv = 0.0;
+    double protMultEv = 0.0;
+    double alpMultEv = 0.0;
+    double gammaEnergy = 0.0;
+    int countResidue = 0;
+    std::array<Residual, 101> residues;
+    ImfYieldCounts imfYieldByZN;
+
+    CompoundSummary()
+    {
+        for (Residual &residue : residues)
+        {
+            residue.Z = 0;
+            residue.A = 0;
+            residue.count = 0;
+            residue.name.clear();
+        }
+    }
+};
+
+int hashCompoundResidueName(const std::string &name)
+{
+    int sum = 0;
+    for (char c : name) sum += c;
+    return (sum * int(name.length())) % 101;
+}
+
+void mergeCompoundSummary(CompoundSummary &target, const CompoundSummary &source)
+{
+    target.attemptedEvents += source.attemptedEvents;
+    target.acceptedEvents += source.acceptedEvents;
+    target.total += source.total;
+    target.nFission += source.nFission;
+    target.nImf += source.nImf;
+    target.neutPreSad += source.neutPreSad;
+    target.neutSaddleToScission += source.neutSaddleToScission;
+    target.neutHeavy += source.neutHeavy;
+    target.neutLight += source.neutLight;
+    target.imfTotal += source.imfTotal;
+    target.symTotal += source.symTotal;
+    target.aRes += source.aRes;
+    target.zRes += source.zRes;
+    target.resTotal += source.resTotal;
+    target.neutMultEv += source.neutMultEv;
+    target.protMultEv += source.protMultEv;
+    target.alpMultEv += source.alpMultEv;
+    target.gammaEnergy += source.gammaEnergy;
+    target.countResidue += source.countResidue;
+
+    for (int i = 0; i < int(target.residues.size()); ++i)
+    {
+        if (source.residues[i].count == 0) continue;
+        target.residues[i].count += source.residues[i].count;
+        target.residues[i].name = source.residues[i].name;
+        target.residues[i].Z = source.residues[i].Z;
+        target.residues[i].A = source.residues[i].A;
+    }
+
+    for (const auto &it : source.imfYieldByZN)
+        target.imfYieldByZN[it.first] += it.second;
+}
+
+CompoundSummary simulateCompoundChunk(const CompoundRunParams &params,
+                                      const CompoundChunkJob &job,
+                                      const std::atomic_bool *cancelled)
+{
+    CRandom::seedCurrentThread(job.seed);
+
+    CompoundSummary summary;
+    CNucleus cn(params.zCN, params.aCN);
+    cn.setVelocityCartesian();
+    CAngle spin(CNucleus::pi / 2, double(0.));
+    cn.setSpinAxis(spin);
+
+    for (int event = job.begin; event < job.end; ++event)
+    {
+        if (cancelled && cancelled->load(std::memory_order_relaxed)) break;
+        summary.attemptedEvents++;
+
+        cn.setCompoundNucleus(params.excitationMeV, params.spin);
+
+        if (params.useIMFEnhancement)
+            cn.setWeightIMF();
+
+        cn.decay();
+
+        if (cn.abortEvent)
+        {
+            cn.reset();
+            continue;
+        }
+
+        const int nFrag = cn.getNumberOfProducts();
+        CNucleus *products = cn.getProducts(nFrag - 1);
+        const double weight = products->getWeightFactor();
+
+        const bool isSymmetricFission = cn.isSymmetricFission();
+        const bool isAsymmetricFission = cn.isAsymmetricFission();
+        const bool isResidue = cn.isResidue();
+
+        if (isSymmetricFission)
+        {
+            summary.symTotal++;
+            summary.nFission += weight;
+            products = cn.getProducts(0);
+            for (int i = 0; i < nFrag - 1; i++)
+            {
+                if (products->iZ == 0 && products->iA == 1)
+                {
+                    if (products->isSaddleToScission()) summary.neutSaddleToScission += weight;
+                    else if (products->origin == 0) summary.neutPreSad += weight;
+                    else if (products->origin == 2) summary.neutLight += weight;
+                    else if (products->origin == 3) summary.neutHeavy += weight;
+                }
+                products = cn.getProducts();
+            }
+        }
+
+        if (isAsymmetricFission)
+        {
+            summary.nImf += weight;
+            summary.imfTotal++;
+            const int zMaxEvap = cn.getZmaxEvap();
+
+            CNucleus *imfProducts = cn.getProducts(0);
+            for (int j = 0; j < nFrag && imfProducts; j++)
+            {
+                if (imfProducts->iZ > zMaxEvap)
+                {
+                    summary.imfYieldByZN[std::make_pair(imfProducts->iZ,
+                                                        imfProducts->iA - imfProducts->iZ)] += weight;
+                }
+                imfProducts = cn.getProducts();
+            }
+        }
+
+        summary.total += weight;
+
+        products = cn.getProducts(nFrag - 1);
+        if (isResidue)
+        {
+            const std::string productName = products->getName();
+            const int residueIndex = hashCompoundResidueName(productName);
+            Residual &residue = summary.residues[residueIndex];
+
+            residue.count++;
+            summary.countResidue++;
+            residue.name = productName;
+            residue.Z = products->iZ;
+            residue.A = products->iA;
+            summary.aRes += products->iA;
+            summary.zRes += products->iZ;
+            summary.resTotal += weight;
+            summary.gammaEnergy += weight * products->getSumGammaEnergy();
+        }
+
+        products = cn.getProducts(0);
+        for (int i = 0; i < nFrag - 1; i++)
+        {
+            if (products->iZ == 0 && products->iA == 1 && isResidue)
+                summary.neutMultEv += weight;
+            else if (products->iZ == 1 && products->iA == 1 && isResidue)
+                summary.protMultEv += weight;
+            else if (products->iZ == 2 && products->iA == 4 && isResidue)
+                summary.alpMultEv += weight;
+
+            products = cn.getProducts();
+        }
+
+        cn.reset();
+        summary.acceptedEvents++;
+    }
+
+    cn.reset();
+    return summary;
+}
+
+struct CompoundChunkRunner
+{
+    typedef CompoundSummary result_type;
+
+    CompoundRunParams params;
+    const std::atomic_bool *cancelled = nullptr;
+
+    CompoundSummary operator()(const CompoundChunkJob &job) const
+    {
+        return simulateCompoundChunk(params, job, cancelled);
+    }
+};
+
+QVector<CompoundChunkJob> makeCompoundJobs(int eventCount)
+{
+    QVector<CompoundChunkJob> jobs;
+    if (eventCount <= 0) return jobs;
+
+    const int idealThreads = std::max(1, QThread::idealThreadCount());
+    const int chunkCount = std::min(eventCount, idealThreads * 12);
+    const int chunkSize = (eventCount + chunkCount - 1) / chunkCount;
+    const unsigned int baseSeed = static_cast<unsigned int>(
+        std::chrono::high_resolution_clock::now().time_since_epoch().count());
+
+    for (int begin = 0, index = 0; begin < eventCount; begin += chunkSize, ++index)
+    {
+        CompoundChunkJob job;
+        job.begin = begin;
+        job.end = std::min(eventCount, begin + chunkSize);
+        job.seed = baseSeed + 1543u * static_cast<unsigned int>(index + 1);
+        jobs.push_back(job);
+    }
+
+    return jobs;
+}
+
+}
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 void MainWindow::execute_compound()
 {
@@ -426,140 +685,75 @@ void MainWindow::execute_compound()
     double gammaEnergy = 0.;
     int counter=0;
     ImfYieldCounts imfYieldByZN;
-    //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW  cascade BEGIN
-    const int progressStep = std::max(1, num_casc / 1000);
-    for (int i=0;i<num_casc;i++)
+    if (_useIMF) CN.setYesIMF();
+    else CN.setNoIMF();
+
+    CompoundRunParams params;
+    params.zCN = iZCN;
+    params.aCN = iACN;
+    params.excitationMeV = fEx;
+    params.spin = fJ;
+    params.useIMF = _useIMF;
+    params.useIMFEnhancement = _useIMF && _useIMFenh;
+
+    QVector<CompoundChunkJob> jobs = makeCompoundJobs(num_casc);
+    progress.setMaximum(std::max(1, int(jobs.size())));
+    progress.setLabelText("Calculating");
+
+    std::atomic_bool cancelled(false);
+    CompoundChunkRunner runner;
+    runner.params = params;
+    runner.cancelled = &cancelled;
+
+    QElapsedTimer parallelTimer;
+    parallelTimer.start();
+
+    QFuture<CompoundSummary> future = QtConcurrent::mapped(jobs, runner);
+    QFutureWatcher<CompoundSummary> watcher;
+    watcher.setFuture(future);
+
+    while (!watcher.isFinished())
     {
-        if(progress.wasCanceled()){break;}
-        if (i % progressStep == 0 || i == num_casc - 1) {
-            progress.setValue(i);
-            qApp->processEvents();
-        }
-
-        // ---------------------  here place of probability random to get L begin
-        // ---------------------  here place of probability random to get L end
-
-        CN.setCompoundNucleus(fEx,fJ);
-
-        //---------------------------------------------------------------------- IMF begin
-        //if you are interested in IMF emission at low excitation energy
-        //then turn IMF weighting on
-        if(_useIMF)  {
-            CN.setYesIMF();
-            if(_useIMFenh) CN.setWeightIMF();// turn on enhanced IMF emission
-        }
-        else CN.setNoIMF();
-        //---------------------------------------------------------------------- IMF end
-
-        CN.decay(); //decay the compound nucleus
-
-        if (CN.abortEvent)
+        if (progress.wasCanceled())
         {
-            cout << "abort event\n";
-            CN.reset();
-            continue;
+            cancelled.store(true, std::memory_order_relaxed);
+            future.cancel();
         }
-
-        int Nfrag = CN.getNumberOfProducts();
-
-        // fragments produced in decay
-        CNucleus *products = CN.getProducts(Nfrag-1);
-
-        // the weight will be unity unless setWeightIMF is called
-        double weight = products->getWeightFactor();
-
-        const bool isSymmetricFission = CN.isSymmetricFission();
-        const bool isAsymmetricFission = CN.isAsymmetricFission();
-        const bool isResidue = CN.isResidue();
-
-        if (isSymmetricFission)
-        {
-            sym_total++;
-            Nfission += weight;  //fission event
-            products = CN.getProducts(0);  // go to first evaporated particle
-            for (int i=0; i<Nfrag-1; i++)
-            {
-                if (products->iZ == 0 && products->iA == 1) // look for neutrons
-                {
-                    if (products->isSaddleToScission()) neutSaddleToScission += weight;
-                    else if (products->origin == 0) neutPreSad += weight;
-                    else if (products->origin == 2) neutLight += weight;
-                    else if (products->origin == 3) neutHeavy += weight;
-                }
-                // go to next particle
-                products = CN.getProducts();
-            }
-        }
-
-        //intermediate mass fragment
-        if (isAsymmetricFission)
-        {
-            Nimf += weight;
-            imf_total++;
-            const int zMaxEvap = CN.getZmaxEvap();
-
-            CNucleus *imfProducts = CN.getProducts(0);
-            for (int j = 0; j < Nfrag && imfProducts; j++)
-            {
-                if (imfProducts->iZ > zMaxEvap)
-                {
-                    imfYieldByZN[std::make_pair(imfProducts->iZ,
-                                                imfProducts->iA - imfProducts->iZ)] += weight;
-                }
-                imfProducts = CN.getProducts();
-            }
-        }
-
-        total += weight;
-
-        if (isResidue)
-        {
-            const std::string productName = products->getName();
-            const int residueIndex = hash(productName);
-            Residual &residue = resid[residueIndex];
-
-            residue.count++;
-            countResidue++;
-            residue.name = productName;
-            residue.Z = products->iZ;
-            residue.A = products->iA;
-            Ares += products->iA;
-            Zres += products->iZ;
-            resTotal += weight;
-            gammaEnergy += weight*products->getSumGammaEnergy();
-        }
-        //============================================================= analysis BEGIN
-        products = CN.getProducts(0);  // go to first evaporated particle
-
-        for (int i=0;i<Nfrag-1;i++)
-        {
-            if (products->iZ == 0 && products->iA == 1 && isResidue)  //neutrons
-            {
-                neutMultEv += weight;
-            }
-            else if (products->iZ == 1 && isResidue) //protons
-            {
-                if(products->iA == 1 )
-                {
-                    protMultEv += weight;
-                }
-            }
-            else if (products->iZ == 2  && isResidue)//alpha particles
-            {
-                if( products->iA == 4)
-                {
-                    alpMultEv += weight;
-                }
-            }
-            // go to next particle
-            products = CN.getProducts();
-        }
-        //============================================================= analysis END
-
-        //reset the compound nucleus for a new decay
-        CN.reset();
-        counter++;
+        progress.setValue(watcher.progressValue());
+        qApp->processEvents(QEventLoop::AllEvents, 50);
+        QThread::msleep(20);
     }
+
+    watcher.waitForFinished();
+    const qint64 parallelElapsedMs = parallelTimer.elapsed();
+    progress.setValue(progress.maximum());
+    showRuntime(parallelElapsedMs);
+
+    CompoundSummary parallelSummary;
+    for (int i = 0; i < future.resultCount(); ++i)
+        mergeCompoundSummary(parallelSummary, future.resultAt(i));
+
+    total = parallelSummary.total;
+    Nfission = parallelSummary.nFission;
+    Nimf = parallelSummary.nImf;
+    neutPreSad = parallelSummary.neutPreSad;
+    neutSaddleToScission = parallelSummary.neutSaddleToScission;
+    neutHeavy = parallelSummary.neutHeavy;
+    neutLight = parallelSummary.neutLight;
+    imf_total = parallelSummary.imfTotal;
+    sym_total = parallelSummary.symTotal;
+    Ares = parallelSummary.aRes;
+    Zres = parallelSummary.zRes;
+    resTotal = parallelSummary.resTotal;
+    neutMultEv = parallelSummary.neutMultEv;
+    protMultEv = parallelSummary.protMultEv;
+    alpMultEv = parallelSummary.alpMultEv;
+    gammaEnergy = parallelSummary.gammaEnergy;
+    countResidue = parallelSummary.countResidue;
+    counter = parallelSummary.acceptedEvents;
+    imfYieldByZN = parallelSummary.imfYieldByZN;
+    for (int i = 0; i < length; ++i)
+        resid[i] = parallelSummary.residues[i];
 
     //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW  cascade END
     int _INPUT = 2;

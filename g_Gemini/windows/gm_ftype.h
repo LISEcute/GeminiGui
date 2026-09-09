@@ -1,8 +1,8 @@
 #ifndef FTYPE_H
 #define FTYPE_H
 
-#define Gemini_version "Version 3.3.0"
-#define Gemini_date    "14-AUG-2026"
+#define Gemini_version "Version 3.3.1"
+#define Gemini_date    "09-SEP-2026"
 
 #endif // FTYPE_H
 
@@ -105,5 +105,9 @@
 // Middle version changed
 // Synchronized official version in gm_ftype.h with Gemini.pro resource version
 // Continued current Qt Creator layout defaults for Codex development builds
+
+// 3.3.1  09/09/26  Arjun:
+// Save and Save As buttons fixed; UI tweaks
+// Added parallel compound and fusion execution
 
 

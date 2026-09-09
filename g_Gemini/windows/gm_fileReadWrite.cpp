@@ -4,6 +4,7 @@
 #include <QDir>
 #include <QDebug>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <iostream>
 #include <QStandardPaths>
@@ -31,6 +32,28 @@ extern int  _optEvap;
 extern int fontsizeGlobal;
 extern int useHighDpiScaling;
 FILE *mfopen(const QString& filename, const char* operand);
+
+namespace {
+
+bool isUntitledMainFile(const QString &fileName)
+{
+    return QFileInfo(fileName).fileName() == QString(&FileNameAbsent[1]);
+}
+
+QString mainSaveDialogFileName(const QString &fileName)
+{
+    const QFileInfo fileInfo(fileName);
+    QString baseName = fileInfo.completeBaseName();
+    if (!baseName.endsWith("_main", Qt::CaseInsensitive))
+        baseName += "_main";
+
+    const QString extension = fileInfo.suffix().isEmpty()
+                                  ? ".gemini"
+                                  : "." + fileInfo.suffix();
+    return fileInfo.path() + "/" + baseName + extension;
+}
+
+}
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 void getDPIscaling(void)
 {
@@ -172,7 +195,8 @@ tabWidget->setCurrentIndex(tab_mode);
 void MainWindow::on_actionSave_As_triggered()
 {
 QString file = QFileDialog::getSaveFileName(this,tr("Save File"),
-                                                FFileName,tr("GEMINI files (*.gemini)"));
+                                                mainSaveDialogFileName(FFileName),
+                                                tr("GEMINI files (*.gemini)"));
 
 if(file.size()<=0) return;
 FFileName = file;
@@ -182,6 +206,11 @@ on_action_Save_triggered();
 //WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 void MainWindow::on_action_Save_triggered()
 {
+if(isUntitledMainFile(FFileName)){
+        on_actionSave_As_triggered();
+        return;
+        }
+
 QFile f(FFileName);
 
 if(!f.open(QIODevice::ReadWrite | QIODevice::Text)){

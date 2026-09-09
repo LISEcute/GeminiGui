@@ -21,7 +21,7 @@ class CLevelDensity
 {
  private:
   CLevelDensity();
-  static CLevelDensity *fInstance; //!< instance member to make this class a singleton
+  static thread_local CLevelDensity *fInstance; //!< per-thread instance
   static double k0; //!< inverse level-density parameter at U=0
   static double kInfinity; //!< inverse level-density parameter at U=infinity
   static double aKappa; //!< mass dependence of kappa

@@ -36,7 +36,7 @@ class CGdr
   double getLineShape(double e);
 
  protected:
-  static  CGdr* fInstance; //!< instance member to make this a singleton
+  static thread_local CGdr* fInstance; //!< per-thread instance
     CGdr();                //!< constructor
     int N;                 //!< number of Lorentzians in lineshape
     Lshape lineShape[5];   //!< parameters for each Lorentzian

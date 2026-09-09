@@ -324,7 +324,7 @@ void CMass::ReadFRDMFile()
 
     for(int i=0; i < Array.size(); i++)
     {
-        QList temp = Array[i];
+        QVector<QVariant> temp = Array[i];
         bool check = true;
 
         int A = temp[0].toInt();
@@ -384,7 +384,7 @@ void CMass::ReadThomasFermiFile()
 
     for(int i=0; i < Array.size(); i++)
     {
-        QList temp = Array[i];
+        QVector<QVariant> temp = Array[i];
         int A = temp[1].toInt();
         int Z = temp[0].toInt();
         double f1 = temp[3].toDouble();

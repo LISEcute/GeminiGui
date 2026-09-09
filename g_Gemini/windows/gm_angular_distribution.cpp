@@ -3237,6 +3237,7 @@ AngularDistributionWidget::AngularDistributionWidget(const QString &htmlContent,
     text->setOpenLinks(false);
     text->setLineWrapMode(QTextEdit::NoWrap);
     text->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    text->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     text->setHtml(htmlContent);
     connect(text, SIGNAL(anchorClicked(QUrl)), this, SLOT(link_clicked(QUrl)));
     layout->addWidget(text);
@@ -3244,7 +3245,7 @@ AngularDistributionWidget::AngularDistributionWidget(const QString &htmlContent,
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
     setLayout(layout);
-    setMinimumSize(1200, 760);
+    resize(1200, 760);
 }
 
 void AngularDistributionWidget::link_clicked(const QUrl &url)
