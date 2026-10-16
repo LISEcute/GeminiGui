@@ -1,8 +1,8 @@
 #ifndef FTYPE_H
 #define FTYPE_H
 
-#define Gemini_version "Version 3.3.1"
-#define Gemini_date    "09-SEP-2026"
+#define Gemini_version "Version 3.4.0"
+#define Gemini_date    "16-OCT-2026"
 
 #endif // FTYPE_H
 
@@ -109,5 +109,12 @@
 // 3.3.1  09/09/26  Arjun:
 // Save and Save As buttons fixed; UI tweaks
 // Added parallel compound and fusion execution
+
+// 3.4.0  10/16/26  Oleg:
+// Promoted Arjun's September update to the 3.4 release
+// Parallel compound and fusion execution with thread-local state and random generators
+// Safer evaporation-channel selection for invalid and boundary values
+// Save/Save As fixes with context-specific result filenames
+// Runtime reporting and improved result/angular-distribution scrolling
 
 
